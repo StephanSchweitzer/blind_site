@@ -205,7 +205,9 @@ export default function AssignmentsTable({
     };
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return '-';
+        // Le même tiret que partout ailleurs dans le back-office : la liste
+        // mélangeait « — » (livraison) et « - » (dates).
+        if (!dateString) return '—';
         return parisDate(dateString);
     };
 
@@ -420,7 +422,6 @@ export default function AssignmentsTable({
                                         <TableRow className="hover:bg-muted border-b border-border">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>
                                             <TableHead className="text-foreground font-medium">Lecteur</TableHead>
-                                            <TableHead className="text-foreground font-medium">Livraison</TableHead>
                                             <TableHead className="text-foreground font-medium">Livre</TableHead>
                                             <TableHead className="text-foreground font-medium">Date de réception</TableHead>
                                             <TableHead className="text-foreground font-medium">Envoyé au lecteur</TableHead>
@@ -508,19 +509,6 @@ export default function AssignmentsTable({
                                                         <div className="text-muted-foreground italic">Aucun lecteur assigné</div>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="whitespace-nowrap">
-                                                    {assignment.deliveryMethod === 'RETRAIT' ? (
-                                                        <span className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                                                            Retrait
-                                                        </span>
-                                                    ) : assignment.deliveryMethod === 'ENVOI' ? (
-                                                        <span className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300">
-                                                            Envoi
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">—</span>
-                                                    )}
-                                                </TableCell>
                                                 <TableCell className="text-foreground max-w-xs">
                                                     <div>
                                                         <div className="font-medium break-words">{assignment.catalogue.title}</div>
@@ -532,8 +520,23 @@ export default function AssignmentsTable({
                                                 <TableCell className="text-foreground whitespace-nowrap">
                                                     {formatDate(assignment.receptionDate)}
                                                 </TableCell>
+                                                {/* Envoi ou retrait sous la date d'envoi : c'est la façon
+                                                    dont le livre est parti. En colonne à part, « Livraison »
+                                                    ne portait qu'un « — » sur toutes les attributions
+                                                    antérieures à juin 2026, où le champ n'existait pas. */}
                                                 <TableCell className="text-foreground whitespace-nowrap">
-                                                    {formatDate(assignment.sentToReaderDate)}
+                                                    <div>
+                                                        <div>{formatDate(assignment.sentToReaderDate)}</div>
+                                                    {assignment.deliveryMethod === 'RETRAIT' ? (
+                                                        <span className="mt-1 inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                                            Retrait
+                                                        </span>
+                                                    ) : assignment.deliveryMethod === 'ENVOI' ? (
+                                                        <span className="mt-1 inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300">
+                                                            Envoi
+                                                        </span>
+                                                    ) : null}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="text-foreground whitespace-nowrap">
                                                     {formatDate(assignment.returnedToECADate)}

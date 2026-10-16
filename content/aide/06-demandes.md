@@ -34,7 +34,9 @@ Vous pouvez rechercher des demandes existantes à l'aide de la barre de recherch
 
 ![Demandes - capture 2](/admin/aide/images/demandes-02.jpg)
 
-Dans le tableau, cliquez sur le titre du livre (ou n'importe où sur la ligne) pour ouvrir la demande, sur le nom de l'auditeur pour ouvrir son [dossier](/admin/aide/membres#le-dossier), ou sur le numéro de la colonne « Attribution » pour ouvrir l'attribution liée.
+Dans le tableau, cliquez sur le titre du livre (ou n'importe où sur la ligne) pour ouvrir la demande, sur le nom de l'auditeur pour ouvrir son [dossier](/admin/aide/membres#le-dossier), ou sur le numéro de la colonne « Attribution » pour ouvrir l'attribution liée. Sous ce numéro, le statut de l'attribution n'est indiqué que tant que la demande n'est pas terminée.
+
+La colonne « Facturation » ne montre que ce que le statut ne dit pas déjà : « **À facturer** », en orange, sur une demande terminée qui n'est pas encore facturée, et « Non facturable », en gris. Ailleurs, elle reste vide : une demande en cours n'est pas encore facturée, une demande terminée l'est. Le filtre « Facturation » retrouve toujours chaque état.
 
 Vous pouvez filtrer votre recherche selon les critères suivants :
 
@@ -90,7 +92,7 @@ Dans la liste, une demande à suivre apparaît sur fond orange clair, avec sous 
 
 ![Demandes - capture 15](/admin/aide/images/demandes-15.jpg)
 
-La liste des [attributions](/admin/aide/attributions) a le même filtre « Suivi », avec les mêmes délais pour les deux premières étapes, et les lignes sous les cartes de la [page principale](/admin/aide/page-principale#ce-qui-est-a-suivre) reprennent exactement ces règles.
+La liste des [attributions](/admin/aide/attributions) a le même filtre « Suivi », avec les mêmes délais pour les deux premières étapes, et les lignes du bandeau « À traiter » de la [page principale](/admin/aide/page-principale#ce-qui-est-a-suivre) reprennent exactement ces règles.
 
 Les anciennes demandes restées ouvertes apparaissent elles aussi « à suivre », parfois depuis plusieurs années. Si une demande est en réalité terminée, clôturez-la : elle disparaît du décompte.
 

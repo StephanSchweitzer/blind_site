@@ -613,6 +613,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
     const readerRoster = people.filter(isLecteur);
     const readersTaking = readerRoster.filter(isTakingAttributions);
     const awayToday = people.filter((p) => p.effectiveStatus === 'UNAVAILABLE');
+    const awayReaderCount = awayToday.filter(isLecteur).length;
     const saturated = loadedReaders(people).filter((r) => r.saturated);
     // Tiles read the whole roster, never the name filter: a counter that moves
     // while you type a name is a counter nobody can trust.
@@ -680,29 +681,45 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         Situation au {formatDayKey(today)}.
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => startRefresh(() => router.refresh())}
-                    disabled={isRefreshing}
-                >
-                    {isRefreshing ? (
-                        <Loader2 size={15} className="mr-2 animate-spin" />
-                    ) : (
-                        <RefreshCw size={15} className="mr-2" />
-                    )}
-                    Actualiser
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Ouvrir n'importe qui, pas seulement les personnes listées.
+                        Le tableau ne porte que les lecteurs et les personnes déjà
+                        indisponibles : déclarer l'absence d'un permanent ou d'un
+                        auditeur actif demande de pouvoir aller le chercher.
+                        C'est une action, pas une recherche : elle vivait dans la
+                        barre de recherche, à côté du filtre par nom, et l'on ne
+                        savait plus lequel des deux champs taper. */}
+                    <UserSearchCombobox<UserSearchResult>
+                        value={null}
+                        onSelect={(user) => openPerson(user.id)}
+                        placeholder="Gérer la disponibilité de…"
+                        searchPlaceholder="Nom, email, ou numéro de personne…"
+                        triggerClassName="h-9 w-64 shrink-0"
+                    />
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9"
+                        onClick={() => startRefresh(() => router.refresh())}
+                        disabled={isRefreshing}
+                    >
+                        {isRefreshing ? (
+                            <Loader2 size={15} className="mr-2 animate-spin" />
+                        ) : (
+                            <RefreshCw size={15} className="mr-2" />
+                        )}
+                        Actualiser
+                    </Button>
+                </div>
             </div>
 
             {/* ── search bar ─────────────────────────────────────────────────
-                The two ways to search this page (filter everyone below by name,
-                or jump straight to one person's card) used to live in the header
-                row, which wraps under the title on anything narrower than a wide
-                desktop — easy to scroll straight past without noticing. Sticky
-                and visually distinct so it reads as "the search" the moment the
-                page opens, and stays reachable while scrolled down into the
-                calendar or the lecteur tables. */}
+                Sticky and visually distinct so it reads as "the search" the
+                moment the page opens, and stays reachable while scrolled down
+                into the calendar or the lecteur tables. One field only: the
+                « Gérer la disponibilité de… » picker sat here too, and two name
+                fields side by side left people guessing which one filtered the
+                page — it is an action, so it moved up next to « Actualiser ». */}
             <div className="sticky top-[65px] z-30 rounded-lg border border-border bg-card p-3 shadow-sm">
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center gap-1.5 text-sm font-medium text-foreground pl-1 shrink-0">
@@ -781,18 +798,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             )}
                         </PopoverContent>
                     </Popover>
-                    <div className="w-px self-stretch bg-border shrink-0" aria-hidden />
-                    {/* Ouvrir n'importe qui, pas seulement les personnes listées.
-                        Le tableau ne porte que les lecteurs et les personnes déjà
-                        indisponibles : déclarer l'absence d'un permanent ou d'un
-                        auditeur actif demande de pouvoir aller le chercher. */}
-                    <UserSearchCombobox<UserSearchResult>
-                        value={null}
-                        onSelect={(user) => openPerson(user.id)}
-                        placeholder="Gérer la disponibilité de…"
-                        searchPlaceholder="Nom, email, ou numéro de personne…"
-                        triggerClassName="h-9 w-64 shrink-0"
-                    />
                 </div>
             </div>
 
@@ -835,7 +840,11 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     icon={<CalendarOff size={20} />}
                     value={awayToday.length}
                     label="Indisponibles aujourd'hui"
-                    hint={`${readerRoster.filter((p) => p.effectiveStatus === 'UNAVAILABLE').length} lecteur(s)`}
+                    // Seulement quand d'autres que des lecteurs sont absents : sinon
+                    // la ligne répétait le chiffre juste au-dessus (« 34 / 34 lecteur(s) »).
+                    hint={awayReaderCount < awayToday.length
+                        ? `dont ${awayReaderCount} lecteur${awayReaderCount > 1 ? 's' : ''}`
+                        : undefined}
                     tone={awayToday.length > 0 ? 'warn' : 'neutral'}
                     action="Voir le calendrier"
                     onClick={() => {
@@ -1187,17 +1196,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                     {readerPage.visible.map((row) => (
                                         <TableRow key={row.person.id}>
                                             <TableCell>
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <PersonButton person={row.person} onOpen={openPerson} />
-                                                    {row.dormant && (
-                                                        <span
-                                                            className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium"
-                                                            title={`Aucune attribution depuis au moins ${DORMANT_READER_DAYS} jours`}
-                                                        >
-                                                            <Moon size={11} /> Dormant
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                <PersonButton person={row.person} onOpen={openPerson} />
                                                 {!row.person.isAvailable && (
                                                     <span className="block text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                                                         ne prend pas d&apos;attribution
@@ -1233,17 +1232,29 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                                     </span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">
-                                                {row.person.lastAssignedAt ? (
-                                                    <>
-                                                        {formatDayKey(row.person.lastAssignedAt)}
-                                                        <span className="text-xs ml-1">
-                                                            ({row.idleDays} j)
-                                                        </span>
-                                                    </>
-                                                ) : (
-                                                    'Jamais'
-                                                )}
+                                            {/* « Dormant » se lit ici, sur la date qui le prouve.
+                                                Le badge vivait à côté du nom, sur la même ligne
+                                                qu'« Actif » dans la colonne Statut : deux mots qui
+                                                se contredisaient en apparence, et qui répétaient
+                                                ce que cette colonne dit déjà (« Jamais »). */}
+                                            <TableCell
+                                                className={`text-sm ${row.dormant ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}
+                                                title={row.dormant ? `Dormant : aucune attribution depuis au moins ${DORMANT_READER_DAYS} jours` : undefined}
+                                            >
+                                                <span className="inline-flex items-center gap-1">
+                                                    {row.dormant && <Moon size={12} aria-hidden />}
+                                                    {row.person.lastAssignedAt ? (
+                                                        <>
+                                                            {formatDayKey(row.person.lastAssignedAt)}
+                                                            <span className="text-xs">
+                                                                ({row.idleDays} j)
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        'Jamais'
+                                                    )}
+                                                    {row.dormant && <span className="sr-only"> — dormant</span>}
+                                                </span>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-sm">
                                                 {row.person.languages.length > 0

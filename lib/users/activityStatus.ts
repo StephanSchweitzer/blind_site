@@ -179,9 +179,20 @@ export function effectivelyActiveWhere(now?: Date): Prisma.UserWhereInput {
         OR: [
             { activityStatus: 'ACTIVE' },
             // Stored UNAVAILABLE, but the window is either still ahead or over.
+            //
+            // `not: null` on both bounds is load-bearing: this fragment is also
+            // used negated (the « non actifs » count and filter). On an open
+            // bound, `"unavailableUntil" < today` is SQL NULL rather than false,
+            // NOT(NULL) is NULL again, and the row matched NEITHER side — every
+            // indisponible « sans date de fin » vanished from the lecteurs list's
+            // header (310 au total over 324 rows) and from its « non actifs »
+            // filter. With the explicit IS NOT NULL the comparison is false.
             {
                 activityStatus: 'UNAVAILABLE',
-                OR: [{ unavailableFrom: { gt: today } }, { unavailableUntil: { lt: today } }],
+                OR: [
+                    { unavailableFrom: { not: null, gt: today } },
+                    { unavailableUntil: { not: null, lt: today } },
+                ],
             },
         ],
     };

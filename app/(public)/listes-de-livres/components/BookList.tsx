@@ -101,7 +101,8 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                                 <span className="sr-only">, de {book.author} — voir la fiche détaillée</span>
                                             </button>
                                         </h4>
-                                        <div className="italic text-gray-700 dark:text-gray-300 text-sm">
+                                        {/* Déjà dans le nom du bouton (« , de … ») : lu une seule fois. */}
+                                        <div aria-hidden="true" className="italic text-gray-700 dark:text-gray-300 text-sm">
                                             {book.author}
                                         </div>
                                     </div>

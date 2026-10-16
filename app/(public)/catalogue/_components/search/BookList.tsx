@@ -74,7 +74,10 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                                 <span className="sr-only">, de {book.author} — voir la fiche détaillée</span>
                             </button>
                         </h3>
-                        <p className="text-muted-foreground mb-3 line-clamp-1 text-sm">
+                        {/* Déjà dit par le nom du bouton juste au-dessus (« , de … ») :
+                            sans aria-hidden, un lecteur d’écran l’annonçait deux fois
+                            sur chaque carte. */}
+                        <p aria-hidden="true" className="text-muted-foreground mb-3 line-clamp-1 text-sm">
                             {book.author}
                         </p>
 

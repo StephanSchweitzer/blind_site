@@ -227,7 +227,7 @@ async function rescueUsers(
         filters.push({
             key: 'status',
             label: status === 'ACTIVE' || status === 'active' ? 'Actifs'
-                : status === 'inactive' ? 'Inactifs'
+                : status === 'inactive' ? 'Non actifs'
                     : `Statut : ${getUserActivityStatusLabel(status)}`,
         });
     }

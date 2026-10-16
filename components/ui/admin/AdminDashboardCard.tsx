@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import { Check } from 'lucide-react';
 import { SECTION_ICONS, sectionAccent } from '@/components/admin/section-icons';
 
 /**
- * One line of « what is waiting » under a card — see `rows` below.
- * `value` is the words of the pill (« 170 à suivre », « À jour »): the colour
- * only repeats what they say, it never says it alone.
+ * One line of « what is waiting » in the dashboard's « À traiter » band.
+ * `value` is the words of the pill (« 170 à suivre »): the colour only
+ * repeats what they say, it never says it alone. `count` is the number behind
+ * those words, summed per list into the band's folded line.
  */
 export type DashboardStatusRow = {
     label: string;
@@ -19,7 +19,44 @@ export type DashboardStatusRow = {
      */
     tone: 'warning' | 'todo' | 'ok' | 'neutral';
     value: string;
+    count: number;
 };
+
+// Tinted, not solid. The pills used to sit under coloured cards (the
+// Corbeille one is red) and had to be solid white-on-amber to stand out
+// there; in the neutral band, six solid amber pills out of eight shouted
+// without saying which one mattered. Text at the 900 stop keeps 4.5:1 on the
+// 100 tint, and its dark-mode pair the same on the 900/40 wash.
+const toneClass: Record<DashboardStatusRow['tone'], string> = {
+    warning: 'rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200',
+    todo: 'rounded-full bg-blue-100 px-2.5 py-0.5 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200',
+    ok: 'text-emerald-700 dark:text-emerald-300',
+    neutral: 'text-muted-foreground',
+};
+
+const countFormat = new Intl.NumberFormat('fr-FR');
+
+/** The « what is waiting » lines, each one a link to the list already filtered. */
+export function DashboardStatusList({ rows, className = '' }: { rows: DashboardStatusRow[]; className?: string }) {
+    return (
+        <ul className={`divide-y divide-border bg-card ${className}`}>
+            {rows.map((row) => (
+                <li key={row.label}>
+                    <Link
+                        prefetch={false}
+                        href={row.href}
+                        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-2.5 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    >
+                        <span>{row.label}</span>
+                        <span className={`inline-flex items-center gap-1 whitespace-nowrap font-semibold ${toneClass[row.tone]}`}>
+                            {row.value}
+                        </span>
+                    </Link>
+                </li>
+            ))}
+        </ul>
+    );
+}
 
 interface AdminDashboardCardProps {
     title: string;
@@ -30,112 +67,49 @@ interface AdminDashboardCardProps {
      */
     countLabel?: string;
     href: string;
-    buttonText: string;
     /**
-     * What is late on this page, each line opening the list already filtered.
-     * Only on the cards whose page holds work with a délai (demandes,
-     * attributions, factures) — a line that could never say anything would
-     * just be one more thing to read.
+     * A work queue (doublons, audio orphelin, corbeille), whose number says
+     * whether there is something to do. Shown in bold — never as a bigger
+     * card: an earlier version kept the queues large among small cards, two
+     * sizes in one grid that read as two levels of importance.
      */
-    rows?: DashboardStatusRow[];
+    emphasis?: boolean;
 }
 
-// Solid pills with white text: a count to look at has to stand out whatever the
-// colour of the card above it (the Corbeille card is red). White on amber-700
-// and blue-700 keeps 4.5:1.
-const toneClass: Record<DashboardStatusRow['tone'], string> = {
-    warning: 'rounded-full bg-amber-700 px-2.5 py-0.5 text-white',
-    todo: 'rounded-full bg-blue-700 px-2.5 py-0.5 text-white',
-    ok: 'text-emerald-700 dark:text-emerald-300',
-    neutral: 'text-muted-foreground',
-};
-
-const countFormat = new Intl.NumberFormat('fr-FR');
-
-export function AdminDashboardCard({
-                                       title,
-                                       count,
-                                       countLabel,
-                                       href,
-                                       buttonText,
-                                       rows,
-                                   }: AdminDashboardCardProps) {
+/**
+ * One dashboard card: the section's name in its colour and, underneath, its
+ * count. Every card on the dashboard has this one shape and size.
+ *
+ * It used to be a large tile led by a 4xl number. For most cards that number
+ * is a lifetime total (20 384 demandes, 8 001 paiements): it never changes what
+ * anyone does today, and drawn that large it outshouted the counts that do.
+ *
+ * A real link, not a clickable <div>: a <div> can't be reached with Tab, is
+ * announced as plain text by a screen reader, and can't be opened in a new
+ * tab. prefetch={false} on every link here and in the admin lists: each
+ * prefetch of a dynamic /admin page is a proxy run (with its DB read) plus a
+ * page render, and Vercel counted more invocations from the dashboard's
+ * prefetches than from anyone clicking.
+ */
+export function AdminDashboardCard({ title, count, countLabel, href, emphasis = false }: AdminDashboardCardProps) {
     // Each section's colour and icon live in one place, shared with the menu
     // (components/admin/section-icons.ts).
     const colors = sectionAccent(title);
     const Icon = SECTION_ICONS[title];
 
-    const header = (
-        <>
-            <div className="flex items-start justify-between mb-2">
-                <h3 className={`text-2xl font-bold ${colors.text}`}>{title}</h3>
-                {Icon && (
-                    <Icon className={`w-7 h-7 ${colors.text} opacity-70`} aria-hidden="true" />
-                )}
-            </div>
-            <p className="flex flex-wrap items-baseline gap-x-2 text-foreground">
-                <span className="text-4xl font-extrabold tabular-nums">{countFormat.format(count)}</span>
-                {countLabel && <span className={`text-sm font-medium ${colors.text}`}>{countLabel}</span>}
-            </p>
-            <div className={`mt-4 text-sm font-medium ${colors.text}`}>
-                {buttonText} <span aria-hidden="true">→</span>
-            </div>
-        </>
-    );
-
-    // A real link, not a clickable <div>: a <div> can't be reached with Tab, is
-    // announced as plain text by a screen reader, and can't be opened in a new
-    // tab. It also used to pushState the URL before router.push added it again,
-    // so the first « Retour » landed back on the dashboard.
-    //
-    // prefetch={false} on every link here and in the admin lists: each
-    // prefetch of a dynamic /admin page is a proxy run (with its DB read) plus
-    // a page render, and the dashboard alone shows ~30 links — Vercel counted
-    // more invocations from prefetches than from anyone clicking.
-    if (!rows?.length) {
-        return (
-            <Link
-                prefetch={false}
-                href={href}
-                className={`block p-6 rounded-lg border ${colors.border} ${colors.bg} ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-            >
-                {header}
-            </Link>
-        );
-    }
-
-    // With rows the card holds several links, so it can no longer BE one (a
-    // link inside a link is invalid, and a screen reader reads the lot as one
-    // run-on label): the coloured top stays the link to the page, and each
-    // line is its own link to the filtered list. The white panel takes the
-    // rest of the height, so the cards of a grid row — stretched to the
-    // tallest — still line up.
     return (
-        <div className={`flex flex-col overflow-hidden rounded-lg border ${colors.border} ${colors.bg}`}>
-            <Link
-                prefetch={false}
-                href={href}
-                className={`block p-6 ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
-            >
-                {header}
-            </Link>
-            <ul className={`flex-1 divide-y divide-border border-t ${colors.border} bg-card`}>
-                {rows.map((row) => (
-                    <li key={row.label}>
-                        <Link
-                            prefetch={false}
-                            href={row.href}
-                            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-2.5 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                        >
-                            <span>{row.label}</span>
-                            <span className={`inline-flex items-center gap-1 whitespace-nowrap font-semibold ${toneClass[row.tone]}`}>
-                                {row.tone === 'ok' && <Check className="h-4 w-4" aria-hidden="true" />}
-                                {row.value}
-                            </span>
-                        </Link>
-                    </li>
-                ))}
-            </ul>
-        </div>
+        <Link
+            prefetch={false}
+            href={href}
+            className={`flex h-full items-center justify-between gap-3 rounded-lg border px-4 py-3 ${colors.border} ${colors.bg} ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+        >
+            <span className="min-w-0">
+                <span className={`block text-lg font-bold leading-tight ${colors.text}`}>{title}</span>
+                <span className={`block text-sm tabular-nums ${emphasis ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                    {countFormat.format(count)}{countLabel ? ` ${countLabel}` : ''}
+                </span>
+            </span>
+            {Icon && <Icon className={`h-5 w-5 shrink-0 ${colors.text} opacity-70`} aria-hidden="true" />}
+        </Link>
     );
 }

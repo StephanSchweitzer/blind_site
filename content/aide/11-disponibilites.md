@@ -20,7 +20,7 @@ Voici un exemple de recherche sur un prénom
 
 ![Disponibilités - capture 3](/admin/aide/images/disponibilites-03.jpg)
 
-Enfin, depuis cette page, nous pouvons (1) filtrer les résultats en fonction des locuteurs des langues que nous avons définies précédemment dans la fenêtre contextuelle « Membres » pour les conférenciers, et nous pouvons (2) rechercher une personne afin de modifier directement ses disponibilités depuis cette page.
+Enfin, depuis cette page, nous pouvons (1) filtrer les résultats en fonction des locuteurs des langues que nous avons définies précédemment dans la fenêtre contextuelle « Membres » pour les conférenciers, et nous pouvons (2) rechercher une personne afin de modifier directement ses disponibilités. Ce second champ, « Gérer la disponibilité de… », se trouve en haut à droite de la page, à côté du bouton « Actualiser » : il ne filtre pas la page, il ouvre la fenêtre de n'importe quelle personne, même absente des listes (un permanent ou un auditeur à déclarer absent, par exemple).
 
 ![Disponibilités - capture 4](/admin/aide/images/disponibilites-04.jpg)
 
@@ -44,7 +44,7 @@ Une fois le volet « Attributions » déplié, nous pouvons (1) ouvrir dans un n
 
 ![Disponibilités - capture 7](/admin/aide/images/disponibilites-07.jpg)
 
-En haut de la page, trois compteurs : les lecteurs attribuables, les personnes indisponibles aujourd'hui et les lecteurs au maximum de leurs attributions. Un clic sur un compteur mène à la liste correspondante — le tableau des lecteurs, le calendrier, ou le tableau trié des plus chargés aux moins chargés.
+En haut de la page, trois compteurs : les lecteurs attribuables, les personnes indisponibles aujourd'hui (avec, quand d'autres membres sont absents aussi, le nombre de lecteurs parmi elles) et les lecteurs au maximum de leurs attributions. Un clic sur un compteur mène à la liste correspondante — le tableau des lecteurs, le calendrier, ou le tableau trié des plus chargés aux moins chargés.
 
 Sous les compteurs, « Points à surveiller » rassemble, pour les semaines à venir, qui revient bientôt, qui s'absente bientôt, qui garde un livre pendant son absence, les absences sans date de retour, et les personnes en pause pour les attributions. La section est repliée ; « Afficher » l'ouvre — la page s'en souvient à la visite suivante, sur le même navigateur. Chaque groupe montre quelques noms ; « + N autres » affiche le reste. Un clic sur un nom ouvre sa disponibilité.
 
@@ -56,7 +56,7 @@ Si l'on clique sur un nom (n'importe où sur la page, en fait), le modal indiqua
 
 ![Disponibilités - capture 9](/admin/aide/images/disponibilites-09.jpg)
 
-Enfin, tout en bas de la page, on trouve le tableau des lecteurs. Ce tableau nous indique qui a le moins d'attributions et qui en a le plus. Il ne montre pas les lecteurs ayant atteint ou dépassé leur maximum, car ceux-ci ne sont plus disponibles (haha).
+Enfin, tout en bas de la page, on trouve le tableau des lecteurs. Ce tableau nous indique qui a le moins d'attributions et qui en a le plus. Il ne montre pas les lecteurs ayant atteint ou dépassé leur maximum, car ceux-ci ne sont plus disponibles (haha). Dans la colonne « Dernière attribution », la date (ou « Jamais ») passe en orange, avec une petite lune, pour les lecteurs **dormants** : sans attribution depuis au moins 180 jours.
 
 Les filtres appliqués en haut de la page s'affichent également ici.
 

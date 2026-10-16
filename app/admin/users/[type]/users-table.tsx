@@ -278,7 +278,7 @@ export default function UsersTable({
                                 type="button"
                                 aria-pressed={inactiveSelected}
                                 onClick={() => handleStatusFilter(inactiveSelected ? 'all' : 'inactive')}
-                                title={inactiveSelected ? 'Retirer le filtre' : 'Afficher uniquement les inactifs'}
+                                title={inactiveSelected ? 'Retirer le filtre' : 'Afficher uniquement les non actifs'}
                                 className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
                                     inactiveSelected
                                         ? 'bg-red-100 text-red-900 ring-1 ring-inset ring-red-300 dark:bg-red-950 dark:text-red-300 dark:ring-red-800'
@@ -286,7 +286,7 @@ export default function UsersTable({
                                 }`}
                             >
                                 <span className={`h-1.5 w-1.5 rounded-full ${inactiveSelected ? 'bg-red-400' : 'bg-red-500/50'}`} />
-                                {inactiveCount} inactif{inactiveCount > 1 ? 's' : ''}
+                                {inactiveCount} non actif{inactiveCount > 1 ? 's' : ''}
                             </button>
                         </div>
                     </div>
@@ -338,7 +338,7 @@ export default function UsersTable({
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                             <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
-                            <SelectItem value="inactive" className="text-foreground">Inactifs (tous sauf actifs)</SelectItem>
+                            <SelectItem value="inactive" className="text-foreground">Non actifs (tous sauf actifs)</SelectItem>
                             {OFFERED_USER_ACTIVITY_STATUSES.map((s) => (
                                 <SelectItem key={s} value={s} className="text-foreground">
                                     {getUserActivityStatusLabel(s)}

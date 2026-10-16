@@ -162,6 +162,11 @@ export default function OrdersTable({
         currentRetard !== 'all',
         searchParams.get('filter') === 'needsReturn',
     ].filter(Boolean).length;
+    // Dans un dossier, une personne a le plus souvent une page de demandes ou
+    // moins : cinq filtres au-dessus de quinze lignes pesaient plus lourd que la
+    // liste. Ils reviennent dès qu'il y a plusieurs pages, ou qu'un filtre est
+    // déjà posé (un lien ?statusId=… doit pouvoir s'effacer).
+    const showFilters = !presetClient || pagination.totalPages > 1 || activeFilterCount > 0;
 
     const navigate = useCallback(
         (href: string) => startTransition(() => router.push(href, { scroll: false })),
@@ -358,6 +363,7 @@ export default function OrdersTable({
 
                 {/* Filters — 6 colonnes pour que « Livre » en occupe deux :
                     un titre tient mal dans la largeur d'un select de statut. */}
+                {showFilters && (
                 <MobileFilters
                     activeCount={activeFilterCount}
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4"
@@ -457,6 +463,7 @@ export default function OrdersTable({
                         </Select>
                     </div>
                 </MobileFilters>
+                )}
 
                 {filterBook && <BookFilterBadge book={filterBook} noun="demandes" />}
                 </div>
@@ -529,10 +536,10 @@ export default function OrdersTable({
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border hover:bg-transparent">
                                             <SortableHead label="N°" sortKey="id" sort={sort} onSort={handleSort} />
-                                            {/* Dans un dossier, toutes les lignes ont le même auditeur. */}
-                                            {presetClient ? (
-                                                <TableHead className="text-foreground font-medium">Auditeur</TableHead>
-                                            ) : (
+                                            {/* Dans un dossier, toutes les lignes ont le même auditeur :
+                                                la colonne répétait son nom et son e-mail sur chaque
+                                                ligne, sous l'en-tête qui les donne déjà. */}
+                                            {!presetClient && (
                                                 <SortableHead label="Auditeur" sortKey="auditeur" sort={sort} onSort={handleSort} />
                                             )}
                                             <SortableHead label="Livre" sortKey="livre" sort={sort} onSort={handleSort} />
@@ -579,6 +586,7 @@ export default function OrdersTable({
                                                     <TableCell className="font-medium whitespace-nowrap text-foreground">
                                                         <CopyIdButton id={order.id} label="de la demande" />
                                                     </TableCell>
+                                                    {!presetClient && (
                                                     <TableCell className="text-foreground">
                                                         <div>
                                                             {/* Le nom mène au dossier de l'auditeur. C'était le
@@ -588,14 +596,8 @@ export default function OrdersTable({
                                                                 que c'est ici qu'on tombe sur son nom. Comme pour
                                                                 la colonne « Attribution », stopPropagation :
                                                                 sinon le clic ouvrirait aussi la demande.
-
-                                                                Pas de lien dans un dossier (`presetClient`) : la
-                                                                liste y est déjà celle de cette personne, chaque
-                                                                ligne renverrait donc à la page ouverte. */}
+                                                                Pas de colonne du tout dans un dossier (`presetClient`). */}
                                                             <div className="font-medium">
-                                                                {presetClient ? (
-                                                                    aveugleName || order.aveugle.email
-                                                                ) : (
                                                                     <Link
                                                                         prefetch={false}
                                                                         href={`/admin/users/dossier/${order.aveugleId}/demandes`}
@@ -604,7 +606,6 @@ export default function OrdersTable({
                                                                     >
                                                                         {aveugleName || order.aveugle.email}
                                                                     </Link>
-                                                                )}
                                                             </div>
                                                             {aveugleName && (
                                                                 <div className="text-sm text-muted-foreground">
@@ -613,6 +614,7 @@ export default function OrdersTable({
                                                             )}
                                                         </div>
                                                     </TableCell>
+                                                    )}
                                                     <TableCell className="text-foreground">
                                                         {/* Le titre ouvre la demande. La ligne entière reste
                                                             cliquable à la souris, mais une ligne n'est pas
@@ -708,9 +710,14 @@ export default function OrdersTable({
                                                                 <span className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">
                                                                     #{order.assignments[0].id}
                                                                 </span>
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    {order.assignments[0].status.name}
-                                                                </span>
+                                                                {/* Sur une demande terminée, l'attribution l'est
+                                                                    forcément : « Terminé » sous le n° répétait le
+                                                                    statut d'à côté. Utile seulement en cours. */}
+                                                                {order.statusId !== STATUS.TERMINE && order.statusId !== STATUS.SOLDE && (
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {order.assignments[0].status.name}
+                                                                    </span>
+                                                                )}
                                                             </Link>
                                                         ) : order.isDuplication ? (
                                                             <span className="text-xs text-muted-foreground">Duplication</span>
@@ -721,16 +728,27 @@ export default function OrdersTable({
                                                             </span>
                                                         )}
                                                     </TableCell>
+                                                    {/* Seulement ce que le statut ne dit pas déjà. Une demande
+                                                        en cours n'est pas encore facturée, une demande terminée
+                                                        l'est : le badge « Non facturé » / « Facturé » se lisait
+                                                        sur presque chaque ligne et n'apprenait rien. Restent
+                                                        l'exception à traiter — terminée mais pas facturée — et
+                                                        « Non facturable ». Une facture posée avant la clôture
+                                                        se lit déjà sous le statut (ForcedBillBadge). Le filtre
+                                                        « Facturation » liste toujours chaque état, et le lecteur
+                                                        d'écran entend l'état dans tous les cas. */}
                                                     <TableCell>
-                                                        <span
-                                                            className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${
-                                                                order.billingStatus === 'BILLED'
-                                                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
-                                                                    : 'bg-muted text-muted-foreground'
-                                                            }`}
-                                                        >
-                                                            {getOrderBillingStatusLabel(order.billingStatus)}
-                                                        </span>
+                                                        {order.billingStatus === 'UNBILLED' && order.statusId === STATUS.TERMINE ? (
+                                                            <span className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                                                À facturer
+                                                            </span>
+                                                        ) : order.billingStatus === 'UNBILLABLE' ? (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {getOrderBillingStatusLabel(order.billingStatus)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="sr-only">{getOrderBillingStatusLabel(order.billingStatus)}</span>
+                                                        )}
                                                     </TableCell>
                                                     {/* Étiquette d'adresse. Offered on every demande rather
                                                         than only on « Attente envoi vers auditeur » ones: that

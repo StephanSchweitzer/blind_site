@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { AdminCard } from '@/components/ui/admin';
 import { AdminDashboardCard } from '@/components/ui/admin/AdminDashboardCard';
+import { DashboardTodoBand, type DashboardTodoGroup } from '@/components/ui/admin/DashboardTodoBand';
 import { getFreeReaderCount } from '@/lib/users/availabilityData';
 import type { DashboardStatusRow } from '@/components/ui/admin/AdminDashboardCard';
 import {
@@ -20,7 +21,7 @@ import { getOpenAssignmentsWithUploadedAudio } from '@/lib/assignments/audioDepo
 import { parisDate } from '@/lib/paris-day';
 
 /**
- * One line under a card for one stage of the délais (lib/orders/delais.ts):
+ * One line of the « À traiter » band for one stage of the délais (lib/orders/delais.ts):
  * amber past the second line (« à suivre », « à relancer »), blue past the
  * first (« à surveiller »), a green « À jour » otherwise — never red, never
  * « en retard »: the work is the volunteers', and the pill says what to look
@@ -34,6 +35,7 @@ function delaiRow(label: string, baseHref: string, tally: DelaiTally, etape: Del
             href: `${baseHref}&retard=true`,
             tone: 'warning',
             value: `${tally.enRetard} ${DELAI_ETAPES[etape].suiviLabel.toLowerCase()}`,
+            count: tally.enRetard,
         };
     }
     if (tally.aSurveiller > 0) {
@@ -42,9 +44,10 @@ function delaiRow(label: string, baseHref: string, tally: DelaiTally, etape: Del
             href: `${baseHref}&retard=surveiller`,
             tone: 'todo',
             value: `${tally.aSurveiller} ${SURVEILLER_LABEL.toLowerCase()}`,
+            count: tally.aSurveiller,
         };
     }
-    return { label, href: baseHref, tone: 'ok', value: 'À jour' };
+    return { label, href: baseHref, tone: 'ok', value: 'À jour', count: 0 };
 }
 
 /**
@@ -52,11 +55,12 @@ function delaiRow(label: string, baseHref: string, tally: DelaiTally, etape: Del
  * be done straight away, so every one that CAN be done is work, late or not —
  * « À jour » on a fresh one let it sit unseen for the week its clock takes to
  * turn amber. The line counts those (the blocked ones never go late, so the
- * late and amber counts are among them) and opens exactly them. The ones still
- * waiting on a recording get a quiet line of their own, only when there are
- * some: nobody can act on them yet. The ones nobody is recording at all get an
- * amber line, also only when there are some: they need a demande
- * d'enregistrement (or a corrected type), and no clock will ever say so.
+ * late and amber counts are among them) and opens exactly them. The ones
+ * nobody is recording at all get an amber line, only when there are some: they
+ * need a demande d'enregistrement (or a corrected type), and no clock will ever
+ * say so. The ones still waiting on a recording have no line: nobody can act on
+ * them yet, and « À traiter » is for what someone can do. The Demandes « Type »
+ * filter (« Duplication après enregistrement ») still lists them.
  */
 function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
     const ready = tally.total - tally.bloquees - tally.sansEnregistrement;
@@ -66,12 +70,12 @@ function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
     const part = (n: number, word: string) => (n === ready ? `${n} ${word}` : `${ready}, dont ${n} ${word}`);
     const rows: DashboardStatusRow[] = [
         ready === 0
-            ? { label, href, tone: 'ok', value: 'À jour' }
+            ? { label, href, tone: 'ok', value: 'À jour', count: 0 }
             : tally.enRetard > 0
-                ? { label, href, tone: 'warning', value: part(tally.enRetard, DELAI_ETAPES.duplication.suiviLabel.toLowerCase()) }
+                ? { label, href, tone: 'warning', value: part(tally.enRetard, DELAI_ETAPES.duplication.suiviLabel.toLowerCase()), count: ready }
                 : tally.aSurveiller > 0
-                    ? { label, href, tone: 'todo', value: part(tally.aSurveiller, SURVEILLER_LABEL.toLowerCase()) }
-                    : { label, href, tone: 'todo', value: String(ready) },
+                    ? { label, href, tone: 'todo', value: part(tally.aSurveiller, SURVEILLER_LABEL.toLowerCase()), count: ready }
+                    : { label, href, tone: 'todo', value: String(ready), count: ready },
     ];
     if (tally.sansEnregistrement > 0) {
         rows.push({
@@ -79,14 +83,7 @@ function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
             href: '/admin/orders?isDuplication=unplanned',
             tone: 'warning',
             value: String(tally.sansEnregistrement),
-        });
-    }
-    if (tally.bloquees > 0) {
-        rows.push({
-            label: 'Duplications après enregistrement',
-            href: '/admin/orders?isDuplication=blocked',
-            tone: 'neutral',
-            value: String(tally.bloquees),
+            count: tally.sansEnregistrement,
         });
     }
     return rows;
@@ -94,13 +91,20 @@ function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Every section lays its cards on the same grid, so every card is the same
+ * size. Three columns, not four: with four, each section (6, 5, 5, 6 cards)
+ * ended on one or two stranded cards. A list, so a screen reader announces how
+ * many cards a section holds.
+ */
+const GRID = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3';
+
 export default async function Dashboard() {
     const me = await getCurrentUser();
     const isSuper = isSuperAdmin(me?.accessLevel);
     const [
         [
             bookCount,
-            newsCount,
             genreCount,
             coupsDeCoeurCount,
             reviewCount,
@@ -114,18 +118,19 @@ export default async function Dashboard() {
             orderCount,
             billCount,
             paymentCount,
+            auditEventCount,
+            newsCount,
             siteContactCount,
             teamMemberCount,
             historyEventCount,
             practicalInfoCount,
             membershipCount,
-            auditEventCount,
         ],
         // Active lecteurs with no attribution in progress — the count the
         // Disponibilités card leads with.
         freeReaderCount,
-        // What is late, shown as lines under the Demandes, Attributions and
-        // Factures cards (lib/orders/delais.ts, lib/billing.ts).
+        // What is late, shown as the lines of the « À traiter » band
+        // (lib/orders/delais.ts, lib/billing.ts).
         orderDelais,
         assignmentDelais,
         lateBillCount,
@@ -137,7 +142,6 @@ export default async function Dashboard() {
     ] = await Promise.all([
         Promise.all([
             prisma.book.count(),
-            prisma.news.count(),
             prisma.genre.count(),
             prisma.coupsDeCoeur.count(),
             prisma.book.count({ where: { needsReview: true } }),
@@ -153,14 +157,18 @@ export default async function Dashboard() {
             prisma.user.count({ where: { accessLevel: { in: ['admin', 'super_admin'] } } }),
             prisma.assignment.count(),
             prisma.orders.count(),
-            prisma.bill.count(),
-            prisma.payment.count(),
+            // Bill and Payment are soft-deleted by `isActive` and sit outside the
+            // lib/prisma.ts extension: a bare count() also tallied the deleted
+            // ones, and the tile read 2 781 factures over a list of 2 777.
+            prisma.bill.count({ where: { isActive: true } }),
+            prisma.payment.count({ where: { isActive: true } }),
+            prisma.auditEvent.count(),
+            prisma.news.count(),
             prisma.siteContact.count(),
             prisma.teamMember.count(),
             prisma.historyEvent.count(),
             prisma.practicalInfo.count(),
             prisma.membershipOption.count(),
-            prisma.auditEvent.count(),
         ]),
         getFreeReaderCount(),
         getOpenOrderDelais(),
@@ -180,6 +188,50 @@ export default async function Dashboard() {
     // number of rows it opens.
     const orderTally = tallyDelais(orderDelais);
     const assignmentTally = tallyDelais(assignmentDelais);
+    const todoGroups: DashboardTodoGroup[] = [
+        {
+            title: 'Demandes',
+            one: 'demande',
+            many: 'demandes',
+            rows: [
+                delaiRow("En attente d'un lecteur", '/admin/orders?isDuplication=false&statusId=1', orderTally.attente_lecteur, 'attente_lecteur'),
+                delaiRow('À expédier aux auditeurs', '/admin/orders?isDuplication=false&statusId=6', orderTally.a_expedier, 'a_expedier'),
+                ...duplicationRows(orderTally.duplication),
+            ],
+        },
+        {
+            title: 'Attributions',
+            one: 'attribution',
+            many: 'attributions',
+            rows: [
+                delaiRow('Chez les lecteurs', '/admin/assignments?statusId=2', assignmentTally.chez_lecteur, 'chez_lecteur'),
+                // Pas de délai ici : l'enregistrement est déjà aux ECA, il
+                // ne reste qu'à saisir la date de retour — du travail à
+                // faire tout de suite, en bleu comme les duplications.
+                {
+                    label: 'Audio déposé',
+                    href: '/admin/assignments?audio=deposee',
+                    tone: audioDeposeeIds.length > 0 ? 'todo' : 'ok',
+                    value: audioDeposeeIds.length > 0 ? `${audioDeposeeIds.length} à terminer` : 'À jour',
+                    count: audioDeposeeIds.length,
+                },
+            ],
+        },
+        {
+            title: 'Factures',
+            one: 'facture',
+            many: 'factures',
+            rows: [
+                {
+                    label: 'Impayées après 30 jours',
+                    href: '/admin/bills?late=true',
+                    tone: lateBillCount > 0 ? 'warning' : 'ok',
+                    value: lateBillCount > 0 ? `${lateBillCount} à relancer` : 'À jour',
+                    count: lateBillCount,
+                },
+            ],
+        },
+    ];
 
     return (
         <AdminCard className="p-6 md:p-8">
@@ -199,198 +251,82 @@ export default async function Dashboard() {
                     <p className="text-muted-foreground">{todayLabel}</p>
                 </div>
             </div>
-            {/* Content Management Section */}
-            <div className="mb-10">
-                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Livres</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    <AdminDashboardCard
-                        title="Catalogue"
-                        count={bookCount}
-                        href="/admin/books"
-                        buttonText="Ouvrir"
-                    />
-                    <AdminDashboardCard
-                        title="Genres"
-                        count={genreCount}
-                        href="/admin/genres"
-                        buttonText="Ouvrir"
-                    />
-                    <AdminDashboardCard
-                        title="Listes de livres"
-                        count={coupsDeCoeurCount}
-                        href="/admin/listes-de-livres"
-                        buttonText="Anciennement « coups de cœur »"
-                    />
-                    <AdminDashboardCard
-                        title="Doublons"
-                        count={reviewCount}
-                        href="/admin/review"
-                        buttonText="Révision et fusion des doublons potentiels du catalogue"
-                    />
-                    <AdminDashboardCard
-                        title="Audio orphelin"
-                        count={orphanAudioCount}
-                        href="/admin/audio-orphelins"
-                        buttonText="Dossiers audio du stockage qu’aucun livre ne revendique"
-                    />
-                    <AdminDashboardCard
-                        title="Corbeille audio"
-                        count={audioTrashCount}
-                        href="/admin/audio-corbeille"
-                        buttonText="Fichiers audio supprimés, restaurables 14 jours"
-                    />
-                </div>
-            </div>
-
-            {/* Operations Section */}
-            <section className="mb-10" aria-labelledby="dashboard-gestion">
-                <h2 id="dashboard-gestion" className="text-lg font-semibold text-foreground mb-4 px-1">Gestion</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    <AdminDashboardCard
-                        title="Demandes"
-                        count={orderCount}
-                        href="/admin/orders"
-                        buttonText="Ouvrir"
-                        rows={[
-                            delaiRow("En attente d'un lecteur", '/admin/orders?isDuplication=false&statusId=1', orderTally.attente_lecteur, 'attente_lecteur'),
-                            delaiRow('À expédier aux auditeurs', '/admin/orders?isDuplication=false&statusId=6', orderTally.a_expedier, 'a_expedier'),
-                            ...duplicationRows(orderTally.duplication),
-                        ]}
-                    />
-                    <AdminDashboardCard
-                        title="Attributions"
-                        count={assignmentCount}
-                        href="/admin/assignments"
-                        buttonText="Ouvrir"
-                        rows={[
-                            delaiRow('Chez les lecteurs', '/admin/assignments?statusId=2', assignmentTally.chez_lecteur, 'chez_lecteur'),
-                            // Pas de délai ici : l'enregistrement est déjà aux ECA, il
-                            // ne reste qu'à saisir la date de retour — du travail à
-                            // faire tout de suite, en bleu comme les duplications.
-                            {
-                                label: 'Audio déposé',
-                                href: '/admin/assignments?audio=deposee',
-                                tone: audioDeposeeIds.length > 0 ? 'todo' : 'ok',
-                                value: audioDeposeeIds.length > 0 ? `${audioDeposeeIds.length} à terminer` : 'À jour',
-                            },
-                        ]}
-                    />
-                    <AdminDashboardCard
-                        title="Factures"
-                        count={billCount}
-                        href="/admin/bills"
-                        buttonText="Ouvrir"
-                        rows={[
-                            {
-                                label: 'Impayées après 30 jours',
-                                href: '/admin/bills?late=true',
-                                tone: lateBillCount > 0 ? 'warning' : 'ok',
-                                value: lateBillCount > 0 ? `${lateBillCount} à relancer` : 'À jour',
-                            },
-                        ]}
-                    />
-                    <AdminDashboardCard
-                        title="Paiements"
-                        count={paymentCount}
-                        href="/admin/payments"
-                        buttonText="Cotisations, dons, enregistrements"
-                    />
-                    {isSuper && (
-                        <AdminDashboardCard
-                            title="Statistiques"
-                            count={auditEventCount}
-                            countLabel="modifications au journal"
-                            href="/admin/stats"
-                            buttonText="Tableau de bord et journal des modifications"
-                        />
-                    )}
+            {/* « En ce moment » : ce que le tableau de bord est seul à dire —
+                ce qui attend dans les demandes, attributions et factures, et les
+                trois files d'attente du catalogue. Le reste de la page reprend le
+                menu, en raccourcis. Le bandeau reste replié par défaut, et les
+                trois files quittent la section Livres : la page ne s'allonge pas,
+                les raccourcis restent à leur place. */}
+            <section className="mb-10" aria-labelledby="dashboard-maintenant">
+                <h2 id="dashboard-maintenant" className="text-lg font-semibold text-foreground mb-4 px-1">En ce moment</h2>
+                <div className="space-y-3">
+                    <DashboardTodoBand groups={todoGroups} />
+                    <ul className={GRID}>
+                        <li><AdminDashboardCard emphasis title="Doublons" count={reviewCount} countLabel="à réviser" href="/admin/review" /></li>
+                        <li><AdminDashboardCard emphasis title="Audio orphelin" count={orphanAudioCount} countLabel={orphanAudioCount > 1 ? 'dossiers sans livre' : 'dossier sans livre'} href="/admin/audio-orphelins" /></li>
+                        <li><AdminDashboardCard emphasis title="Corbeille audio" count={audioTrashCount} countLabel="restaurables 14 jours" href="/admin/audio-corbeille" /></li>
+                    </ul>
                 </div>
             </section>
 
-            {/* Members Section */}
-            <div className="mb-10">
-                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Membres</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    <AdminDashboardCard
-                        title="Auditeurs"
-                        count={auditeursCount}
-                        href="/admin/users/auditeurs"
-                        buttonText="Ouvrir"
-                    />
-                    <AdminDashboardCard
-                        title="Lecteurs"
-                        count={lecteursCount}
-                        href="/admin/users/lecteurs"
-                        buttonText="Ouvrir"
-                    />
-                    <AdminDashboardCard
-                        title="Donateurs"
-                        count={bienfaiteursCount}
-                        href="/admin/users/bienfaiteurs"
-                        buttonText="Ouvrir"
-                    />
-                    <AdminDashboardCard
-                        title="Permanents"
-                        count={permanentsCount}
-                        href="/admin/users/permanents"
-                        buttonText="Ouvrir"
-                    />
-                    <AdminDashboardCard
-                        title="Disponibilités"
-                        count={freeReaderCount}
-                        countLabel={freeReaderCount > 1 ? 'lecteurs libres' : 'lecteur libre'}
-                        href="/admin/disponibilites"
-                        buttonText="Calendrier des indisponibilités et lecteurs libres"
-                    />
-                </div>
-            </div>
+            <section className="mb-10" aria-labelledby="dashboard-livres">
+                <h2 id="dashboard-livres" className="text-lg font-semibold text-foreground mb-4 px-1">Livres</h2>
+                <ul className={GRID}>
+                    <li><AdminDashboardCard title="Catalogue" count={bookCount} countLabel="livres" href="/admin/books" /></li>
+                    <li><AdminDashboardCard title="Genres" count={genreCount} href="/admin/genres" /></li>
+                    <li><AdminDashboardCard title="Listes de livres" count={coupsDeCoeurCount} href="/admin/listes-de-livres" /></li>
+                </ul>
+            </section>
 
-            {/* Site Pages Section */}
-            <div>
-                <h2 className="text-lg font-semibold text-foreground mb-4 px-1">Pages du site</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    <AdminDashboardCard
-                        title="Dernières infos"
-                        count={newsCount}
-                        href="/admin/news"
-                        buttonText="Ouvrir"
-                    />
+            <section className="mb-10" aria-labelledby="dashboard-gestion">
+                <h2 id="dashboard-gestion" className="text-lg font-semibold text-foreground mb-4 px-1">Gestion</h2>
+                <ul className={GRID}>
+                    <li><AdminDashboardCard title="Demandes" count={orderCount} countLabel="au total" href="/admin/orders" /></li>
+                    <li><AdminDashboardCard title="Attributions" count={assignmentCount} countLabel="au total" href="/admin/assignments" /></li>
+                    <li><AdminDashboardCard title="Factures" count={billCount} countLabel="au total" href="/admin/bills" /></li>
+                    <li><AdminDashboardCard title="Paiements" count={paymentCount} countLabel="au total" href="/admin/payments" /></li>
+                    {isSuper && (
+                        <li><AdminDashboardCard title="Statistiques" count={auditEventCount} countLabel="modifications au journal" href="/admin/stats" /></li>
+                    )}
+                </ul>
+            </section>
+
+            <section className="mb-10" aria-labelledby="dashboard-membres">
+                <h2 id="dashboard-membres" className="text-lg font-semibold text-foreground mb-4 px-1">Membres</h2>
+                <ul className={GRID}>
+                    <li><AdminDashboardCard title="Auditeurs" count={auditeursCount} href="/admin/users/auditeurs" /></li>
+                    <li><AdminDashboardCard title="Lecteurs" count={lecteursCount} href="/admin/users/lecteurs" /></li>
+                    <li><AdminDashboardCard title="Donateurs" count={bienfaiteursCount} href="/admin/users/bienfaiteurs" /></li>
+                    <li><AdminDashboardCard title="Permanents" count={permanentsCount} href="/admin/users/permanents" /></li>
+                    <li>
+                        <AdminDashboardCard
+                            title="Disponibilités"
+                            count={freeReaderCount}
+                            countLabel={freeReaderCount > 1 ? 'lecteurs libres' : 'lecteur libre'}
+                            href="/admin/disponibilites"
+                        />
+                    </li>
+                </ul>
+            </section>
+
+            {/* Des cartes comme les autres : ce sont des pages qu'on ouvre pour
+                les modifier. Une version en pastilles les faisait passer pour
+                des étiquettes ou des filtres. */}
+            <section aria-labelledby="dashboard-pages">
+                <h2 id="dashboard-pages" className="text-lg font-semibold text-foreground mb-4 px-1">Pages du site</h2>
+                <ul className={GRID}>
+                    <li><AdminDashboardCard title="Dernières infos" count={newsCount} href="/admin/news" /></li>
                     {isSuper && (
                         <>
-                            <AdminDashboardCard
-                                title="Contact"
-                                count={siteContactCount}
-                                href="/admin/site-contact"
-                                buttonText="Coordonnées affichées sur la page Contact"
-                            />
-                            <AdminDashboardCard
-                                title="Équipe"
-                                count={teamMemberCount}
-                                href="/admin/team"
-                                buttonText="Membres affichés sur la page Équipe (glisser-déposer pour réordonner)"
-                            />
-                            <AdminDashboardCard
-                                title="Historique"
-                                count={historyEventCount}
-                                href="/admin/historique"
-                                buttonText="Frise chronologique de la page Historique"
-                            />
-                            <AdminDashboardCard
-                                title="Infos pratiques"
-                                count={practicalInfoCount}
-                                href="/admin/informations-pratiques"
-                                buttonText="Cartes de la page Informations pratiques (glisser-déposer)"
-                            />
-                            <AdminDashboardCard
-                                title="Nous rejoindre"
-                                count={membershipCount}
-                                href="/admin/nous-rejoindre"
-                                buttonText="Cartes d’adhésion de la page Nous rejoindre (glisser-déposer)"
-                            />
+                            <li><AdminDashboardCard title="Contact" count={siteContactCount} href="/admin/site-contact" /></li>
+                            <li><AdminDashboardCard title="Équipe" count={teamMemberCount} countLabel={teamMemberCount > 1 ? 'membres affichés' : 'membre affiché'} href="/admin/team" /></li>
+                            <li><AdminDashboardCard title="Historique" count={historyEventCount} countLabel={historyEventCount > 1 ? 'dates' : 'date'} href="/admin/historique" /></li>
+                            <li><AdminDashboardCard title="Infos pratiques" count={practicalInfoCount} countLabel={practicalInfoCount > 1 ? 'cartes' : 'carte'} href="/admin/informations-pratiques" /></li>
+                            <li><AdminDashboardCard title="Nous rejoindre" count={membershipCount} countLabel={membershipCount > 1 ? 'cartes' : 'carte'} href="/admin/nous-rejoindre" /></li>
                         </>
                     )}
-                </div>
-            </div>
+                </ul>
+            </section>
         </AdminCard>
     );
 }

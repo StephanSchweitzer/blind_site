@@ -14,7 +14,9 @@ Cette page répertorie les liens et descriptions de toutes les sections disponib
 
 La barre de navigation en haut de la page reprend les mêmes liens que les cartes affichées en dessous — les deux mènent aux mêmes pages au sein d'Arbre Rose, et chaque page y porte la même icône, dans la même couleur, que sa carte.
 
-Chaque carte donne le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours ; sur « Statistiques », le nombre de modifications gardées au journal. Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…) ; les cartes des pages du site réservées aux Super Admins partagent un gris-bleu. Ce qui est à suivre s'affiche, lui, en pastilles pleines, orange ou bleues, pour se voir sur n'importe quelle carte.
+En haut, la partie « **En ce moment** » réunit ce que le tableau de bord est seul à dire : le bandeau « À traiter » (voir plus bas) et les trois files d'attente du catalogue, « Doublons », « Audio orphelin » et « Corbeille audio », dont le nombre, en gras, dit s'il reste du travail. Viennent ensuite les cartes des sections Livres, Gestion, Membres et Pages du site.
+
+Chaque carte donne, sous son nom, le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours ; sur « Statistiques », celui des modifications gardées au journal. Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…).
 
 ![Page principale - capture 1](/admin/aide/images/page-principale-01.jpg)
 
@@ -53,19 +55,21 @@ Les accents ne comptent pas : « etranger » trouve « L'Étranger ». Choisisse
 
 ## Ce qui est à suivre
 
-Les cartes « Demandes », « Attributions » et « Factures » comportent, sous leur partie colorée, quelques lignes qui disent ce qui attend quelque chose de nous :
+En haut du tableau de bord, dans « En ce moment », le bandeau « **À traiter** » rassemble ce qui attend quelque chose de nous. Il est replié, pour laisser les cartes à leur place : une seule ligne, qui dit combien d'éléments attendent dans chaque liste (« 177 demandes · 146 attributions · 169 factures »), ou « Tout est à jour ». Cliquez dessus pour le déplier. Si vous le laissez ouvert, il le sera encore à votre prochaine visite, sur le même ordinateur.
+
+Déplié, il présente quelques lignes, regroupées par liste :
 
 - **Demandes** : les demandes en attente d'un lecteur, les enregistrements à expédier aux auditeurs, et les duplications à faire ;
 - **Attributions** : les livres chez les lecteurs, et les attributions dont l'audio est déjà déposé mais qui ne sont pas terminées (« Audio déposé ») ;
 - **Factures** : les factures émises depuis plus de 30 jours et pas encore payées, « à relancer ».
 
-Chaque ligne indique combien d'éléments sont **à suivre** (pour les livres chez les lecteurs, « à relancer »), en orange, ou **à surveiller**, en bleu. Quand tout va bien, elle affiche « À jour » en vert.
+Chaque ligne indique combien d'éléments sont **à suivre** (pour les livres chez les lecteurs, « à relancer »), en orange, ou **à surveiller**, en bleu. Une ligne où tout est à jour n'y figure pas : le bandeau ne montre que ce qui attend, et ce que l'on peut faire.
 
-Les duplications font exception, parce qu'elles se font tout de suite : la ligne « Duplications à faire » compte **toutes** celles qui peuvent être faites dès maintenant, qu'elles soient à suivre ou non — en bleu, avec le détail quand certaines sont à surveiller (« 5, dont 2 à surveiller »), en orange quand certaines sont à suivre (« 5, dont 2 à suivre »). Les duplications qui attendent encore un enregistrement (chez un lecteur, ou dont la demande d'enregistrement attend son lecteur) n'y sont pas comptées : elles ont leur propre ligne, en gris, « Duplications après enregistrement », qui n'apparaît que s'il y en a. Celles dont le livre n'a pas d'audio et que personne n'enregistre ne le sont pas non plus : elles ont une ligne en orange, « Duplications sans enregistrement prévu », elle aussi seulement s'il y en a — il faut leur créer une demande d'enregistrement, ou corriger leur type.
+Les duplications font exception, parce qu'elles se font tout de suite : la ligne « Duplications à faire » compte **toutes** celles qui peuvent être faites dès maintenant, qu'elles soient à suivre ou non — en bleu, avec le détail quand certaines sont à surveiller (« 5, dont 2 à surveiller »), en orange quand certaines sont à suivre (« 5, dont 2 à suivre »). Les duplications qui attendent encore un enregistrement (chez un lecteur, ou dont la demande d'enregistrement attend son lecteur) n'y sont pas comptées, et n'ont pas de ligne : personne ne peut encore rien en faire. Le filtre « Type » des [demandes](/admin/aide/demandes), « Duplication après enregistrement », les retrouve. Celles dont le livre n'a pas d'audio et que personne n'enregistre ne le sont pas non plus : elles ont une ligne en orange, « Duplications sans enregistrement prévu », elle aussi seulement s'il y en a — il faut leur créer une demande d'enregistrement, ou corriger leur type.
 
-La ligne « Audio déposé » n'a pas de délai : l'enregistrement est déjà aux ECA, il ne reste qu'à renseigner la date de retour de l'attribution. Elle affiche en bleu le nombre d'attributions « à terminer », ou « À jour » en vert.
+La ligne « Audio déposé » n'a pas de délai : l'enregistrement est déjà aux ECA, il ne reste qu'à renseigner la date de retour de l'attribution. Elle affiche en bleu le nombre d'attributions « à terminer ».
 
-Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; cliquez sur la partie colorée de la carte pour ouvrir la page entière, comme avant. Les délais de chaque étape sont expliqués dans [Délais et suivi](/admin/aide/demandes#delais-et-suivi).
+Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; les cartes en dessous ouvrent la page entière. Les délais de chaque étape sont expliqués dans [Délais et suivi](/admin/aide/demandes#delais-et-suivi).
 
 ![Page principale - capture 6](/admin/aide/images/page-principale-06.jpg)
 

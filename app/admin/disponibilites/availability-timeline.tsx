@@ -284,12 +284,14 @@ export default function AvailabilityTimeline({
                 {/* Volontairement PAS « attribuables » : la tuile du haut compte
                     ceux qui sont sous leur plafond, ce qui est un autre nombre.
                     Deux chiffres différents sous le même mot, et on ne croit
-                    plus ni l'un ni l'autre. */}
+                    plus ni l'un ni l'autre.
+                    Ni le nombre d'absents du jour : la ligne juste dessous le
+                    donne déjà (« Aujourd'hui — 34 personnes indisponibles »), et
+                    la tuile du haut aussi. */}
                 <p className="text-[11px] text-muted-foreground">
-                    Effectif de {snapshot.roster} lecteurs · {snapshot.away} indisponible
-                    {plural(snapshot.away)} aujourd&apos;hui
+                    Effectif de {snapshot.roster} lecteurs
                     {snapshot.notTaking > 0 &&
-                        ` · ${snapshot.notTaking} ne prend pas d'attribution`}
+                        ` · ${snapshot.notTaking} ne ${snapshot.notTaking > 1 ? 'prennent' : 'prend'} pas d'attribution`}
                 </p>
             </div>
             <p aria-live="polite" className="-mt-3 text-xs text-foreground min-h-[1.25rem]">
@@ -297,7 +299,9 @@ export default function AvailabilityTimeline({
                     {shownDay === today ? "Aujourd'hui" : formatDayKey(shownDay)}
                 </span>{' '}
                 — {shownCount} personne{plural(shownCount)} indisponible{plural(shownCount)}
-                {peak > 0 && (
+                {/* Le maximum seulement s'il dit autre chose que le jour lu :
+                    « 34 · maximum de 34 » répétait le même chiffre. */}
+                {peak > shownCount && (
                     <span className="text-muted-foreground">
                         {' '}
                         · maximum de {peak} le {formatDayKey(addDays(start, peakDayIndex))}

@@ -44,7 +44,7 @@ Toutes les pages dédiées aux membres comporteront (1) un bouton « Ajouter un 
 
 ![Membres - capture 1](/admin/aide/images/membres-01.jpg)
 
-Vous pouvez également filtrer les profils actifs et inactifs grâce aux deux icônes de statut situées en haut, sous le titre.
+Vous pouvez également filtrer les profils grâce aux deux compteurs situés en haut, sous le titre : « actifs » et « non actifs ». « Non actifs » regroupe tous les autres — indisponibles aujourd'hui, radiés, décédés —, si bien que les deux compteurs font toujours le total. Les statistiques détaillent ce second nombre en deux colonnes, « Indispo. » et « Inactifs ». Sur la capture ci-dessous, antérieure au changement de nom, le second compteur s'appelle encore « inactifs ».
 
 ![Membres - capture 2](/admin/aide/images/membres-02.jpg)
 
@@ -152,7 +152,7 @@ Lorsque vous cliquez dessus, vous accédez au dossier de ce membre.
 
 ![Membres - capture 21](/admin/aide/images/membres-21.jpg)
 
-Tous ces onglets fonctionnent presque exactement de la même manière que les sections correspondantes. Si vous avez besoin d'explications, veuillez vous reporter à ces sections.
+Tous ces onglets fonctionnent presque exactement de la même manière que les sections correspondantes. Si vous avez besoin d'explications, veuillez vous reporter à ces sections. Dans l'onglet « Demandes », la colonne « Auditeur » n'apparaît pas, puisque c'est toujours la personne du dossier, et les filtres ne s'affichent que lorsque ses demandes tiennent sur plusieurs pages.
 
 Vous pouvez aussi ouvrir un dossier en cliquant sur le nom d'une personne dans la liste des [Demandes](/admin/aide/demandes) ou des [Attributions](/admin/aide/attributions).
 

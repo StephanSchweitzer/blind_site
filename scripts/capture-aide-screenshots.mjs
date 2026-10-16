@@ -894,8 +894,11 @@ const SPECS = [
         url: '/admin',
         waitFor: 'section[aria-labelledby="dashboard-gestion"]',
         sleep: 800,
-        clip: 'section[aria-labelledby="dashboard-gestion"]',
-        why: 'la rangee « Gestion » : sous chaque carte, ce qui y est à suivre',
+        // Le bandeau est replie par defaut : on le deplie pour la photo. Les
+        // lignes vivaient sous les cartes de la rangee « Gestion ».
+        steps: [{ clickSelector: 'details > summary' }, { sleep: 600 }],
+        clip: 'details',
+        why: 'le bandeau « À traiter » déplié : ce qui attend, liste par liste',
     },
     {
         // Un titre plutot qu'un nom : la capture n'a ainsi aucune personne a
