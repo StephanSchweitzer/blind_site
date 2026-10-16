@@ -1276,15 +1276,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                 </CardContent>
             </Card>
 
-            <p className="text-xs text-muted-foreground">
-                Cliquez sur un nom pour ouvrir sa disponibilité : ses attributions, son statut et
-                son plafond s&apos;y modifient sans quitter cette page. Une indisponibilité repasse
-                automatiquement au statut « Actif » à la fin de sa période : la clôture est faite
-                chaque nuit et à chaque ouverture de cette page, et le retour est tracé dans
-                l&apos;historique de la personne. Une indisponibilité dont la date de début est
-                future laisse la personne active jusque-là.
-            </p>
-
             <PersonAvailabilityPanel
                 personId={openPersonId}
                 onClose={() => setOpenPersonId(null)}

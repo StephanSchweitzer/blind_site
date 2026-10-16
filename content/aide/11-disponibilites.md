@@ -34,6 +34,8 @@ La fenêtre se lit de haut en bas. Le nom ouvre le dossier de la personne dans u
 
 Pour déclarer une absence, cliquez sur « Indisponible », puis choisissez une durée comptée depuis aujourd'hui (1 semaine, 2 semaines, 1 mois, 3 mois) ou saisissez les dates. Si la personne est déjà indisponible, ses dates tiennent sur une seule ligne : « Modifier les dates » les rouvre, avec des raccourcis pour prolonger l'absence (+1 semaine, +2 semaines, +1 mois) et « Annuler » pour revenir aux dates enregistrées. Un commentaire facultatif peut accompagner le changement ; il est conservé dans l'historique.
 
+Une indisponibilité se referme d'elle-même à la fin de sa période : la personne repasse au statut « Actif », et ce retour est tracé dans son historique. La clôture est faite chaque nuit, et aussi à chaque ouverture de la page « Disponibilités ». Une indisponibilité dont la date de début est future laisse la personne active jusque-là.
+
 « Prend des attributions » est indépendant du statut : une personne active peut être retirée des sélecteurs de lecteur sans être indisponible. Le retour automatique au statut « Actif », à la fin d'une indisponibilité, ne réactive pas cet interrupteur.
 
 Rien n'est enregistré avant d'avoir cliqué sur « Enregistrer ». Si l'on ferme la fenêtre avec des modifications en cours, elle demande confirmation avant de les abandonner.
