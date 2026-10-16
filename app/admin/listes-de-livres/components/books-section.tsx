@@ -4,7 +4,7 @@ import { useDebounce } from 'use-debounce';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Table,
     TableBody,
@@ -211,9 +211,6 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                                 {books.length}
                             </span>
                         </CardTitle>
-                        <CardDescription>
-                            Les livres présents ici sont ceux qui seront enregistrés dans la liste.
-                        </CardDescription>
                     </div>
                     {isEmpty && addButtons}
                 </div>

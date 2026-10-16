@@ -712,8 +712,8 @@ export function AddOrderFormBackend({
                         {filledCount === 0
                             ? 'Aucun livre choisi pour le moment.'
                             : filledCount === 1
-                                ? '1 ouvrage → 1 demande sera créée. Le numéro sera attribué lors de la soumission.'
-                                : `${filledCount} ouvrages → ${filledCount} demandes seront créées. Les numéros seront attribués lors de la soumission.`}
+                                ? '1 ouvrage → 1 demande sera créée.'
+                                : `${filledCount} ouvrages → ${filledCount} demandes seront créées.`}
                         {closedCount > 0 && (
                             <p className="mt-1">
                                 {closedCount === 1

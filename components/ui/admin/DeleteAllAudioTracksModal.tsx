@@ -150,8 +150,8 @@ export function DeleteAllAudioTracksModal({
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground pt-2">
                         {trackCount > 1
-                            ? `Les ${trackCount} pistes de ce dossier seront déplacées dans la corbeille du livre, une par une. Une purge automatique les supprimera définitivement 14 jours après leur suppression, sauf restauration individuelle entre-temps.`
-                            : 'L’unique piste de ce dossier sera déplacée dans la corbeille du livre. Une purge automatique la supprimera définitivement 14 jours après sa suppression, sauf restauration entre-temps.'}
+                            ? `Les ${trackCount} pistes de ce dossier seront déplacées dans la corbeille du livre.`
+                            : 'L’unique piste de ce dossier sera déplacée dans la corbeille du livre.'}
                     </DialogDescription>
                 </DialogHeader>
 

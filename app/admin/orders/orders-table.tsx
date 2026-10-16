@@ -26,7 +26,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Search, X, Plus, ArrowDown, ArrowUp, ArrowUpDown, FilterX } from 'lucide-react';
 import { getOrderBillingStatusLabel } from '@/lib/billing-enums';
 import { AddOrderFormBackend } from '@/admin/AddOrderFormBackend';
@@ -306,9 +306,6 @@ export default function OrdersTable({
                                 <CardTitle className="text-2xl text-foreground">Demandes</CardTitle>
                                 <AideLink section="demandes" />
                             </div>
-                            <CardDescription className="text-muted-foreground">
-                                Gérer et suivre toutes les demandes
-                            </CardDescription>
                         </div>
                     </div>
                     <Button

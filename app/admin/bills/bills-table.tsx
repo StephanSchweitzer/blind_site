@@ -26,7 +26,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Search, X, Plus, Clock } from 'lucide-react';
 import {
     BillingStatus,
@@ -190,9 +190,6 @@ export default function BillsTable({
                             </CardTitle>
                             <AideLink section="factures" />
                         </div>
-                        <CardDescription className="text-muted-foreground mt-1">
-                            Gérer et suivre toutes les factures
-                        </CardDescription>
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}

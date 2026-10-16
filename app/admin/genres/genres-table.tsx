@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddGenreFormBackend, EditGenreFormBackend } from '@/admin/GenreFormBackendBase';
@@ -83,9 +83,6 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                         <CardTitle className="text-foreground">Gestion des Genres</CardTitle>
                         <AideLink section="genres" />
                     </div>
-                    <CardDescription className="text-muted-foreground">
-                        Gérer et modifier les différents genres associés aux livres
-                    </CardDescription>
                 </div>
                 <Button
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90"

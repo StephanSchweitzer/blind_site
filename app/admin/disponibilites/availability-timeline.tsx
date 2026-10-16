@@ -280,9 +280,6 @@ export default function AvailabilityTimeline({
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <h4 className="text-sm font-semibold text-foreground">
                     Combien de personnes absentes en même temps
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        le cumul, jour par jour, de toutes les indisponibilités ci-dessous
-                    </span>
                 </h4>
                 {/* Volontairement PAS « attribuables » : la tuile du haut compte
                     ceux qui sont sous leur plafond, ce qui est un autre nombre.

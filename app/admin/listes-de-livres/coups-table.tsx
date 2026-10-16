@@ -13,7 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CoupDeCoeurPDFButton } from "@/admin/CoupDeCoeurPDFButton";
 import type { CoupDeCoeurWithBooks } from "@/types/models/coups-de-coeur.model";
@@ -83,9 +83,6 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                         <CardTitle className="text-2xl font-bold text-foreground">Listes de livres</CardTitle>
                         <AideLink section="liste-de-livres" />
                     </div>
-                    <CardDescription className="text-muted-foreground mt-1">
-                        Les sélections de livres, visibles ou masquées sur le site public.
-                    </CardDescription>
                 </div>
                 <Button asChild className="w-full sm:w-auto">
                     <Link prefetch={false} href="/admin/listes-de-livres/new">

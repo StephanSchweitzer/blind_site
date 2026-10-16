@@ -207,19 +207,19 @@ export default async function Dashboard() {
                         title="Catalogue"
                         count={bookCount}
                         href="/admin/books"
-                        buttonText="Gestion du catalogue"
+                        buttonText="Ouvrir"
                     />
                     <AdminDashboardCard
                         title="Genres"
                         count={genreCount}
                         href="/admin/genres"
-                        buttonText="Gestion des genres possibles associés aux livres"
+                        buttonText="Ouvrir"
                     />
                     <AdminDashboardCard
                         title="Listes de livres"
                         count={coupsDeCoeurCount}
                         href="/admin/listes-de-livres"
-                        buttonText="Gestion des listes de livres (anciennement appelés « coups de cœur »)"
+                        buttonText="Anciennement « coups de cœur »"
                     />
                     <AdminDashboardCard
                         title="Doublons"
@@ -250,7 +250,7 @@ export default async function Dashboard() {
                         title="Demandes"
                         count={orderCount}
                         href="/admin/orders"
-                        buttonText="Gestion des demandes d'enregistrements audio"
+                        buttonText="Ouvrir"
                         rows={[
                             delaiRow("En attente d'un lecteur", '/admin/orders?isDuplication=false&statusId=1', orderTally.attente_lecteur, 'attente_lecteur'),
                             delaiRow('À expédier aux auditeurs', '/admin/orders?isDuplication=false&statusId=6', orderTally.a_expedier, 'a_expedier'),
@@ -261,7 +261,7 @@ export default async function Dashboard() {
                         title="Attributions"
                         count={assignmentCount}
                         href="/admin/assignments"
-                        buttonText="Gestion des attributions confiées aux lecteurs"
+                        buttonText="Ouvrir"
                         rows={[
                             delaiRow('Chez les lecteurs', '/admin/assignments?statusId=2', assignmentTally.chez_lecteur, 'chez_lecteur'),
                             // Pas de délai ici : l'enregistrement est déjà aux ECA, il
@@ -279,7 +279,7 @@ export default async function Dashboard() {
                         title="Factures"
                         count={billCount}
                         href="/admin/bills"
-                        buttonText="Gestion des factures"
+                        buttonText="Ouvrir"
                         rows={[
                             {
                                 label: 'Impayées après 30 jours',
@@ -293,7 +293,7 @@ export default async function Dashboard() {
                         title="Paiements"
                         count={paymentCount}
                         href="/admin/payments"
-                        buttonText="Gestion des paiements (cotisations, dons, enregistrements)"
+                        buttonText="Cotisations, dons, enregistrements"
                     />
                     {isSuper && (
                         <AdminDashboardCard
@@ -315,25 +315,25 @@ export default async function Dashboard() {
                         title="Auditeurs"
                         count={auditeursCount}
                         href="/admin/users/auditeurs"
-                        buttonText="Gestion des auditeurs"
+                        buttonText="Ouvrir"
                     />
                     <AdminDashboardCard
                         title="Lecteurs"
                         count={lecteursCount}
                         href="/admin/users/lecteurs"
-                        buttonText="Gestion des lecteurs"
+                        buttonText="Ouvrir"
                     />
                     <AdminDashboardCard
                         title="Donateurs"
                         count={bienfaiteursCount}
                         href="/admin/users/bienfaiteurs"
-                        buttonText="Gestion des donateurs"
+                        buttonText="Ouvrir"
                     />
                     <AdminDashboardCard
                         title="Permanents"
                         count={permanentsCount}
                         href="/admin/users/permanents"
-                        buttonText="Gestion des membres permanents"
+                        buttonText="Ouvrir"
                     />
                     <AdminDashboardCard
                         title="Disponibilités"
@@ -353,7 +353,7 @@ export default async function Dashboard() {
                         title="Dernières infos"
                         count={newsCount}
                         href="/admin/news"
-                        buttonText="Gestion des informations importantes et actuelles"
+                        buttonText="Ouvrir"
                     />
                     {isSuper && (
                         <>

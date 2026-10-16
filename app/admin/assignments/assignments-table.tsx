@@ -21,7 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Search, X, Plus } from 'lucide-react';
 import { AddAssignmentModal } from '@/admin/AddAssignmentModal';
 import { EditAssignmentModal, loadAssignmentForEdit } from '@/admin/EditAssignmentModal';
@@ -248,9 +248,6 @@ export default function AssignmentsTable({
                             </CardTitle>
                             <AideLink section="attributions" />
                         </div>
-                        <CardDescription className="text-muted-foreground mt-2">
-                            Gérer et suivre toutes les attributions
-                        </CardDescription>
                     </div>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}

@@ -1089,11 +1089,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             </span>
                                         </Button>
                                         <span className="text-xs text-muted-foreground">
-                                            Les fichiers sont envoyés directement au stockage, autant que
-                                            nécessaire en un seul envoi : au-delà de 50 fichiers, ils partent
-                                            automatiquement par lots, dans l’ordre. 500 Mo maximum par fichier. Un
-                                            dossier n’envoie que les fichiers audio qu’il contient directement,
-                                            jamais ses sous-dossiers.
+                                            500 Mo maximum par fichier. Les sous-dossiers ne sont pas envoyés.
                                         </span>
                                     </div>
 

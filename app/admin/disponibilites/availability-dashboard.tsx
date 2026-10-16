@@ -104,8 +104,12 @@ type TypeFilter = typeof TYPE_FILTERS[number]['value'];
  * séparé — ce que les onglets confondaient.
  */
 const READER_SORTS = [
-    { value: 'freest', label: 'Les plus disponibles d’abord' },
-    { value: 'busiest', label: 'Les plus chargés d’abord' },
+    {
+        value: 'freest',
+        label: 'Les plus disponibles d’abord',
+        hint: "Du moins chargé au plus chargé ; à charge égale, le plus anciennement sollicité d'abord.",
+    },
+    { value: 'busiest', label: 'Les plus chargés d’abord', hint: 'Du plus chargé au moins chargé.' },
 ] as const;
 
 type ReaderSort = typeof READER_SORTS[number]['value'];
@@ -406,7 +410,8 @@ function AlertGroup({
     onOpen,
 }: {
     title: string;
-    description: string;
+    /** Seulement quand le titre ne suffit pas à dire qui est listé. */
+    description?: string;
     /** Icône déjà colorée, cf. les couleurs du calendrier. */
     icon: React.ReactNode;
     rows: AlertRow[];
@@ -432,8 +437,8 @@ function AlertGroup({
                     {rows.length}
                 </span>
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 mb-3">{description}</p>
-            <ul className="flex flex-wrap gap-1.5">
+            {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+            <ul className="mt-3 flex flex-wrap gap-1.5">
                 {visible.map((row) => (
                     <li key={row.key} className="min-w-0 max-w-full">
                         {/* Ouvre le panneau de disponibilité, comme PersonButton. */}
@@ -672,7 +677,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         <AideLink section="disponibilites" />
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Qui est indisponible et quand, et à qui confier la prochaine attribution.
                         Situation au {formatDayKey(today)}.
                     </p>
                 </div>
@@ -875,7 +879,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             <CalendarClock size={18} className="shrink-0 text-muted-foreground" />
                             <span>Points à surveiller</span>
                             <span className="hidden text-xs font-normal text-muted-foreground sm:inline">
-                                quelques repères pour les {warningDays} prochains jours
+                                les {warningDays} prochains jours
                             </span>
                             <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground transition-colors group-hover:bg-muted group-hover:text-foreground">
                                 {alertsOpen ? 'Masquer' : 'Afficher'}
@@ -903,7 +907,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
                             <AlertGroup
                                 title="Retours prochains"
-                                description={`Ces personnes reviennent d’ici ${warningDays} jours : de quoi penser à leur prochaine attribution.`}
                                 icon={<CalendarCheck size={15} className="text-green-600 dark:text-green-400" />}
                                 onOpen={openPerson}
                                 rows={filteredAlerts.endingSoon.map((a) => ({
@@ -915,7 +918,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             />
                             <AlertGroup
                                 title="Absences à venir"
-                                description={`Ces personnes s’absentent d’ici ${warningDays} jours : un livre plus court leur conviendra peut-être mieux.`}
                                 icon={<CalendarClock size={15} className="text-amber-500" />}
                                 onOpen={openPerson}
                                 rows={filteredAlerts.startingSoon.map((a) => ({
@@ -929,7 +931,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             />
                             <AlertGroup
                                 title="Absents avec un livre en cours"
-                                description="Un livre les attend pendant leur absence. Rien d’urgent, simplement bon à savoir."
                                 icon={<BookOpen size={15} className="text-violet-500" />}
                                 onOpen={openPerson}
                                 rows={filteredAlerts.awayWithAttributions.map((a) => ({
@@ -943,7 +944,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             />
                             <AlertGroup
                                 title="Absences sans date de retour"
-                                description="Quand vous connaîtrez leur date de retour, l’indiquer leur rendra le statut « Actif » tout seul."
                                 icon={<CalendarRange size={15} className="text-fuchsia-500" />}
                                 onOpen={openPerson}
                                 rows={filteredAlerts.openEnded.map((a) => ({
@@ -957,7 +957,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             />
                             <AlertGroup
                                 title="En pause pour les attributions"
-                                description="Toujours actifs, mais ne souhaitent pas de nouveau livre pour l’instant : ils ne sont pas proposés comme lecteur."
+                                description="Actifs, mais pas proposés comme lecteur pour l’instant."
                                 icon={<CirclePause size={15} className="text-sky-500" />}
                                 onOpen={openPerson}
                                 rows={filteredAlerts.flaggedUnavailable.map((p) => ({
@@ -971,7 +971,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             />
                             <AlertGroup
                                 title="Absences terminées"
-                                description="Leur absence est terminée et ils comptent déjà comme actifs ; il reste seulement à refermer l’indisponibilité."
                                 icon={<CheckCircle2 size={15} className="text-muted-foreground" />}
                                 onOpen={openPerson}
                                 rows={filteredAlerts.elapsed.map((a) => ({
@@ -1100,6 +1099,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                     key={sort.value}
                                     size="sm"
                                     variant={sort.value === readerSort ? 'default' : 'outline'}
+                                    title={sort.hint}
                                     onClick={() => setReaderSort(sort.value)}
                                 >
                                     {sort.value === 'freest' ? (
@@ -1112,7 +1112,10 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             ))}
                         </div>
                         <div className="flex flex-wrap items-center gap-4">
-                            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                            <label
+                                className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer"
+                                title="Actifs, preneurs et sous leur plafond"
+                            >
                                 <input
                                     type="checkbox"
                                     checked={onlyAssignable}
@@ -1132,14 +1135,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             </label>
                         </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        {readerSort === 'freest'
-                            ? "Du moins chargé au plus chargé ; à charge égale, le plus anciennement sollicité d'abord."
-                            : 'Du plus chargé au moins chargé — pour repérer qui est au plafond.'}
-                        {onlyAssignable
-                            ? ' Seuls les lecteurs actifs, preneurs et sous leur plafond sont listés.'
-                            : ' Tous les lecteurs sont listés, y compris ceux qui ne peuvent rien recevoir.'}
-                    </p>
                 </CardHeader>
 
                 <CardContent>

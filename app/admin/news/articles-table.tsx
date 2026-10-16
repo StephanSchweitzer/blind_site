@@ -10,7 +10,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -297,9 +297,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                         <CardTitle className="text-foreground">Gérer les dernières infos</CardTitle>
                         <AideLink section="pages-publiques" />
                     </div>
-                    <CardDescription className="text-muted-foreground">
-                        Gérer et modifier les informations affichées sur Dernières infos
-                    </CardDescription>
                     <div className="text-sm text-muted-foreground mt-2 flex flex-wrap items-center gap-x-1 gap-y-1">
                         <button
                             type="button"

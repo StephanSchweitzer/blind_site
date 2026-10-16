@@ -328,14 +328,9 @@ export default function TrashClient({
                             <AideLink section="corbeille-audio" />
                         </div>
                         <CardDescription>
-                            Tous les fichiers audio supprimés du catalogue, livre par livre ou avec
-                            leur fiche. Chacun a été copié dans la corbeille du stockage avant
-                            d’être retiré de son dossier, et reste restaurable {retentionDays} jours
-                            — après quoi une purge automatique le supprime définitivement. Un
-                            fichier supprimé volontairement peut aussi être effacé tout de suite,
-                            avec « Supprimer définitivement ». L’onglet
-                            « Sans fiche » réunit ceux dont le livre a été supprimé depuis :
-                            personne ne pouvait les voir avant cet écran.
+                            Les fichiers audio supprimés restent restaurables {retentionDays} jours, puis
+                            sont effacés définitivement. L’onglet « Sans fiche » réunit ceux dont le
+                            livre a été supprimé depuis.
                         </CardDescription>
                     </div>
 

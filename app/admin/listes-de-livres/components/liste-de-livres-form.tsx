@@ -274,7 +274,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                                 <p className="mt-1 text-xs text-muted-foreground">
                                     {active
                                         ? 'La liste apparaît dans la partie publique du site.'
-                                        : "La liste n'apparaît que dans l'administration : composez-la à votre rythme, puis rendez-la visible une fois prête."}
+                                        : "La liste n'apparaît que dans l'administration."}
                                 </p>
                             </div>
                             <Switch id="active" checked={active} onCheckedChange={setActive} className="mt-0.5" />

@@ -313,10 +313,8 @@ export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }
                         {appliedLabel ? `Nouveautés depuis le ${appliedLabel}` : 'Nouveautés'}
                     </DialogTitle>
                     <DialogDescription>
-                        Seuls les livres disponibles sont proposés : un enregistrement encore en
-                        cours n&apos;a rien à faire dans une liste. Les livres masqués du catalogue
-                        public sont grisés : ils n&apos;apparaîtraient pas sur le site. Cochez ceux à
-                        ajouter.
+                        Seuls les livres disponibles sont proposés. Les livres masqués du catalogue
+                        public sont grisés : ils n&apos;apparaîtraient pas sur le site.
                     </DialogDescription>
                     {books.length > 0 && (
                         <p className="text-xs text-muted-foreground">

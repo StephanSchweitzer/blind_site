@@ -117,9 +117,7 @@ export function DeleteAudioTrackModal({
                         Supprimer une piste
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground pt-2">
-                        Cette piste sera déplacée dans la corbeille du livre. Elle n’est pas effacée
-                        du stockage immédiatement : une purge automatique la supprime définitivement
-                        14 jours après la suppression, sauf restauration entre-temps.
+                        Cette piste sera déplacée dans la corbeille du livre.
                     </DialogDescription>
                 </DialogHeader>
 
