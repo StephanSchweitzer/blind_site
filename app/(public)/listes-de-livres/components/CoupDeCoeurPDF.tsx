@@ -143,17 +143,23 @@ const KEEP_TOGETHER_MAX_CHARS = 1500;
 const keepsTogether = (book: PublicBook) => (book.description?.length ?? 0) <= KEEP_TOGETHER_MAX_CHARS;
 
 /**
- * Les mots du titre, un par élément de la rangée. Coupés aux seules espaces
- * ordinaires : une espace insécable déjà saisie lie ses deux mots, et la
- * ponctuation haute (« ? », « : »…) ou un guillemet ne commence ni ne finit
- * jamais une ligne seul.
+ * La ponctuation haute (« ? », « ! », « : », « ; ») et le guillemet fermant ne
+ * commencent jamais une ligne, le guillemet ouvrant n'en finit jamais une : leur
+ * espace devient insécable. Sans cela, react-pdf coupe volontiers devant « ? »
+ * ou « : » (essayé en octobre 2026). Pour tout texte imprimé : présentations,
+ * titre et description de la liste, message aux adhérents, titres des livres.
  */
-const titleWords = (title: string) =>
-    title
-        .trim()
-        .replace(/ +(?=[?!:;»])/g, NBSP)
-        .replace(/« +/g, `«${NBSP}`)
-        .split(/[ \t\r\n]+/);
+const bindPunctuation = (text: string) =>
+    text
+        .replace(/[ \t]+(?=[?!:;»])/g, NBSP)
+        .replace(/«[ \t]+/g, `«${NBSP}`);
+
+/**
+ * Les mots du titre, un par élément de la rangée. Coupés aux seules espaces
+ * ordinaires : une espace insécable (saisie, ou posée par bindPunctuation) lie
+ * ses deux mots.
+ */
+const titleWords = (title: string) => bindPunctuation(title.trim()).split(/[ \t\r\n]+/);
 
 const BookEntry = ({ book }: { book: PublicBook }) => {
     const meta = formatBookMeta(book);
@@ -174,7 +180,7 @@ const BookEntry = ({ book }: { book: PublicBook }) => {
             </View>
             {meta && <Text style={s.meta} hyphenationCallback={noHyphenation}>{meta}</Text>}
             {book.description && (
-                <Text style={s.bookDesc} hyphenationCallback={noHyphenation}>{unquoted(book.description)}</Text>
+                <Text style={s.bookDesc} hyphenationCallback={noHyphenation}>{bindPunctuation(unquoted(book.description))}</Text>
             )}
         </View>
     );
@@ -202,12 +208,12 @@ export const CoupDeCoeurPDF = ({ content, logoSrc = LOGO_SRC }: { content: CoupD
                     {/* eslint-disable-next-line jsx-a11y/alt-text */}
                     <Image src={logoSrc} style={s.logo} />
                     <View style={s.headerText}>
-                        <Text style={s.title} hyphenationCallback={noHyphenation}>{cdc.title}</Text>
-                        {cdc.description && <Text style={s.subtitle} hyphenationCallback={noHyphenation}>{cdc.description}</Text>}
+                        <Text style={s.title} hyphenationCallback={noHyphenation}>{bindPunctuation(cdc.title)}</Text>
+                        {cdc.description && <Text style={s.subtitle} hyphenationCallback={noHyphenation}>{bindPunctuation(cdc.description)}</Text>}
                     </View>
                 </View>
 
-                <Text style={s.notice} hyphenationCallback={noHyphenation}>{NOTICE}</Text>
+                <Text style={s.notice} hyphenationCallback={noHyphenation}>{bindPunctuation(NOTICE)}</Text>
 
                 {groupBooksByGenre(cdc.books).flatMap(([genre, [firstBook, ...rest]]) => [
                     // Le titre de section et sa première notice sont inséparables : s'ils
