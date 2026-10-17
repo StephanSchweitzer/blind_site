@@ -8,7 +8,9 @@ import { groupBy } from 'lodash';
  * Aucun mot n'est coupé en fin de ligne : un mot qui ne tient pas passe entier
  * à la ligne suivante. Sans consigne, react-pdf coupe avec les motifs anglais
  * (« simplic-ité », « sex-ualité ») ; les motifs français essayés en octobre
- * 2026 coupaient juste, mais on préfère des mots entiers. Passé Text par Text
+ * 2026 coupaient juste, mais les lecteurs malvoyants lisent mieux des mots
+ * entiers (même raison pour les présentations alignées à gauche plutôt que
+ * justifiées : des espaces réguliers entre les mots). Passé Text par Text
  * (`hyphenationCallback`), jamais par `Font.registerHyphenationCallback`, qui
  * vaut pour tous les PDF du site — la facture et les étiquettes comprises,
  * selon celui qui a été imprimé le premier (voir MailingLabelPDF).
@@ -21,11 +23,12 @@ const noHyphenation = (word: string): string[] => [word];
  * précédente, contre 12 au plus pour les listes d'origine). Elle suit la liste
  * du 12 mai 2026 : un seul corps (11 pt) — sauf la ligne éditeur / pages /
  * durée, plus petite —, la hiérarchie vient du gras et de l'alignement, un
- * paragraphe justifié par livre, et aucun saut de page forcé : seuls les titres
- * ne restent jamais seuls en bas de page. Les présentations étant désormais
- * résumées, la mise en page peut respirer un peu (interlignes, marges et espaces
- * entre notices élargis deux fois, en mai puis en octobre 2026 ; l'auteur repris
- * sur la dernière ligne du titre rend une partie de la place).
+ * paragraphe par livre (aligné à gauche, voir noHyphenation), et aucun saut de
+ * page forcé : seuls les titres ne restent jamais seuls en bas de page. Les
+ * présentations étant désormais résumées, la mise en page peut respirer un peu
+ * (interlignes, marges et espaces entre notices élargis deux fois, en mai puis en
+ * octobre 2026 ; l'auteur repris sur la dernière ligne du titre rend une partie
+ * de la place).
  */
 const BODY = 11;
 const META = 9;
@@ -82,7 +85,7 @@ const s = StyleSheet.create({
     // La ligne éditeur / année / pages / durée se lit avant le résumé, sous le
     // titre : on sait de quoi il s'agit (et combien ça dure) avant de lire.
     meta: { fontSize: META, lineHeight: '12pt', marginBottom: 4 },
-    bookDesc: { textAlign: 'justify', lineHeight: LEADING },
+    bookDesc: { lineHeight: LEADING },
 
     contact: { textAlign: 'center', marginTop: 22, lineHeight: LEADING },
     footer: { position: 'absolute', bottom: 20, left: 0, right: 0 },
