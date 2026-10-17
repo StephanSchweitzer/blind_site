@@ -3,7 +3,17 @@ import { Document, Page, View, Text, Image, StyleSheet, Font } from '@react-pdf/
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import type { PublicBook } from '@/lib/books/publicBook';
 import { groupBy } from 'lodash';
-import { hyphenateFr, noHyphenation } from '@/lib/hyphenate-fr';
+
+/**
+ * Aucun mot n'est coupé en fin de ligne : un mot qui ne tient pas passe entier
+ * à la ligne suivante. Sans consigne, react-pdf coupe avec les motifs anglais
+ * (« simplic-ité », « sex-ualité ») ; les motifs français essayés en octobre
+ * 2026 coupaient juste, mais on préfère des mots entiers. Passé Text par Text
+ * (`hyphenationCallback`), jamais par `Font.registerHyphenationCallback`, qui
+ * vaut pour tous les PDF du site — la facture et les étiquettes comprises,
+ * selon celui qui a été imprimé le premier (voir MailingLabelPDF).
+ */
+const noHyphenation = (word: string): string[] => [word];
 
 /**
  * Mise en page « papier » : la liste s'imprime et se poste aux auditeurs, donc
@@ -161,7 +171,7 @@ const BookEntry = ({ book }: { book: PublicBook }) => {
             </View>
             {meta && <Text style={s.meta} hyphenationCallback={noHyphenation}>{meta}</Text>}
             {book.description && (
-                <Text style={s.bookDesc} hyphenationCallback={hyphenateFr}>{unquoted(book.description)}</Text>
+                <Text style={s.bookDesc} hyphenationCallback={noHyphenation}>{unquoted(book.description)}</Text>
             )}
         </View>
     );
@@ -190,11 +200,11 @@ export const CoupDeCoeurPDF = ({ content, logoSrc = LOGO_SRC }: { content: CoupD
                     <Image src={logoSrc} style={s.logo} />
                     <View style={s.headerText}>
                         <Text style={s.title} hyphenationCallback={noHyphenation}>{cdc.title}</Text>
-                        {cdc.description && <Text style={s.subtitle} hyphenationCallback={hyphenateFr}>{cdc.description}</Text>}
+                        {cdc.description && <Text style={s.subtitle} hyphenationCallback={noHyphenation}>{cdc.description}</Text>}
                     </View>
                 </View>
 
-                <Text style={s.notice} hyphenationCallback={hyphenateFr}>{NOTICE}</Text>
+                <Text style={s.notice} hyphenationCallback={noHyphenation}>{NOTICE}</Text>
 
                 {groupBooksByGenre(cdc.books).flatMap(([genre, [firstBook, ...rest]]) => [
                     // Le titre de section et sa première notice sont inséparables : s'ils
