@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InlineLoading } from '@/components/ui/inline-loading';
@@ -54,8 +54,7 @@ export function BookUsageLinks({ bookId, className }: { bookId: number; classNam
         count === 0 ? (
             <span className="text-muted-foreground">aucune {singular}</span>
         ) : (
-            <Link
-                prefetch={false}
+            <IntentLink
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -63,7 +62,7 @@ export function BookUsageLinks({ bookId, className }: { bookId: number; classNam
             >
                 {count} {count > 1 ? plural : singular}
                 <ExternalLink className="h-3 w-3" aria-hidden />
-            </Link>
+            </IntentLink>
         );
 
     return (

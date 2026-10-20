@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { SECTION_ICONS, sectionAccent } from '@/components/admin/section-icons';
 
 /**
@@ -40,8 +40,7 @@ export function DashboardStatusList({ rows, className = '' }: { rows: DashboardS
         <ul className={`divide-y divide-border bg-card ${className}`}>
             {rows.map((row) => (
                 <li key={row.label}>
-                    <Link
-                        prefetch={false}
+                    <IntentLink
                         href={row.href}
                         className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-2.5 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     >
@@ -49,7 +48,7 @@ export function DashboardStatusList({ rows, className = '' }: { rows: DashboardS
                         <span className={`inline-flex items-center gap-1 whitespace-nowrap font-semibold ${toneClass[row.tone]}`}>
                             {row.value}
                         </span>
-                    </Link>
+                    </IntentLink>
                 </li>
             ))}
         </ul>
@@ -85,10 +84,11 @@ interface AdminDashboardCardProps {
  *
  * A real link, not a clickable <div>: a <div> can't be reached with Tab, is
  * announced as plain text by a screen reader, and can't be opened in a new
- * tab. prefetch={false} on every link here and in the admin lists: each
+ * tab. An IntentLink, like every link here and in the admin lists: each
  * prefetch of a dynamic /admin page is a proxy run (with its DB read) plus a
  * page render, and Vercel counted more invocations from the dashboard's
- * prefetches than from anyone clicking.
+ * viewport prefetches than from anyone clicking. It prefetches on hover only
+ * (components/admin/IntentLink.tsx).
  */
 export function AdminDashboardCard({ title, count, countLabel, href, emphasis = false }: AdminDashboardCardProps) {
     // Each section's colour and icon live in one place, shared with the menu
@@ -97,8 +97,7 @@ export function AdminDashboardCard({ title, count, countLabel, href, emphasis = 
     const Icon = SECTION_ICONS[title];
 
     return (
-        <Link
-            prefetch={false}
+        <IntentLink
             href={href}
             className={`flex h-full items-center justify-between gap-3 rounded-lg border px-4 py-3 ${colors.border} ${colors.bg} ${colors.hoverBg} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
         >
@@ -111,6 +110,6 @@ export function AdminDashboardCard({ title, count, countLabel, href, emphasis = 
                 )}
             </span>
             {Icon && <Icon className={`h-5 w-5 shrink-0 ${colors.text} opacity-70`} aria-hidden="true" />}
-        </Link>
+        </IntentLink>
     );
 }

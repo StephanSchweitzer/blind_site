@@ -3,7 +3,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -461,14 +461,13 @@ export default function AssignmentsTable({
                                                         l'attribution sous le lien. */}
                                                     {assignment.orderId && (
                                                         <div className="text-xs font-normal">
-                                                            <Link
-                                                                prefetch={false}
+                                                            <IntentLink
                                                                 href={`/admin/orders?order=${assignment.orderId}`}
                                                                 onClick={(e) => e.stopPropagation()}
                                                                 className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
                                                             >
                                                                 ↳ demande #{assignment.orderId}
-                                                            </Link>
+                                                            </IntentLink>
                                                         </div>
                                                     )}
                                                 </TableCell>
@@ -491,14 +490,13 @@ export default function AssignmentsTable({
                                                                 {presetReader ? (
                                                                     getUserNameOnly(assignment.currentReader) || 'Sans nom'
                                                                 ) : (
-                                                                    <Link
-                                                                        prefetch={false}
+                                                                    <IntentLink
                                                                         href={`/admin/users/dossier/${assignment.currentReader.id}/affectations`}
                                                                         onClick={(e) => e.stopPropagation()}
                                                                         className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
                                                                     >
                                                                         {getUserNameOnly(assignment.currentReader) || 'Sans nom'}
-                                                                    </Link>
+                                                                    </IntentLink>
                                                                 )}
                                                             </div>
                                                             <div className="text-sm text-muted-foreground">

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { announceNavigation } from '@/components/NavigationFeedback';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Search, Loader2, FileText, BookOpen, User, LayoutGrid, X, CornerDownLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -99,6 +100,7 @@ export function QuickSearch({ pages }: { pages: QuickSearchPage[] }) {
     const go = (href: string) => {
         setOpen(false);
         reset();
+        announceNavigation(href);
         router.push(href);
     };
 

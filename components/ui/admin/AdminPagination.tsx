@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useId, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
@@ -111,8 +111,7 @@ function PageLink({
     children: React.ReactNode;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick'>) {
     return (
-        <Link
-            prefetch={false}
+        <IntentLink
             href={href}
             scroll={false}
             // Appelé seulement pour une navigation dans l'onglet : Ctrl+clic,
@@ -125,7 +124,7 @@ function PageLink({
             {...rest}
         >
             {children}
-        </Link>
+        </IntentLink>
     );
 }
 

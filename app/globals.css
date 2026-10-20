@@ -265,6 +265,41 @@
         to { opacity: 1; }
     }
 
+    /* Le temps d'une navigation (components/NavigationFeedback.tsx) : le lien
+       cliqué s'estompe, le curseur passe en attente, et une barre avance en
+       haut de la fenêtre. Elle file vers 90 % puis ralentit sans jamais
+       s'arrêter net, termine d'un coup à l'arrivée et s'efface. Avec les
+       animations réduites, ses transitions tombent à zéro : elle paraît à
+       90 %, puis disparaît, sans glisser. */
+    a[data-navigation-en-cours] {
+        opacity: 0.6;
+    }
+    :root[data-navigation-en-cours],
+    :root[data-navigation-en-cours] * {
+        cursor: progress !important;
+    }
+    .barre-navigation {
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 100;
+        height: 3px;
+        background-color: hsl(var(--primary));
+        transform: scaleX(0);
+        transform-origin: left;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .barre-navigation[data-etat='en-cours'] {
+        opacity: 1;
+        transform: scaleX(0.9);
+        transition: transform 8s cubic-bezier(0.08, 0.7, 0.2, 1);
+    }
+    .barre-navigation[data-etat='terminee'] {
+        opacity: 0;
+        transform: scaleX(1);
+        transition: transform 0.2s ease-out, opacity 0.25s ease 0.2s;
+    }
+
     /* Custom scrollbar */
     .custom-scrollbar::-webkit-scrollbar {
         width: 8px;

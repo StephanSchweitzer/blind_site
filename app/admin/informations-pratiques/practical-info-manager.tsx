@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { GripVertical, Trash2, Pencil, Plus, Check, X } from 'lucide-react';
+import { GripVertical, Trash2, Pencil, Plus, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,7 +19,10 @@ const EMPTY: Draft = { iconKey: 'BookMarked', colorTheme: 'blue', question: '', 
 export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) {
     const [items, setItems] = useState<PracticalInfo[]>(initial);
     const [dirty, setDirty] = useState(false);
-    const [busy, setBusy] = useState(false);
+    // Ce qui tourne : l'enregistrement du formulaire ouvert, celui de l'ordre, ou
+    // la suppression de une question (son id). Le bouton cliqué tourne, les autres attendent.
+    const [running, setRunning] = useState<'save' | 'order' | number | null>(null);
+    const busy = running !== null;
     const [error, setError] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [adding, setAdding] = useState(false);
@@ -31,7 +34,7 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
     }
 
     async function submit(method: 'POST' | 'PUT', url: string, payload: Draft) {
-        setBusy(true); setError(null);
+        setRunning('save'); setError(null);
         try {
             const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Erreur');
@@ -40,17 +43,17 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Erreur');
             return false;
-        } finally { setBusy(false); }
+        } finally { setRunning(null); }
     }
 
     async function remove(id: number) {
-        setBusy(true);
+        setRunning(id);
         try { await fetch(`/api/practical-info/${id}`, { method: 'DELETE' }); await refetch(); }
-        finally { setBusy(false); }
+        finally { setRunning(null); }
     }
 
     async function saveOrder() {
-        setBusy(true); setError(null);
+        setRunning('order'); setError(null);
         try {
             const payload = items.map((it, index) => ({ id: it.id, sortOrder: index }));
             const res = await fetch('/api/practical-info', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: payload }) });
@@ -58,7 +61,7 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
             await refetch();
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Erreur');
-        } finally { setBusy(false); }
+        } finally { setRunning(null); }
     }
 
     return (
@@ -71,7 +74,7 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
                             <AideLink section="pages-publiques" />
                         </div>
                         <div className="flex gap-2">
-                            {dirty && <Button onClick={saveOrder} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">Enregistrer l&apos;ordre</Button>}
+                            {dirty && <Button onClick={saveOrder} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">{running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer l&apos;ordre</Button>}
                             <Button onClick={() => { setAdding(true); setEditingId(null); setDraft(EMPTY); }} className="bg-muted text-foreground border-border hover:bg-muted">
                                 <Plus className="h-4 w-4 mr-1" /> Ajouter
                             </Button>
@@ -81,7 +84,7 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
                         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
                         {adding && (
-                            <InfoForm draft={draft} setDraft={setDraft} busy={busy}
+                            <InfoForm draft={draft} setDraft={setDraft} busy={busy} saving={running === 'save'}
                                       onCancel={() => setAdding(false)}
                                       onSave={async () => { if (await submit('POST', '/api/practical-info', draft)) setAdding(false); }} />
                         )}
@@ -89,6 +92,7 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
                         <Reorder.Group axis="y" values={items} onReorder={(next) => { setItems(next); setDirty(true); }} className="space-y-2">
                             {items.map((item) => (
                                 <Row key={item.id} item={item} editing={editingId === item.id} busy={busy}
+                                     saving={running === 'save'} deleting={running === item.id}
                                      draft={draft} setDraft={setDraft}
                                      onEdit={() => { setEditingId(item.id); setAdding(false); setDraft({ iconKey: item.iconKey, colorTheme: item.colorTheme, question: item.question, body: item.body }); }}
                                      onCancel={() => setEditingId(null)}
@@ -103,8 +107,8 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
     );
 }
 
-function Row({ item, editing, busy, draft, setDraft, onEdit, onCancel, onSave, onDelete }: {
-    item: PracticalInfo; editing: boolean; busy: boolean;
+function Row({ item, editing, busy, saving, deleting, draft, setDraft, onEdit, onCancel, onSave, onDelete }: {
+    item: PracticalInfo; editing: boolean; busy: boolean; saving: boolean; deleting: boolean;
     draft: Draft; setDraft: React.Dispatch<React.SetStateAction<Draft>>;
     onEdit: () => void; onCancel: () => void; onSave: () => void; onDelete: () => void;
 }) {
@@ -112,7 +116,7 @@ function Row({ item, editing, busy, draft, setDraft, onEdit, onCancel, onSave, o
     return (
         <Reorder.Item value={item} dragListener={false} dragControls={controls} className="rounded-lg border border-border bg-background">
             {editing ? (
-                <div className="p-3"><InfoForm draft={draft} setDraft={setDraft} busy={busy} onCancel={onCancel} onSave={onSave} /></div>
+                <div className="p-3"><InfoForm draft={draft} setDraft={setDraft} busy={busy} saving={saving} onCancel={onCancel} onSave={onSave} /></div>
             ) : (
                 <div className="flex items-center gap-2 px-3 py-2">
                     <button type="button" onPointerDown={(e) => controls.start(e)} className="cursor-grab touch-none text-muted-foreground hover:text-foreground" aria-label="Déplacer">
@@ -121,16 +125,16 @@ function Row({ item, editing, busy, draft, setDraft, onEdit, onCancel, onSave, o
                     {React.createElement(resolveIcon(item.iconKey), { className: 'h-5 w-5 text-muted-foreground shrink-0' })}
                     <span className="flex-1 min-w-0 text-foreground font-medium line-clamp-2 break-words">{item.question}</span>
                     <Button size="icon" variant="ghost" className="size-8 sm:size-10 shrink-0" onClick={onEdit} aria-label="Modifier"><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" className="size-8 sm:size-10 shrink-0" disabled={busy} onClick={onDelete} aria-label="Supprimer"><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                    <Button size="icon" variant="ghost" className="size-8 sm:size-10 shrink-0" disabled={busy} onClick={onDelete} aria-label="Supprimer">{deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}</Button>
                 </div>
             )}
         </Reorder.Item>
     );
 }
 
-function InfoForm({ draft, setDraft, busy, onSave, onCancel }: {
+function InfoForm({ draft, setDraft, busy, saving, onSave, onCancel }: {
     draft: Draft; setDraft: React.Dispatch<React.SetStateAction<Draft>>;
-    busy: boolean; onSave: () => void; onCancel: () => void;
+    busy: boolean; saving: boolean; onSave: () => void; onCancel: () => void;
 }) {
     const field = 'bg-card border-border text-foreground';
     return (
@@ -143,7 +147,7 @@ function InfoForm({ draft, setDraft, busy, onSave, onCancel }: {
             <Textarea placeholder="Réponse (markdown : **gras**, [lien](url), listes)" value={draft.body} onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))} className={`${field} min-h-40 font-mono text-sm`} />
             <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={onCancel}><X className="h-4 w-4 mr-1" /> Annuler</Button>
-                <Button size="sm" disabled={busy} onClick={onSave} className="bg-primary text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4 mr-1" /> Enregistrer</Button>
+                <Button size="sm" disabled={busy} onClick={onSave} className="bg-primary text-primary-foreground hover:bg-primary/90">{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />} Enregistrer</Button>
             </div>
         </div>
     );

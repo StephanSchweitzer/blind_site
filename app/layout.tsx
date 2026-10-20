@@ -1,7 +1,8 @@
 import './globals.css'
 import { Providers } from './providers'
-import React from "react";
+import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster"
+import { NavigationFeedback } from '@/components/NavigationFeedback';
 import type { Metadata } from "next";
 import { AFFICHAGE_INIT_SCRIPT } from '@/lib/affichage';
 import { SHARED_OPEN_GRAPH, SITE_URL } from '@/lib/seo';
@@ -53,6 +54,11 @@ export default function RootLayout({
         </head>
         <body className="bg-background font-sans text-foreground antialiased">
         <Toaster />
+        {/* useSearchParams : sans Suspense, toute page prérendue passerait en
+            rendu client. La barre n'a rien à montrer avant l'hydratation. */}
+        <Suspense fallback={null}>
+            <NavigationFeedback />
+        </Suspense>
         <Providers>{children}</Providers>
         </body>
         </html>

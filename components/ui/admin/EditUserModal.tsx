@@ -10,7 +10,7 @@ import { CopyableId } from '@/admin/CopyableId';
 import { UserActivityHistory } from '@/components/ui/admin/UserActivityHistory';
 import { UserFormData, UserType } from '@/types';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { FolderOpen } from 'lucide-react';
 import { FormLoadingGate } from '@/components/ui/form-skeleton';
 
@@ -107,10 +107,10 @@ export function EditUserModal({
                                 size="sm"
                                 className="border-border bg-card text-foreground hover:bg-muted hover:text-white"
                             >
-                                <Link prefetch={false} href={`/admin/users/dossier/${userId}`} target="_blank" rel="noopener noreferrer">
+                                <IntentLink href={`/admin/users/dossier/${userId}`} target="_blank" rel="noopener noreferrer">
                                     <FolderOpen className="h-4 w-4 mr-2" />
                                     Voir le dossier
-                                </Link>
+                                </IntentLink>
                             </Button>
                         )}
                     </div>

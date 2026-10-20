@@ -2,7 +2,8 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { announceNavigation } from '@/components/NavigationFeedback';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { useSession } from 'next-auth/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -357,13 +358,12 @@ export default function UsersTable({
                             return (
                                 <span key={t.tab}>
                                     {i > 0 && <span aria-hidden className="text-muted-foreground/50"> · </span>}
-                                    <Link
-                                        prefetch={false}
+                                    <IntentLink
                                         href={`/admin/users/${t.tab}?${params.toString()}`}
                                         className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
                                     >
                                         {t.label} ({t.count})
-                                    </Link>
+                                    </IntentLink>
                                 </span>
                             );
                         })}
@@ -414,7 +414,9 @@ export default function UsersTable({
                                     // The dialogue is shaped by its tab's member type: a person
                                     // from another tab opens there, through its deep link.
                                     if (s.kind === 'scope' && s.scope) {
-                                        router.push(`/admin/users/${s.scope}?user=${row.id}`);
+                                        const href = `/admin/users/${s.scope}?user=${row.id}`;
+                                        announceNavigation(href);
+                                        router.push(href);
                                     } else {
                                         openUserById(row.id);
                                     }

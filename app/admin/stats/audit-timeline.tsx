@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     AlertTriangle,
@@ -543,8 +543,7 @@ function EventRow({
                 )}
 
                 {href && (
-                    <Link
-                        prefetch={false}
+                    <IntentLink
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -552,7 +551,7 @@ function EventRow({
                         aria-label={`Ouvrir ${describeRecord(event)}`}
                     >
                         <ExternalLink size={13} />
-                    </Link>
+                    </IntentLink>
                 )}
 
                 <span className="text-xs text-muted-foreground">par {event.actorName}</span>
@@ -564,8 +563,7 @@ function EventRow({
                     empty duplicate beside the real one (lib/books/merged.ts). */}
                 {isDeletion && supersededHref && (
                     <Button size="sm" variant="outline" asChild>
-                        <Link
-                            prefetch={false}
+                        <IntentLink
                             href={supersededHref}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -573,7 +571,7 @@ function EventRow({
                         >
                             <ArrowRight size={13} className="mr-1.5" />
                             Voir la fiche conservée
-                        </Link>
+                        </IntentLink>
                     </Button>
                 )}
 

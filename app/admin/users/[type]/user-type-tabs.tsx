@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 
 interface UserTypeTabsProps {
     currentType: string;
@@ -20,8 +20,7 @@ export function UserTypeTabs({ currentType }: UserTypeTabsProps) {
                 {tabs.map((tab) => {
                     const isActive = currentType === tab.key;
                     return (
-                        <Link
-                            prefetch={false}
+                        <IntentLink
                             key={tab.key}
                             href={`/admin/users/${tab.key}`}
                             className={`
@@ -34,7 +33,7 @@ export function UserTypeTabs({ currentType }: UserTypeTabsProps) {
                             aria-current={isActive ? 'page' : undefined}
                         >
                             {tab.label}
-                        </Link>
+                        </IntentLink>
                     );
                 })}
             </nav>

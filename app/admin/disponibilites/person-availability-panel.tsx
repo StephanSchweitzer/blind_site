@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import {
     AlertTriangle,
     ArrowRight,
@@ -354,8 +354,7 @@ function AssignmentRow({
                 the tables' own deep-link params — they open the edit modal
                 directly instead of just landing on the page with a search
                 term typed in. */}
-            <Link
-                prefetch={false}
+            <IntentLink
                 href={`/admin/assignments?assignment=${assignment.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -370,7 +369,7 @@ function AssignmentRow({
                     {assignment.bookTitle}
                 </span>
                 <ExternalLink size={11} className="shrink-0 text-muted-foreground" />
-            </Link>
+            </IntentLink>
             <p className={`mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs ${META}`}>
                 {[assignment.bookAuthor, assignment.statusName, longOut ? null : moved]
                     .filter(Boolean)
@@ -386,15 +385,14 @@ function AssignmentRow({
                 {assignment.orderId && (
                     <>
                         <span aria-hidden="true">·</span>
-                        <Link
-                            prefetch={false}
+                        <IntentLink
                             href={`/admin/orders?order=${assignment.orderId}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="hover:text-foreground hover:underline"
                         >
                             Demande n°{assignment.orderId}
-                        </Link>
+                        </IntentLink>
                     </>
                 )}
             </p>
@@ -770,8 +768,7 @@ export default function PersonAvailabilityPanel({
                 <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-border">
                     <DialogTitle className="text-foreground flex flex-wrap items-center gap-2 pr-8">
                         {person ? (
-                            <Link
-                                prefetch={false}
+                            <IntentLink
                                 href={`/admin/users/dossier/${person.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -779,7 +776,7 @@ export default function PersonAvailabilityPanel({
                                 title="Ouvrir le dossier dans un nouvel onglet"
                             >
                                 {person.name}
-                            </Link>
+                            </IntentLink>
                         ) : (
                             'Disponibilité'
                         )}
@@ -1300,15 +1297,14 @@ export default function PersonAvailabilityPanel({
                 {person && detail && !loading && (
                     <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-6 py-3">
                         <div className="flex items-center gap-3">
-                            <Link
-                                prefetch={false}
+                            <IntentLink
                                 href={`/admin/users/dossier/${person.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs text-muted-foreground hover:text-foreground hover:underline inline-flex items-center gap-1"
                             >
                                 Ouvrir le dossier complet <ExternalLink size={11} />
-                            </Link>
+                            </IntentLink>
                             {dirty && (
                                 <span className={`text-xs ${AMBER} animate-in fade-in duration-200`}>
                                     Modifications non enregistrées

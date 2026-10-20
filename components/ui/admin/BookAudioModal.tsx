@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import {
     Dialog,
     DialogContent,
@@ -1236,14 +1236,13 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             <p className="mt-1 font-mono text-xs break-all text-muted-foreground">
                                                 {folderConflict.proposedPrefix}
                                             </p>
-                                            <Link
-                                                prefetch={false}
+                                            <IntentLink
                                                 href="/admin/audio-orphelins"
                                                 target="_blank"
                                                 className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-primary underline underline-offset-2"
                                             >
                                                 <FolderOpen className="h-4 w-4" /> Ouvrir Audio orphelin
-                                            </Link>
+                                            </IntentLink>
                                         </div>
                                     )}
 

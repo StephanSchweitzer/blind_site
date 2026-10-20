@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { ChevronDown, ChevronRight, ExternalLink, History, Loader2 } from 'lucide-react';
 import { AdminCard } from '@/components/ui/admin';
 import { Button } from '@/components/ui/button';
@@ -101,14 +101,13 @@ function ActivityRow({ event }: { event: MyActivityItem }) {
                             </span>
                         )}
                         {href && (
-                            <Link
-                                prefetch={false}
+                            <IntentLink
                                 href={href}
                                 className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
                             >
                                 Ouvrir
                                 <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                            </Link>
+                            </IntentLink>
                         )}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">

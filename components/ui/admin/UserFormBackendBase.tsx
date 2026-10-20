@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -793,15 +793,14 @@ export function UserFormBackendBase({
 
                                 <p className="text-sm text-muted-foreground md:col-span-2">
                                     Disponibilité et charge : à gérer dans{' '}
-                                    <Link
-                                        prefetch={false}
+                                    <IntentLink
                                         href={userId ? `/admin/disponibilites?person=${userId}` : '/admin/disponibilites'}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
                                     >
                                         Disponibilités
-                                    </Link>
+                                    </IntentLink>
                                 </p>
                             </div>
                         </div>

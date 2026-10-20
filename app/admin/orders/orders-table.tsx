@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -591,14 +591,13 @@ export default function OrdersTable({
                                                                 sinon le clic ouvrirait aussi la demande.
                                                                 Pas de colonne du tout dans un dossier (`presetClient`). */}
                                                             <div className="font-medium">
-                                                                    <Link
-                                                                        prefetch={false}
+                                                                    <IntentLink
                                                                         href={`/admin/users/dossier/${order.aveugleId}/demandes`}
                                                                         onClick={(e) => e.stopPropagation()}
                                                                         className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
                                                                     >
                                                                         {aveugleName || order.aveugle.email}
-                                                                    </Link>
+                                                                    </IntentLink>
                                                             </div>
                                                             {aveugleName && (
                                                                 <div className="text-sm text-muted-foreground">
@@ -694,8 +693,7 @@ export default function OrdersTable({
                                                         le clic ouvrirait aussi la demande. */}
                                                     <TableCell className="whitespace-nowrap">
                                                         {order.assignments[0] ? (
-                                                            <Link
-                                                                prefetch={false}
+                                                            <IntentLink
                                                                 href={`/admin/assignments?assignment=${order.assignments[0].id}`}
                                                                 onClick={(e) => e.stopPropagation()}
                                                                 className="inline-flex flex-col text-sm"
@@ -711,7 +709,7 @@ export default function OrdersTable({
                                                                         {order.assignments[0].status.name}
                                                                     </span>
                                                                 )}
-                                                            </Link>
+                                                            </IntentLink>
                                                         ) : order.isDuplication ? (
                                                             <span className="text-xs text-muted-foreground">Duplication</span>
                                                         ) : (

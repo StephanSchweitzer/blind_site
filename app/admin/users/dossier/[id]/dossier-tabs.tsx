@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { usePathname } from 'next/navigation';
 
 interface DossierTabsProps {
@@ -43,8 +43,7 @@ export default function DossierTabs({ userId, memberType }: DossierTabsProps) {
                 const href = `${base}/${tab.slug}`;
                 const active = pathname === href || pathname.startsWith(`${href}/`);
                 return (
-                    <Link
-                        prefetch={false}
+                    <IntentLink
                         key={tab.slug}
                         href={href}
                         className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
@@ -54,7 +53,7 @@ export default function DossierTabs({ userId, memberType }: DossierTabsProps) {
                         }`}
                     >
                         {tab.label}
-                    </Link>
+                    </IntentLink>
                 );
             })}
         </nav>

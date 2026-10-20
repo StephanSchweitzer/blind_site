@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, EyeOff } from 'lucide-react';
 import { LoadingSkeleton } from '@/components/loading-skeleton';
@@ -72,13 +72,12 @@ export default function ApercuListeDeLivresPage() {
     return (
         <div className="mx-auto max-w-6xl space-y-6">
             <div className="space-y-3">
-                <Link
-                    prefetch={false}
+                <IntentLink
                     href={editorUrl}
                     className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                     <ArrowLeft className="h-4 w-4" /> Retour à la liste
-                </Link>
+                </IntentLink>
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">Aperçu</h1>
                     <p className="mt-1 text-sm text-muted-foreground">

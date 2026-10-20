@@ -1,6 +1,6 @@
 // app/admin/aide/page.tsx
 import Image from 'next/image';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAideSearchEntries, listAideSections } from '@/lib/aide';
@@ -69,8 +69,7 @@ export default function AidePage() {
                         <ol className="grid gap-3 sm:grid-cols-2">
                             {sections.map((section, index) => (
                                 <li key={section.slug}>
-                                    <Link
-                                        prefetch={false}
+                                    <IntentLink
                                         href={`/admin/aide/${section.slug}`}
                                         className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     >
@@ -87,7 +86,7 @@ export default function AidePage() {
                                             className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground"
                                             aria-hidden="true"
                                         />
-                                    </Link>
+                                    </IntentLink>
                                 </li>
                             ))}
                         </ol>

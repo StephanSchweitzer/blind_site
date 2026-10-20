@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import {
     Dialog,
     DialogContent,
@@ -315,8 +315,7 @@ export function DeleteBookModal({
                             <ul className="mt-2 space-y-1">
                                 {preflight.audio.sharedWith.map((b) => (
                                     <li key={b.id}>
-                                        <Link
-                                            prefetch={false}
+                                        <IntentLink
                                             href={`/admin/books?book=${b.id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -324,7 +323,7 @@ export function DeleteBookModal({
                                         >
                                             « {b.title} » (#{b.id})
                                             <ExternalLink className="h-3 w-3" aria-hidden />
-                                        </Link>
+                                        </IntentLink>
                                     </li>
                                 ))}
                             </ul>
@@ -466,15 +465,14 @@ export function DeleteBookModal({
                                         <span className="block text-muted-foreground mt-0.5">
                                             Chaque fichier est copié dans la corbeille, vérifié, puis
                                             retiré du dossier. Restaurable 14 jours depuis{' '}
-                                            <Link
-                                                prefetch={false}
+                                            <IntentLink
                                                 href="/admin/audio-corbeille"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="underline underline-offset-2"
                                             >
                                                 Corbeille audio
-                                            </Link>
+                                            </IntentLink>
                                             , puis supprimé définitivement du stockage. Un gros dossier
                                             peut demander plusieurs tentatives : relancez, les fichiers
                                             déjà déplacés ne le sont pas deux fois.
@@ -524,15 +522,14 @@ export function DeleteBookModal({
                                 {audio!.trashCount > 1 ? 's' : ''} de ce livre {audio!.trashCount > 1 ? 'sont' : 'est'}{' '}
                                 déjà dans la corbeille. {audio!.trashCount > 1 ? 'Ils resteront' : 'Il restera'}{' '}
                                 restaurable{audio!.trashCount > 1 ? 's' : ''} depuis{' '}
-                                <Link
-                                    prefetch={false}
+                                <IntentLink
                                     href="/admin/audio-corbeille"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="underline underline-offset-2"
                                 >
                                     Corbeille audio
-                                </Link>
+                                </IntentLink>
                                 , au nom de cette fiche.
                             </span>
                         </div>

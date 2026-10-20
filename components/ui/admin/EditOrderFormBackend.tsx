@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import {
     Dialog,
     DialogContent,
@@ -298,15 +298,14 @@ export function EditOrderFormBackend({
                             brouillon à nouveau le jour où elle sera terminée pour de bon.
                         </DialogDescription>
                         {detachedNotice && (
-                            <Link
-                                prefetch={false}
+                            <IntentLink
                                 href={`/admin/bills?bill=${detachedNotice.billId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-block text-blue-400 hover:text-blue-300 underline underline-offset-2"
                             >
                                 Voir la facture #{detachedNotice.billId}
-                            </Link>
+                            </IntentLink>
                         )}
                     </div>
                     <div className="flex justify-end mt-4">
@@ -332,15 +331,14 @@ export function EditOrderFormBackend({
                             maintenant sur son brouillon, la facture #{attachedNotice?.billId}.
                         </DialogDescription>
                         {attachedNotice && (
-                            <Link
-                                prefetch={false}
+                            <IntentLink
                                 href={`/admin/bills?bill=${attachedNotice.billId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-block text-blue-400 hover:text-blue-300 underline underline-offset-2"
                             >
                                 Voir la facture #{attachedNotice.billId}
-                            </Link>
+                            </IntentLink>
                         )}
                     </div>
                     <div className="flex justify-end mt-4">

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import {
     Dialog,
     DialogContent,
@@ -80,15 +80,14 @@ export const BillPrintNoticeDialog: React.FC<BillPrintNoticeDialogProps> = ({ no
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                 {notice && (
-                    <Link
-                        prefetch={false}
+                    <IntentLink
                         href={`/admin/bills?bill=${notice.billId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-blue-700 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 underline underline-offset-2"
                     >
                         Voir la facture #{notice.billId}
-                    </Link>
+                    </IntentLink>
                 )}
                 <div className="flex items-center gap-2 ml-auto">
                     <Button

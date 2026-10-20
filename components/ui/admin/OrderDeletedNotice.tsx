@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { AlertTriangle, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -178,25 +178,23 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
                                 {/* The book is checked first on the server, so a deleted
                                     book is the refusal whenever both are gone. */}
                                 {preview.book.deleted || !preview.client?.deleted ? (
-                                    <Link
-                                        prefetch={false}
+                                    <IntentLink
                                         href={`/admin/books?book=${preview.book.id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-block font-medium underline underline-offset-2"
                                     >
                                         Ouvrir la fiche livre
-                                    </Link>
+                                    </IntentLink>
                                 ) : (
-                                    <Link
-                                        prefetch={false}
+                                    <IntentLink
                                         href={`/admin/users/dossier/${preview.client.id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-block font-medium underline underline-offset-2"
                                     >
                                         Ouvrir la fiche de l’auditeur
-                                    </Link>
+                                    </IntentLink>
                                 )}
                             </div>
                         </div>
@@ -208,15 +206,14 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
                             <div className="space-y-1">
                                 <p>{preview.restoreWarning}</p>
                                 {preview.billId != null && (
-                                    <Link
-                                        prefetch={false}
+                                    <IntentLink
                                         href={`/admin/bills?bill=${preview.billId}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-block font-medium underline underline-offset-2"
                                     >
                                         Voir la facture #{preview.billId}
-                                    </Link>
+                                    </IntentLink>
                                 )}
                             </div>
                         </div>

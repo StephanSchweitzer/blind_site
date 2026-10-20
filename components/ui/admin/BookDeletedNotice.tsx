@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { AlertTriangle, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -246,13 +246,12 @@ export default function BookDeletedNotice({
                             <div>
                                 <p>{preview.isbnConflict}</p>
                                 {preview.isbnHolder && (
-                                    <Link
-                                        prefetch={false}
+                                    <IntentLink
                                         href={`/admin/books?book=${preview.isbnHolder.id}`}
                                         className="mt-1 inline-block font-medium underline underline-offset-2"
                                     >
                                         Voir la fiche « {preview.isbnHolder.title} »
-                                    </Link>
+                                    </IntentLink>
                                 )}
                             </div>
                         </div>

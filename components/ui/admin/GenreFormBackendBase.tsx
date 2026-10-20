@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -142,9 +142,9 @@ export function GenreFormBackendBase({
                                 <>
                                     {booksCount} livre{booksCount > 1 ? 's' : ''} associé
                                     {booksCount > 1 ? 's' : ''} —{' '}
-                                    <Link prefetch={false} href={booksHref} className="underline underline-offset-2 hover:text-foreground">
+                                    <IntentLink href={booksHref} className="underline underline-offset-2 hover:text-foreground">
                                         voir dans le catalogue
-                                    </Link>
+                                    </IntentLink>
                                 </>
                             )}
                         </p>

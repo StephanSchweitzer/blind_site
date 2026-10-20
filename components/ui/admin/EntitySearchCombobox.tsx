@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -440,8 +440,7 @@ export function EntitySearchCombobox<T>({
             </PopoverContent>
         </Popover>
         {resolvedViewHref && (
-            <Link
-                prefetch={false}
+            <IntentLink
                 href={resolvedViewHref}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -450,7 +449,7 @@ export function EntitySearchCombobox<T>({
                 className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
                 <ExternalLink className="h-4 w-4" />
-            </Link>
+            </IntentLink>
         )}
         </div>
     );

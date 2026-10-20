@@ -26,7 +26,7 @@ import { AlertCircle, ExternalLink } from 'lucide-react';
 import { DatePickerField } from '@/components/ui/admin/DatePickerField';
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { getBillingStatusLabel } from '@/lib/billing-enums';
 import { DELIVERY_METHOD_VALUES, getDeliveryMethodLabel } from '@/lib/user-enums';
 import { isLegacyValue } from '@/lib/select-options';
@@ -168,15 +168,14 @@ function dayKey(date: Date | string | null | undefined): string | null {
 // « Voir la facture » plus bas : la demande en cours de saisie ne se perd pas.
 function BillLink({ billId, children }: { billId: number; children: React.ReactNode }) {
     return (
-        <Link
-            prefetch={false}
+        <IntentLink
             href={`/admin/bills?bill=${billId}`}
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium underline underline-offset-2 hover:opacity-80"
         >
             {children}
-        </Link>
+        </IntentLink>
     );
 }
 
@@ -948,15 +947,14 @@ export function OrderFormBackendBase({
                                             </div>
                                         )}
                                     </div>
-                                    <Link
-                                        prefetch={false}
+                                    <IntentLink
                                         href={`/admin/assignments?assignment=${initialAssignment.id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
                                     >
                                         Voir l&apos;attribution
-                                    </Link>
+                                    </IntentLink>
                                 </div>
                             ) : (
                                 <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
@@ -1140,15 +1138,14 @@ export function OrderFormBackendBase({
                                     Facture #{initialBill.id} — {getBillingStatusLabel(initialBill.state as BillingStatus)}
                                 </span>
                                 <span aria-hidden className="text-muted-foreground">·</span>
-                                <Link
-                                    prefetch={false}
+                                <IntentLink
                                     href={`/admin/bills?bill=${initialBill.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
                                 >
                                     Voir la facture
-                                </Link>
+                                </IntentLink>
                             </div>
                         ) : formData.billingStatus === 'BILLED' ? (
                             <div className="bg-card border border-border rounded-md px-3 py-2.5 text-foreground">

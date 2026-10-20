@@ -1,5 +1,5 @@
 // app/admin/aide/[slug]/page.tsx
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, ArrowRight, ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,14 +74,13 @@ export default async function AideSectionPage({ params }: PageProps) {
 
             <AideHashScroll />
 
-            <Link
-                prefetch={false}
+            <IntentLink
                 href="/admin/aide"
                 className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             >
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 Retour au mode d&apos;emploi
-            </Link>
+            </IntentLink>
 
             <Card className="bg-card border-border">
                 <CardHeader className="border-b border-border pb-4">
@@ -124,26 +123,24 @@ export default async function AideSectionPage({ params }: PageProps) {
                             className="mt-10 flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:justify-between"
                         >
                             {previous ? (
-                                <Link
-                                    prefetch={false}
+                                <IntentLink
                                     href={`/admin/aide/${previous.slug}`}
                                     className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary"
                                 >
                                     <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                                     {previous.title}
-                                </Link>
+                                </IntentLink>
                             ) : (
                                 <span />
                             )}
                             {next && (
-                                <Link
-                                    prefetch={false}
+                                <IntentLink
                                     href={`/admin/aide/${next.slug}`}
                                     className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary sm:justify-end"
                                 >
                                     {next.title}
                                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                                </Link>
+                                </IntentLink>
                             )}
                         </nav>
                     )}

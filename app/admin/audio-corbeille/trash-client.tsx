@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { useRouter } from 'next/navigation';
 import {
     AlertTriangle,
@@ -140,13 +140,12 @@ function OrphanRestoreHint({ plural = false }: { plural?: boolean }) {
     return (
         <p className="text-xs text-muted-foreground">
             {plural ? 'seront restaurés' : 'sera restauré'} dans{' '}
-            <Link
-                prefetch={false}
+            <IntentLink
                 href="/admin/audio-orphelins"
                 className="text-blue-600 hover:text-blue-500 dark:text-blue-400 underline underline-offset-2"
             >
                 Audio orphelin
-            </Link>
+            </IntentLink>
             , faute de fiche où le rattacher
         </p>
     );
@@ -157,13 +156,12 @@ function OrphanRestoreHint({ plural = false }: { plural?: boolean }) {
 function BookIdentity({ group }: { group: TrashGroup }) {
     if (group.book) {
         return (
-            <Link
-                prefetch={false}
+            <IntentLink
                 href={`/admin/books?book=${group.book.id}`}
                 className="text-blue-600 hover:text-blue-500 dark:text-blue-400 underline underline-offset-2"
             >
                 « {group.book.title} » (#{group.book.id})
-            </Link>
+            </IntentLink>
         );
     }
     if (group.originBookTitle) {

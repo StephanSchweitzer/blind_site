@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, AudioLines, Eye, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -254,13 +254,12 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
         <form onSubmit={handleSubmit} className="space-y-6">
             {/* ── en-tête ─────────────────────────────────────────────── */}
             <div className="space-y-3">
-                <Link
-                    prefetch={false}
+                <IntentLink
                     href={LIST_URL}
                     className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                     <ArrowLeft className="h-4 w-4" /> Listes de livres
-                </Link>
+                </IntentLink>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -286,8 +285,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                             {/* Nouvel onglet : l'éditeur, et ce qui n'y est pas encore
                                 enregistré, restent où ils sont. */}
                             <Button asChild variant="outline" className="border-border bg-card text-foreground hover:bg-muted">
-                                <Link
-                                    prefetch={false}
+                                <IntentLink
                                     href={`${LIST_URL}/${listId}/apercu`}
                                     target="_blank"
                                     rel="noopener"
@@ -295,7 +293,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                                 >
                                     <Eye /> Aperçu
                                     <span className="sr-only"> (s&apos;ouvre dans un nouvel onglet)</span>
-                                </Link>
+                                </IntentLink>
                             </Button>
                             <CoupDeCoeurPDFButton coupDeCoeurId={listId} />
                             <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>

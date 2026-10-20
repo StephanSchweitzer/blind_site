@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Trash2, Pencil, Plus, Check, X } from 'lucide-react';
+import { Trash2, Pencil, Plus, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,7 +15,10 @@ type Draft = { year: string; title: string; description: string; iconKey: string
 
 export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
     const [events, setEvents] = useState<HistoryEvent[]>(initial);
-    const [busy, setBusy] = useState(false);
+    // Ce qui tourne : l'enregistrement du formulaire ouvert, ou la suppression
+    // d'un événement (son id). Le bouton cliqué tourne, les autres attendent.
+    const [running, setRunning] = useState<'save' | number | null>(null);
+    const busy = running !== null;
     const [error, setError] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [adding, setAdding] = useState(false);
@@ -27,7 +30,7 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
     }
 
     async function submit(method: 'POST' | 'PUT', url: string, payload: Draft) {
-        setBusy(true);
+        setRunning('save');
         setError(null);
         try {
             const res = await fetch(url, {
@@ -42,17 +45,17 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
             setError(e instanceof Error ? e.message : 'Erreur');
             return false;
         } finally {
-            setBusy(false);
+            setRunning(null);
         }
     }
 
     async function remove(id: number) {
-        setBusy(true);
+        setRunning(id);
         try {
             await fetch(`/api/historique/${id}`, { method: 'DELETE' });
             await refetch();
         } finally {
-            setBusy(false);
+            setRunning(null);
         }
     }
 
@@ -77,6 +80,7 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
                                 draft={draft}
                                 setDraft={setDraft}
                                 busy={busy}
+                                saving={running === 'save'}
                                 onCancel={() => setAdding(false)}
                                 onSave={async () => { if (await submit('POST', '/api/historique', draft)) setAdding(false); }}
                             />
@@ -91,6 +95,7 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
                                         draft={draft}
                                         setDraft={setDraft}
                                         busy={busy}
+                                        saving={running === 'save'}
                                         onCancel={() => setEditingId(null)}
                                         onSave={async () => { if (await submit('PUT', `/api/historique/${ev.id}`, draft)) setEditingId(null); }}
                                     />
@@ -105,7 +110,7 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
                                         <Pencil className="h-4 w-4" />
                                     </Button>
                                     <Button size="icon" variant="ghost" className="size-8 sm:size-10 shrink-0" disabled={busy} onClick={() => remove(ev.id)} aria-label="Supprimer">
-                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                        {running === ev.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-500" />}
                                     </Button>
                                 </div>
                             );
@@ -117,10 +122,11 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
     );
 }
 
-function EventForm({ draft, setDraft, busy, onSave, onCancel }: {
+function EventForm({ draft, setDraft, busy, saving, onSave, onCancel }: {
     draft: Draft;
     setDraft: React.Dispatch<React.SetStateAction<Draft>>;
     busy: boolean;
+    saving: boolean;
     onSave: () => void;
     onCancel: () => void;
 }) {
@@ -135,7 +141,7 @@ function EventForm({ draft, setDraft, busy, onSave, onCancel }: {
             <Textarea placeholder="Description" value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} className={`${field} min-h-24`} />
             <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={onCancel}><X className="h-4 w-4 mr-1" /> Annuler</Button>
-                <Button size="sm" disabled={busy} onClick={onSave} className="bg-primary text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4 mr-1" /> Enregistrer</Button>
+                <Button size="sm" disabled={busy} onClick={onSave} className="bg-primary text-primary-foreground hover:bg-primary/90">{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />} Enregistrer</Button>
             </div>
         </div>
     );

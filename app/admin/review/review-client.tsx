@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { announceNavigation } from '@/components/NavigationFeedback';
 import {
     ArrowLeftRight,
     Trash2,
@@ -254,6 +255,11 @@ export default function ReviewClient({ pairs, pagination, queueTotal, search, se
 
     // Barre de pages : un clic simple navigue dans la transition de navigation.
     const goHref = (href: string) => startNav(() => router.push(href, { scroll: false }));
+    // Vers le catalogue : une autre page, que la barre de chargement doit annoncer.
+    const openCatalogue = (href: string) => {
+        announceNavigation(href);
+        router.push(href);
+    };
 
     const runSearch = (term: string) => {
         const sp = new URLSearchParams(window.location.search);
@@ -339,7 +345,7 @@ export default function ReviewClient({ pairs, pagination, queueTotal, search, se
                             unit={{ one: 'livre', many: 'livres' }}
                             onApply={(s) => {
                                 if (s.kind === 'scope') {
-                                    router.push(`/admin/books?search=${encodeURIComponent(s.query)}`);
+                                    openCatalogue(`/admin/books?search=${encodeURIComponent(s.query)}`);
                                     return;
                                 }
                                 setSearchTerm(s.query);
@@ -348,7 +354,7 @@ export default function ReviewClient({ pairs, pagination, queueTotal, search, se
                             // Outside the queue there is no pair to show: the fiche is the answer.
                             onOpenRow={(row, s) =>
                                 s.kind === 'scope'
-                                    ? router.push(`/admin/books?book=${row.id}`)
+                                    ? openCatalogue(`/admin/books?book=${row.id}`)
                                     : runSearch(`#${row.id}`)}
                         />
                     </CardContent>

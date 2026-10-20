@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { X, ExternalLink, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -201,8 +201,7 @@ export default function DetailDrawer({
                                     </span>
                                     {item.href && (
                                         merged > 1 ? (
-                                            <Link
-                                                prefetch={false}
+                                            <IntentLink
                                                 href={item.href}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
@@ -211,7 +210,7 @@ export default function DetailDrawer({
                                                 className="text-muted-foreground hover:text-foreground shrink-0"
                                             >
                                                 <ExternalLink className="h-3.5 w-3.5 mt-0.5" />
-                                            </Link>
+                                            </IntentLink>
                                         ) : (
                                             <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
                                         )
@@ -283,8 +282,7 @@ export default function DetailDrawer({
                         }
 
                         return item.href ? (
-                            <Link
-                                prefetch={false}
+                            <IntentLink
                                 key={item.id}
                                 href={item.href}
                                 target="_blank"
@@ -292,7 +290,7 @@ export default function DetailDrawer({
                                 className="block rounded-lg border border-border p-3 hover:bg-accent transition-colors"
                             >
                                 {body}
-                            </Link>
+                            </IntentLink>
                         ) : (
                             <div key={item.id} className="rounded-lg border border-border p-3">
                                 {body}

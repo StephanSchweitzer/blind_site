@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { GripVertical, Trash2, Pencil, Plus, Check, X } from 'lucide-react';
+import { GripVertical, Trash2, Pencil, Plus, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -35,7 +35,10 @@ function splitGroups(members: TeamMember[]): Groups {
 export function TeamManager({ initial }: { initial: TeamMember[] }) {
     const [groups, setGroups] = useState<Groups>(() => splitGroups(initial));
     const [dirty, setDirty] = useState(false);
-    const [busy, setBusy] = useState(false);
+    // Ce qui tourne : l'ajout, l'ordre, ou un membre (son id) qu'on enregistre ou
+    // supprime. Le bouton ou la ligne concernés tournent, les autres attendent.
+    const [running, setRunning] = useState<'add' | 'order' | number | null>(null);
+    const busy = running !== null;
     const [error, setError] = useState<string | null>(null);
 
     const [newName, setNewName] = useState('');
@@ -58,7 +61,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
 
     async function addMember() {
         if (!newName.trim()) return;
-        setBusy(true);
+        setRunning('add');
         setError(null);
         try {
             const res = await fetch('/api/team', {
@@ -73,12 +76,12 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Erreur');
         } finally {
-            setBusy(false);
+            setRunning(null);
         }
     }
 
     async function saveMember(id: number, patch: Partial<Pick<TeamMember, 'name' | 'role' | 'section'>>) {
-        setBusy(true);
+        setRunning(id);
         setError(null);
         try {
             const res = await fetch(`/api/team/${id}`, {
@@ -91,12 +94,12 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Erreur');
         } finally {
-            setBusy(false);
+            setRunning(null);
         }
     }
 
     async function deleteMember(id: number) {
-        setBusy(true);
+        setRunning(id);
         setError(null);
         try {
             const res = await fetch(`/api/team/${id}`, { method: 'DELETE' });
@@ -105,12 +108,12 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Erreur');
         } finally {
-            setBusy(false);
+            setRunning(null);
         }
     }
 
     async function saveOrder() {
-        setBusy(true);
+        setRunning('order');
         setError(null);
         try {
             const items = SECTION_ORDER.flatMap((s) =>
@@ -126,7 +129,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Erreur');
         } finally {
-            setBusy(false);
+            setRunning(null);
         }
     }
 
@@ -141,6 +144,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                         </div>
                         {dirty && (
                             <Button onClick={saveOrder} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                                {running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}
                                 Enregistrer l&apos;ordre
                             </Button>
                         )}
@@ -160,7 +164,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                                 </SelectContent>
                             </Select>
                             <Button onClick={addMember} disabled={busy || !newName.trim()} className="bg-muted text-foreground border-border hover:bg-muted">
-                                <Plus className="h-4 w-4 mr-1" /> Ajouter
+                                {running === 'add' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />} Ajouter
                             </Button>
                         </div>
                         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -190,6 +194,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                                             key={member.id}
                                             member={member}
                                             busy={busy}
+                                            working={running === member.id}
                                             onSave={saveMember}
                                             onDelete={deleteMember}
                                         />
@@ -207,11 +212,13 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
 function MemberRow({
     member,
     busy,
+    working,
     onSave,
     onDelete,
 }: {
     member: TeamMember;
     busy: boolean;
+    working: boolean;
     onSave: (id: number, patch: Partial<Pick<TeamMember, 'name' | 'role' | 'section'>>) => void;
     onDelete: (id: number) => void;
 }) {
@@ -263,6 +270,7 @@ function MemberRow({
                     <div className="flex-1 min-w-0">
                         <span className="text-foreground font-medium">{member.name}</span>
                         {member.role && <span className="text-muted-foreground ml-2">— {member.role}</span>}
+                        {working && <Loader2 className="inline h-4 w-4 ml-2 animate-spin text-muted-foreground" aria-hidden="true" />}
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => setEditing(true)} aria-label="Modifier">
                         <Pencil className="h-4 w-4" />

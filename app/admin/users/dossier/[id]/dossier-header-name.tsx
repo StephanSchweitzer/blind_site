@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { announceNavigation } from '@/components/NavigationFeedback';
 import { EditUserModal, loadUserForEdit } from '@/admin/EditUserModal';
 import { useRecordLoader } from '@/hooks/useRecordLoader';
 
@@ -39,7 +40,10 @@ export default function DossierHeaderName({ userId, fullName, currentUserAccessL
                     userId={userLoader.openId}
                     user={userLoader.data}
                     error={userLoader.error}
-                    onUserDeleted={() => router.push('/admin/users')}
+                    onUserDeleted={() => {
+                        announceNavigation('/admin/users');
+                        router.push('/admin/users');
+                    }}
                     currentUserAccessLevel={currentUserAccessLevel}
                 />
             )}

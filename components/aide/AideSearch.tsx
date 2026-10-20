@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { useRouter } from 'next/navigation';
+import { announceNavigation } from '@/components/NavigationFeedback';
 import { ChevronRight, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -51,6 +52,7 @@ export function AideSearch({ entries }: { entries: AideSearchEntry[] }) {
                         // presque toujours, sans reprendre la souris.
                         if (e.key === 'Enter' && hits.length > 0) {
                             e.preventDefault();
+                            announceNavigation(hitHref(hits[0]));
                             router.push(hitHref(hits[0]));
                         }
                     }}
@@ -85,8 +87,7 @@ export function AideSearch({ entries }: { entries: AideSearchEntry[] }) {
                 <ul className="space-y-2">
                     {hits.map((hit) => (
                         <li key={`${hit.entry.slug}#${hit.entry.anchor ?? ''}`}>
-                            <Link
-                                prefetch={false}
+                            <IntentLink
                                 href={hitHref(hit)}
                                 className="group flex items-start justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
@@ -120,7 +121,7 @@ export function AideSearch({ entries }: { entries: AideSearchEntry[] }) {
                                     className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground"
                                     aria-hidden="true"
                                 />
-                            </Link>
+                            </IntentLink>
                         </li>
                     ))}
                 </ul>

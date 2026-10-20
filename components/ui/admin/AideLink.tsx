@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { HelpCircle } from 'lucide-react';
 
 interface AideLinkProps {
@@ -23,8 +23,7 @@ interface AideLinkProps {
  */
 export function AideLink({ section, anchor, label = 'Aide', className }: AideLinkProps) {
     return (
-        <Link
-            prefetch={false}
+        <IntentLink
             href={`/admin/aide/${section}${anchor ? `#${anchor}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -36,6 +35,6 @@ export function AideLink({ section, anchor, label = 'Aide', className }: AideLin
             <HelpCircle className="h-4 w-4" aria-hidden="true" />
             {label}
             <span className="sr-only"> — mode d&apos;emploi de cette page</span>
-        </Link>
+        </IntentLink>
     );
 }

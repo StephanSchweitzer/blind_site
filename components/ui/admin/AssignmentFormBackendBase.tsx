@@ -22,7 +22,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { AlertCircle, History, User as UserIcon, ChevronRight, Package, ExternalLink } from 'lucide-react';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { useToast } from "@/hooks/use-toast";
 import { DatePickerField, fromDayString, toDayString } from '@/components/ui/admin/DatePickerField';
 import { format } from "date-fns";
@@ -1017,8 +1017,7 @@ export function AssignmentFormBackendBase({
                                 return (
                                     <span className="mt-1 flex flex-wrap items-center gap-x-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                                         Déjà attribuée :
-                                        <Link
-                                            prefetch={false}
+                                        <IntentLink
                                             href={`/admin/assignments?assignment=${blocking.id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -1026,7 +1025,7 @@ export function AssignmentFormBackendBase({
                                         >
                                             Attribution #{blocking.id} ({blocking.status.name})
                                             <ExternalLink className="h-3 w-3" />
-                                        </Link>
+                                        </IntentLink>
                                     </span>
                                 );
                             }}
@@ -1084,8 +1083,7 @@ export function AssignmentFormBackendBase({
                                 )}
                             </div>
                             {selectedBook && (
-                                <Link
-                                    prefetch={false}
+                                <IntentLink
                                     href={`/admin/books?book=${selectedBook.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -1094,7 +1092,7 @@ export function AssignmentFormBackendBase({
                                     className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                                 >
                                     <ExternalLink className="h-4 w-4" />
-                                </Link>
+                                </IntentLink>
                             )}
                         </div>
                         <p className="text-xs text-muted-foreground">

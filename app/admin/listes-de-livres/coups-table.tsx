@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { announceNavigation } from '@/components/NavigationFeedback';
 import { useDebounce } from 'use-debounce';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -41,6 +42,12 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
     const [isPending, startTransition] = useTransition();
     // Pagination : un clic simple navigue dans une transition, pour griser la liste.
     const navigate = (href: string) => startTransition(() => router.push(href, { scroll: false }));
+    // Une ligne cliquée n'est pas un lien : la barre de chargement ne la voit pas seule.
+    const openList = (id: number | string) => {
+        const href = `/admin/listes-de-livres/${id}`;
+        announceNavigation(href);
+        router.push(href);
+    };
     const searchParams = useSearchParams();
     // initialItems is the source of truth (re-passed by the server on navigation),
     // so render it directly instead of mirroring it into state via an effect.
@@ -85,9 +92,9 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                     </div>
                 </div>
                 <Button asChild className="w-full sm:w-auto">
-                    <Link prefetch={false} href="/admin/listes-de-livres/new">
+                    <IntentLink href="/admin/listes-de-livres/new">
                         <Plus /> Nouvelle liste de livres
-                    </Link>
+                    </IntentLink>
                 </Button>
             </CardHeader>
             <CardContent className="pt-6">
@@ -135,7 +142,7 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                                             suggestions={searchSuggestions}
                                             unit={{ one: 'liste', many: 'listes', feminine: true }}
                                             onApply={(s) => setSearch(s.query)}
-                                            onOpenRow={(row) => router.push(`/admin/listes-de-livres/${row.id}`)}
+                                            onOpenRow={(row) => openList(row.id)}
                                         />
                                     </TableCell>
                                 </TableRow>
@@ -146,17 +153,16 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                                     className="border-b border-border hover:bg-muted/50 cursor-pointer"
                                     // Navigation client : l'ancien `window.location.href`
                                     // rechargeait toute l'application à chaque ouverture.
-                                    onClick={() => router.push(`/admin/listes-de-livres/${item.id}`)}
+                                    onClick={() => openList(item.id)}
                                 >
                                     <TableCell className="text-foreground">
-                                        <Link
-                                            prefetch={false}
+                                        <IntentLink
                                             href={`/admin/listes-de-livres/${item.id}`}
                                             className="font-medium hover:underline underline-offset-2"
                                             onClick={(e) => e.stopPropagation()}
                                         >
                                             {item.title}
-                                        </Link>
+                                        </IntentLink>
                                         {item.description && (
                                             <div className="mt-0.5 max-w-md truncate text-xs text-muted-foreground">
                                                 {item.description}

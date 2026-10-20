@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
+import { IntentLink } from '@/components/admin/IntentLink';
 import { FolderOpen } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth/guards';
@@ -110,14 +110,13 @@ export default async function ProfilePage() {
 
                     {/* The fiche itself lives on the dossier — demandes, factures,
                         paiements, attributions — and is not re-implemented here. */}
-                    <Link
-                        prefetch={false}
+                    <IntentLink
                         href={`/admin/users/dossier/${user.id}`}
                         className="shrink-0 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-accent transition-colors"
                     >
                         <FolderOpen className="h-4 w-4" aria-hidden="true" />
                         Voir mon dossier
-                    </Link>
+                    </IntentLink>
                 </div>
             </AdminCard>
 
