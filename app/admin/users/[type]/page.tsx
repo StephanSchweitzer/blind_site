@@ -6,7 +6,7 @@ import { getCurrentUser, isAdmin } from '@/lib/auth/guards';
 import { redirect } from 'next/navigation';
 import { UserTypeTabs } from './user-type-tabs';
 import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
-import { activityStatusFilterWhere, effectivelyActiveWhere } from '@/lib/users/activityStatus';
+import { activityStatusFilterWhere } from '@/lib/users/activityStatus';
 import { LANGUAGE_VALUES } from '@/lib/user-enums';
 import { cotisationCoverageQuery } from '@/lib/cotisation';
 import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
@@ -112,13 +112,9 @@ async function getUsers(
         const listWhere: Prisma.UserWhereInput = statusWhere
             ? { AND: [scopedWhere, statusWhere] }
             : scopedWhere;
-        const activeWhere: Prisma.UserWhereInput = { AND: [scopedWhere, effectivelyActiveWhere()] };
-        const inactiveWhere: Prisma.UserWhereInput = {
-            AND: [scopedWhere, { NOT: effectivelyActiveWhere() }],
-        };
-        return { listWhere, activeWhere, inactiveWhere };
+        return { listWhere };
     };
-    const { listWhere, activeWhere, inactiveWhere } = wheresFor(searchTerm);
+    const { listWhere } = wheresFor(searchTerm);
 
     try {
         // With a search, best match first rather than newest first: « jean » used
@@ -136,7 +132,7 @@ async function getUsers(
                 .slice(skip, skip + usersPerPage)
                 .map((u) => u.id)
             : null;
-        const [users, totalUsers, activeCount, inactiveCount] = await Promise.all([
+        const [users, totalUsers] = await Promise.all([
             prisma.user.findMany({
                 where: ids ? { id: { in: ids } } : listWhere,
                 orderBy: { id: 'desc' },
@@ -146,19 +142,15 @@ async function getUsers(
                     email: true,
                     firstName: true,
                     lastName: true,
-                    role: true,
                     memberType: true,
                     accessLevel: true,
                     activityStatus: true,
                     unavailableFrom: true,
                     unavailableUntil: true,
-                    lastUpdated: true,
                     civility: { select: { name: true } },
                 },
             }),
             prisma.user.count({ where: listWhere }),
-            prisma.user.count({ where: activeWhere }),
-            prisma.user.count({ where: inactiveWhere }),
         ]);
         if (ids) users.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
 
@@ -187,11 +179,6 @@ async function getUsers(
         return {
             users,
             alsoFoundIn,
-            // Scoped total = actifs + inactifs (they partition the scoped set), so
-            // the summary line is always internally consistent.
-            scopedTotal: activeCount + inactiveCount,
-            activeCount,
-            inactiveCount,
             pagination: pageInfo(page, pageSize, totalUsers),
             searchSuggestions,
         };
@@ -334,13 +321,8 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
         notFound();
     }
 
-    const { users, pagination, scopedTotal, activeCount, inactiveCount, searchSuggestions, alsoFoundIn } = data;
+    const { users, pagination, searchSuggestions, alsoFoundIn } = data;
     redirectPastLastPage(`/admin/users/${userType}`, searchParamsResolved, pagination, users.length);
-
-    const serializedUsers = users.map(user => ({
-        ...user,
-        lastUpdated: user.lastUpdated ? user.lastUpdated.toISOString() : null,
-    }));
 
     return (
         <div className="space-y-6">
@@ -348,15 +330,12 @@ export default async function UsersPage({ params, searchParams }: PageProps) {
 
             <UsersTable
                 type={userType}
-                initialUsers={serializedUsers}
+                initialUsers={users}
                 pagination={pagination}
                 initialSearch={searchTerm}
                 initialStatus={statusFilter}
                 initialLanguage={languageFilter}
                 initialCotisation={cotisationFilter}
-                scopedTotal={scopedTotal}
-                activeCount={activeCount}
-                inactiveCount={inactiveCount}
                 currentUserAccessLevel={me.accessLevel}
                 searchSuggestions={searchSuggestions}
                 alsoFoundIn={alsoFoundIn}

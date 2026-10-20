@@ -83,7 +83,8 @@ export default async function AdminBooksPage({ searchParams }: PageProps) {
     const page = parsePageParam(params.page);
     const pageSize = parsePageSizeParam(params.perPage);
     const searchTerm = Array.isArray(params.search) ? params.search[0] : params.search || '';
-    const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter || 'all';
+    // Always 'all': an old ?filter= link must not apply a scope the page no longer shows.
+    const filter = 'all';
     const genreIds = (Array.isArray(params.genres) ? params.genres[0] : params.genres || '')
         .split(',')
         .filter(Boolean)

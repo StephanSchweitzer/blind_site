@@ -564,7 +564,10 @@ export default function PaymentsTable({
                                                 Enregistrement dans le désordre alphabétique
                                                 mentirait plus qu'il n'aiderait. */}
                                             <SortableHead field="id" label="ID" activeField={sort} direction={dir} onSort={handleSort} />
-                                            <TableHead className="text-foreground font-medium">Client</TableHead>
+                                            {/* Dans un dossier, c'est toujours la même personne. */}
+                                            {!presetClient && (
+                                                <TableHead className="text-foreground font-medium">Client</TableHead>
+                                            )}
                                             <TableHead className="text-foreground font-medium">Type</TableHead>
                                             <TableHead className="text-foreground font-medium">Méthode</TableHead>
                                             <TableHead className="text-foreground font-medium">Facture</TableHead>
@@ -588,16 +591,18 @@ export default function PaymentsTable({
                                                         </div>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-foreground">
-                                                    {payment.client ? (
-                                                        <div>
-                                                            <div className="font-medium">{getUserNameOnly(payment.client) || 'N/A'}</div>
-                                                            <div className="text-sm text-muted-foreground">{payment.client.email}</div>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-muted-foreground italic">Anonyme</span>
-                                                    )}
-                                                </TableCell>
+                                                {!presetClient && (
+                                                    <TableCell className="text-foreground">
+                                                        {payment.client ? (
+                                                            <div>
+                                                                <div className="font-medium">{getUserNameOnly(payment.client) || 'N/A'}</div>
+                                                                <div className="text-sm text-muted-foreground">{payment.client.email}</div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground italic">Anonyme</span>
+                                                        )}
+                                                    </TableCell>
+                                                )}
                                                 <TableCell>
                                                     <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
                                                         {getPaymentTypeLabel(payment.type)}

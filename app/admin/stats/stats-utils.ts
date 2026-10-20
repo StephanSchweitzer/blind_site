@@ -103,7 +103,6 @@ export const STAFF_METRIC_ORDER: StaffMetric[] = [
     'coupsDeCoeur',
     'news',
     'audioEvents',
-    'auditEvents',
 ];
 
 /** The heatmap's own button row: the combined total first, then each metric on its own. */
@@ -127,6 +126,7 @@ export function staffMetricFilterLabel(metric: StaffMetricFilter): string {
  * Two series are deliberately NOT here:
  *   - newMembers / activityEvents moved into the Membres card, where the
  *     Lecteurs / Auditeurs / Autres filter makes them say more than a bare total;
+ *   - coupsDeCoeur / news: their cards were always 0, so they left too;
  *   - auditEvents left the strip altogether. The journal is purged after
  *     AUDIT_RETENTION_DAYS, so on the 3-month and 6-month presets that card
  *     drew two weeks of real data followed by a long tail of zeros — a decline
@@ -143,7 +143,7 @@ export const TREND_TABS: TrendTab[] = [
     {
         value: 'production',
         label: 'Production',
-        metrics: ['books', 'coupsDeCoeur', 'news', 'audioEvents'],
+        metrics: ['books', 'audioEvents'],
     },
     {
         value: 'demandes',

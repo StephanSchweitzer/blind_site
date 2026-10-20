@@ -118,13 +118,6 @@ export default async function Dashboard() {
             orderCount,
             billCount,
             paymentCount,
-            auditEventCount,
-            newsCount,
-            siteContactCount,
-            teamMemberCount,
-            historyEventCount,
-            practicalInfoCount,
-            membershipCount,
         ],
         // Active lecteurs with no attribution in progress — the count the
         // Disponibilités card leads with.
@@ -162,13 +155,6 @@ export default async function Dashboard() {
             // ones, and the tile read 2 781 factures over a list of 2 777.
             prisma.bill.count({ where: { isActive: true } }),
             prisma.payment.count({ where: { isActive: true } }),
-            prisma.auditEvent.count(),
-            prisma.news.count(),
-            prisma.siteContact.count(),
-            prisma.teamMember.count(),
-            prisma.historyEvent.count(),
-            prisma.practicalInfo.count(),
-            prisma.membershipOption.count(),
         ]),
         getFreeReaderCount(),
         getOpenOrderDelais(),
@@ -286,7 +272,7 @@ export default async function Dashboard() {
                     <li><AdminDashboardCard title="Factures" count={billCount} countLabel="au total" href="/admin/bills" /></li>
                     <li><AdminDashboardCard title="Paiements" count={paymentCount} countLabel="au total" href="/admin/payments" /></li>
                     {isSuper && (
-                        <li><AdminDashboardCard title="Statistiques" count={auditEventCount} countLabel="modifications au journal" href="/admin/stats" /></li>
+                        <li><AdminDashboardCard title="Statistiques" href="/admin/stats" /></li>
                     )}
                 </ul>
             </section>
@@ -315,14 +301,14 @@ export default async function Dashboard() {
             <section aria-labelledby="dashboard-pages">
                 <h2 id="dashboard-pages" className="text-lg font-semibold text-foreground mb-4 px-1">Pages du site</h2>
                 <ul className={GRID}>
-                    <li><AdminDashboardCard title="Dernières infos" count={newsCount} href="/admin/news" /></li>
+                    <li><AdminDashboardCard title="Dernières infos" href="/admin/news" /></li>
                     {isSuper && (
                         <>
-                            <li><AdminDashboardCard title="Contact" count={siteContactCount} href="/admin/site-contact" /></li>
-                            <li><AdminDashboardCard title="Équipe" count={teamMemberCount} countLabel={teamMemberCount > 1 ? 'membres affichés' : 'membre affiché'} href="/admin/team" /></li>
-                            <li><AdminDashboardCard title="Historique" count={historyEventCount} countLabel={historyEventCount > 1 ? 'dates' : 'date'} href="/admin/historique" /></li>
-                            <li><AdminDashboardCard title="Infos pratiques" count={practicalInfoCount} countLabel={practicalInfoCount > 1 ? 'cartes' : 'carte'} href="/admin/informations-pratiques" /></li>
-                            <li><AdminDashboardCard title="Nous rejoindre" count={membershipCount} countLabel={membershipCount > 1 ? 'cartes' : 'carte'} href="/admin/nous-rejoindre" /></li>
+                            <li><AdminDashboardCard title="Contact" href="/admin/site-contact" /></li>
+                            <li><AdminDashboardCard title="Équipe" href="/admin/team" /></li>
+                            <li><AdminDashboardCard title="Historique" href="/admin/historique" /></li>
+                            <li><AdminDashboardCard title="Infos pratiques" href="/admin/informations-pratiques" /></li>
+                            <li><AdminDashboardCard title="Nous rejoindre" href="/admin/nous-rejoindre" /></li>
                         </>
                     )}
                 </ul>

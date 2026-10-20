@@ -308,7 +308,10 @@ export default function BillsTable({
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border hover:bg-muted">
                                             <TableHead className="text-foreground font-medium">ID</TableHead>
-                                            <TableHead className="text-foreground font-medium">Auditeur</TableHead>
+                                            {/* Dans un dossier, c'est toujours la même personne. */}
+                                            {!presetClient && (
+                                                <TableHead className="text-foreground font-medium">Auditeur</TableHead>
+                                            )}
                                             <TableHead className="text-foreground font-medium">Date de création</TableHead>
                                             <TableHead className="text-foreground font-medium">Date d&apos;émission</TableHead>
                                             <TableHead className="text-foreground font-medium">Date de paiement</TableHead>
@@ -344,12 +347,14 @@ export default function BillsTable({
                                                             </div>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-foreground">
-                                                        <div>
-                                                            <div className="font-medium">{getUserNameOnly(bill.client) || 'N/A'}</div>
-                                                            <div className="text-sm text-muted-foreground">{bill.client.email}</div>
-                                                        </div>
-                                                    </TableCell>
+                                                    {!presetClient && (
+                                                        <TableCell className="text-foreground">
+                                                            <div>
+                                                                <div className="font-medium">{getUserNameOnly(bill.client) || 'N/A'}</div>
+                                                                <div className="text-sm text-muted-foreground">{bill.client.email}</div>
+                                                            </div>
+                                                        </TableCell>
+                                                    )}
                                                     <TableCell className="text-foreground">
                                                         {formatDate(bill.creationDate)}
                                                     </TableCell>

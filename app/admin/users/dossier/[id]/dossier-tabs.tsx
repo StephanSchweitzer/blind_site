@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 interface DossierTabsProps {
     userId: number;
+    memberType: string;
 }
 
 const TABS = [
@@ -14,13 +15,31 @@ const TABS = [
     { slug: 'affectations', label: 'Attributions' },
 ];
 
-export default function DossierTabs({ userId }: DossierTabsProps) {
+/**
+ * Les onglets qui ont un sens pour ce type de membre : un lecteur n'a ni
+ * demandes ni factures, un donateur ne fait que des paiements. Tout autre type
+ * (permanent, trésorière…) garde les quatre.
+ */
+function tabsFor(memberType: string) {
+    const slugs =
+        memberType === 'auditeur' || memberType === 'ecouteur'
+            ? ['demandes', 'factures', 'paiements', 'affectations']
+            : memberType === 'lecteur'
+                ? ['affectations', 'paiements']
+                : memberType === 'bienfaiteur'
+                    ? ['paiements']
+                    : null;
+    return slugs ? TABS.filter((t) => slugs.includes(t.slug)).sort((a, b) => slugs.indexOf(a.slug) - slugs.indexOf(b.slug)) : TABS;
+}
+
+export default function DossierTabs({ userId, memberType }: DossierTabsProps) {
     const pathname = usePathname();
+    const tabs = tabsFor(memberType);
     const base = `/admin/users/dossier/${userId}`;
 
     return (
         <nav className="flex flex-wrap gap-1 border-b border-border">
-            {TABS.map((tab) => {
+            {tabs.map((tab) => {
                 const href = `${base}/${tab.slug}`;
                 const active = pathname === href || pathname.startsWith(`${href}/`);
                 return (

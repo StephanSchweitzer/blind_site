@@ -684,14 +684,17 @@ export function UserFormBackendBase({
                                         />
                                     </div>
 
-                                    <div className="flex items-center space-x-2 md:col-span-2">
-                                        <Checkbox
-                                            checked={address.isDefault}
-                                            onCheckedChange={(checked) => handleAddressChange(index, 'isDefault', checked as boolean)}
-                                            className="border-border data-[state=checked]:bg-primary"
-                                        />
-                                        <label className="text-sm font-medium text-foreground">Adresse par défaut</label>
-                                    </div>
+                                    {/* Avec une seule adresse, « par défaut » ne choisit rien. */}
+                                    {formData.addresses.length >= 2 && (
+                                        <div className="flex items-center space-x-2 md:col-span-2">
+                                            <Checkbox
+                                                checked={address.isDefault}
+                                                onCheckedChange={(checked) => handleAddressChange(index, 'isDefault', checked as boolean)}
+                                                className="border-border data-[state=checked]:bg-primary"
+                                            />
+                                            <label className="text-sm font-medium text-foreground">Adresse par défaut</label>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

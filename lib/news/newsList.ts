@@ -60,13 +60,12 @@ const single = (value: string | string[] | null | undefined): string | undefined
 export function parseAdminNewsQuery(
     get: (key: string) => string | string[] | null | undefined,
 ): AdminNewsQuery {
-    const field = single(get('field'));
     const type = single(get('type'));
     return {
         search: single(get('search')) ?? '',
-        field: (NEWS_SEARCH_FIELDS as readonly string[]).includes(field ?? '')
-            ? (field as NewsSearchField)
-            : 'all',
+        // Always 'all': the back office no longer offers a « Rechercher dans »
+        // scope, so an old ?field= link must not apply a hidden one.
+        field: 'all',
         type: type && (NEWS_TYPES as string[]).includes(type) ? (type as NewsType) : null,
         page: parsePageParam(single(get('page'))),
         limit: parseLimitParam(single(get('limit')) ?? null, ADMIN_NEWS_PAGE_SIZE),

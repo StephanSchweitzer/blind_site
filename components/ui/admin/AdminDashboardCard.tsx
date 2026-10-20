@@ -58,7 +58,8 @@ export function DashboardStatusList({ rows, className = '' }: { rows: DashboardS
 
 interface AdminDashboardCardProps {
     title: string;
-    count: number;
+    /** Left out where a total says nothing (the stats page, the site's pages). */
+    count?: number;
     /**
      * What the number counts, when the title alone doesn't say it —
      * « Disponibilités 85 » read as 85 disponibilités, not 85 lecteurs libres.
@@ -103,9 +104,11 @@ export function AdminDashboardCard({ title, count, countLabel, href, emphasis = 
         >
             <span className="min-w-0">
                 <span className={`block text-lg font-bold leading-tight ${colors.text}`}>{title}</span>
-                <span className={`block text-sm tabular-nums ${emphasis ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                    {countFormat.format(count)}{countLabel ? ` ${countLabel}` : ''}
-                </span>
+                {count !== undefined && (
+                    <span className={`block text-sm tabular-nums ${emphasis ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                        {countFormat.format(count)}{countLabel ? ` ${countLabel}` : ''}
+                    </span>
+                )}
             </span>
             {Icon && <Icon className={`h-5 w-5 shrink-0 ${colors.text} opacity-70`} aria-hidden="true" />}
         </Link>

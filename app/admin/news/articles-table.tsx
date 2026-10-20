@@ -30,11 +30,8 @@ import { SearchRescue } from '@/components/ui/search-rescue';
 import { ADMIN_PAGE_SIZE, pageInfo, parsePageParam, parsePageSizeParam } from '@/lib/pagination';
 import { AdminPaginatedList } from '@/admin/AdminPagination';
 import {
-    NEWS_SEARCH_FIELDS,
-    NEWS_SEARCH_FIELD_LABELS,
     type AdminNewsQuery,
     type AdminNewsResult,
-    type NewsSearchField,
 } from '@/lib/news/news-list-types';
 
 const DEBOUNCE_DELAY = 300;
@@ -47,8 +44,8 @@ interface ArticlesTableProps {
 }
 
 /** The part of a query that decides the results — what the fetch is keyed on. */
-type ListQuery = Pick<AdminNewsQuery, 'search' | 'field' | 'type' | 'page' | 'limit'>;
-const queryKey = (q: ListQuery) => JSON.stringify([q.search.trim(), q.field, q.type, q.page, q.limit]);
+type ListQuery = Pick<AdminNewsQuery, 'search' | 'type' | 'page' | 'limit'>;
+const queryKey = (q: ListQuery) => JSON.stringify([q.search.trim(), q.type, q.page, q.limit]);
 
 /**
  * La requête de la liste, telle qu'elle s'écrit dans l'URL — pour `updateURL`
@@ -58,7 +55,6 @@ const queryKey = (q: ListQuery) => JSON.stringify([q.search.trim(), q.field, q.t
 function newsListQuery(q: ListQuery): URLSearchParams {
     const params = new URLSearchParams();
     if (q.search.trim()) params.set('search', q.search);
-    if (q.field !== 'all') params.set('field', q.field);
     if (q.type) params.set('type', q.type);
     if (q.page > 1) params.set('page', q.page.toString());
     if (q.limit !== ADMIN_PAGE_SIZE) params.set('perPage', q.limit.toString());
@@ -80,7 +76,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
     const searchParams = useSearchParams();
 
     const [searchTerm, setSearchTerm] = useState(initialQuery.search);
-    const [field, setField] = useState<NewsSearchField>(initialQuery.field);
     const [type, setType] = useState<NewsType | null>(initialQuery.type);
     const [currentPage, setCurrentPage] = useState(initialQuery.page);
     const [pageSize, setPageSize] = useState(initialQuery.limit);
@@ -128,7 +123,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
         try {
             const params = new URLSearchParams({
                 search: q.search,
-                field: q.field,
                 page: q.page.toString(),
                 limit: q.limit.toString(),
                 // « Vouliez-vous dire … ? » when nothing is found — see lib/search-suggest.ts.
@@ -169,12 +163,12 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
     useEffect(() => {
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         searchTimeoutRef.current = setTimeout(() => {
-            void performSearch({ search: searchTerm, field, type, page: currentPage, limit: pageSize });
+            void performSearch({ search: searchTerm, type, page: currentPage, limit: pageSize });
         }, searchTerm ? DEBOUNCE_DELAY : 0);
         return () => {
             if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         };
-    }, [searchTerm, field, type, currentPage, pageSize, performSearch]);
+    }, [searchTerm, type, currentPage, pageSize, performSearch]);
 
     useEffect(() => () => {
         abortControllerRef.current?.abort();
@@ -188,11 +182,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
         abortControllerRef.current = null;
         setIsSearching(true);
         setSearchTerm(value);
-        setCurrentPage(1);
-    }, []);
-
-    const handleFieldChange = useCallback((value: NewsSearchField) => {
-        setField(value);
         setCurrentPage(1);
     }, []);
 
@@ -213,8 +202,8 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
 
     /** After a save or a deletion: same view, fresh rows and counts. */
     const refresh = useCallback(() => {
-        void performSearch({ search: searchTerm, field, type, page: currentPage, limit: pageSize }, true);
-    }, [performSearch, searchTerm, field, type, currentPage, pageSize]);
+        void performSearch({ search: searchTerm, type, page: currentPage, limit: pageSize }, true);
+    }, [performSearch, searchTerm, type, currentPage, pageSize]);
 
     // The list only carries title/type/date — the content comes from the API
     // when the dialogue opens, the same way the catalogue loads a book.
@@ -366,22 +355,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                             </button>
                         )}
                     </div>
-
-                    <div className="flex flex-col gap-1 w-full sm:w-44">
-                        <label htmlFor="news-search-field" className="text-xs font-medium text-muted-foreground">
-                            Rechercher dans
-                        </label>
-                        <select
-                            id="news-search-field"
-                            value={field}
-                            onChange={(e) => handleFieldChange(e.target.value as NewsSearchField)}
-                            className="w-full px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
-                        >
-                            {NEWS_SEARCH_FIELDS.map((f) => (
-                                <option key={f} value={f}>{NEWS_SEARCH_FIELD_LABELS[f]}</option>
-                            ))}
-                        </select>
-                    </div>
                 </div>
 
                 {error && (
@@ -392,7 +365,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
 
                 <AdminPaginatedList
                     info={listInfo}
-                    query={newsListQuery({ search: searchTerm, field, type, page: currentPage, limit: pageSize }).toString()}
+                    query={newsListQuery({ search: searchTerm, type, page: currentPage, limit: pageSize }).toString()}
                     noun={{ one: 'info', many: 'infos', feminine: true }}
                     label="Pages des dernières infos"
                     onNavigate={navigate}
@@ -413,7 +386,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                                 suggestions={results.searchSuggestions}
                                 unit={{ one: 'info', many: 'infos', feminine: true }}
                                 onApply={(s) => {
-                                    if (s.lifted.includes('field')) setField('all');
                                     if (s.lifted.includes('type')) setType(null);
                                     handleSearchChange(s.query);
                                 }}

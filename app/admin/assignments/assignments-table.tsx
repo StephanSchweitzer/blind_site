@@ -14,6 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Select,
     SelectContent,
@@ -346,24 +347,15 @@ export default function AssignmentsTable({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="w-full sm:w-48">
-                            <Select
-                                value={currentAudio}
-                                onValueChange={handleAudioFilter}
+                        <label className="flex items-center gap-2 text-foreground text-sm cursor-pointer whitespace-nowrap">
+                            <Checkbox
+                                checked={currentAudio === 'deposee'}
+                                onCheckedChange={(checked) => handleAudioFilter(checked ? 'deposee' : 'all')}
                                 disabled={isPending}
-                            >
-                                <SelectTrigger
-                                    aria-label="Filtrer par audio"
-                                    className="bg-field border-border text-foreground"
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border">
-                                    <SelectItem value="all" className="text-foreground">Avec ou sans audio</SelectItem>
-                                    <SelectItem value="deposee" className="text-foreground">Audio déposé</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                                className="border-border"
+                            />
+                            Audio déposé
+                        </label>
                         </MobileFilters>
                     </div>
 

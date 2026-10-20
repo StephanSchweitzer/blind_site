@@ -51,15 +51,6 @@ import { AdminPaginatedList } from '@/admin/AdminPagination';
 
 const DEBOUNCE_DELAY = 300;
 
-/** The « Rechercher dans » options, as the select below words them. */
-const SEARCH_FIELD_LABELS: Record<string, string> = {
-    title: 'Titre',
-    author: 'Auteur',
-    isbn: 'ISBN',
-    description: 'Description',
-    genre: 'Genre',
-};
-
 interface BookFormData {
     title: string;
     subtitle: string,
@@ -149,7 +140,6 @@ interface BooksTableProps {
  */
 function bookListQuery(q: {
     search: string;
-    filter: string;
     genres: number[];
     page: number;
     available: string;
@@ -159,7 +149,6 @@ function bookListQuery(q: {
 }): string {
     const params = new URLSearchParams();
     if (q.search) params.set('search', q.search);
-    if (q.filter !== 'all') params.set('filter', q.filter);
     if (q.genres.length > 0) params.set('genres', q.genres.join(','));
     if (q.available !== 'all') params.set('available', q.available);
     if (q.hidden !== 'all') params.set('hidden', q.hidden);
@@ -251,7 +240,6 @@ export default function BooksTable({
 
     // Search state
     const [searchTerm, setSearchTerm] = useState(initialSearch);
-    const [selectedFilter, setSelectedFilter] = useState(searchParams?.get('filter') || 'all');
     const [selectedAvailable, setSelectedAvailable] = useState(searchParams?.get('available') || 'all');
     const [selectedHidden, setSelectedHidden] = useState(searchParams?.get('hidden') || 'all');
     const [selectedAudio, setSelectedAudio] = useState(searchParams?.get('audio') || 'all');
@@ -321,7 +309,6 @@ export default function BooksTable({
     // Track if initial load had any filters
     const initialHadFilters = useRef(
         initialSearch ||
-        (searchParams?.get('filter') && searchParams?.get('filter') !== 'all') ||
         (searchParams?.get('genres')?.length || 0) > 0 ||
         (searchParams?.get('available') && searchParams?.get('available') !== 'all') ||
         (searchParams?.get('hidden') && searchParams?.get('hidden') !== 'all') ||
@@ -331,7 +318,6 @@ export default function BooksTable({
     // Update URL without page reload
     const updateURL = useCallback((
         search: string,
-        filter: string,
         genres: number[],
         page: number,
         available: string,
@@ -341,14 +327,13 @@ export default function BooksTable({
         // History API, not router.replace: the table fetches its own results
         // from /api/books, and a router navigation would re-render page.tsx on
         // the server — five more queries per keystroke, racing the fetch.
-        const qs = bookListQuery({ search, filter, genres, page, available, hidden, audio, pageSize });
+        const qs = bookListQuery({ search, genres, page, available, hidden, audio, pageSize });
         window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
     }, [pageSize]);
 
     // Perform search with debouncing and caching
     const performSearch = useCallback(async (
         term: string,
-        filter: string,
         genreIds: number[],
         page: number,
         available: string,
@@ -365,7 +350,7 @@ export default function BooksTable({
         }
 
         // Update URL
-        updateURL(term, filter, genreIds, page, available, hidden, audio);
+        updateURL(term, genreIds, page, available, hidden, audio);
 
         const shouldUseCache = !forceRefresh &&
             !cacheInvalidatedRef.current &&
@@ -373,7 +358,6 @@ export default function BooksTable({
             genreIds.length === 0 &&
             page === 1 &&
             pageSize === initialDataRef.current.pageSize &&
-            filter === 'all' &&
             available === 'all' &&
             hidden === 'all' &&
             audio === 'all' &&
@@ -401,7 +385,6 @@ export default function BooksTable({
         try {
             const params = new URLSearchParams({
                 search: term,
-                filter,
                 page: page.toString(),
                 limit: pageSize.toString(),
                 // « Vouliez-vous dire … ? » when nothing is found — see lib/search-suggest.ts.
@@ -440,7 +423,7 @@ export default function BooksTable({
                 setCurrentPage(data.totalPages);
             }
 
-            if (forceRefresh && !term && genreIds.length === 0 && page === 1 && filter === 'all' && available === 'all' && hidden === 'all' && audio === 'all') {
+            if (forceRefresh && !term && genreIds.length === 0 && page === 1 && available === 'all' && hidden === 'all' && audio === 'all') {
                 initialDataRef.current = {
                     pageSize,
                     books: data.books,
@@ -474,7 +457,7 @@ export default function BooksTable({
         }
 
         searchTimeoutRef.current = setTimeout(() => {
-            performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio);
+            performSearch(searchTerm, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio);
         }, searchTerm ? DEBOUNCE_DELAY : 0);
 
         return () => {
@@ -482,7 +465,7 @@ export default function BooksTable({
                 clearTimeout(searchTimeoutRef.current);
             }
         };
-    }, [searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, performSearch]);
+    }, [searchTerm, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, performSearch]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -508,11 +491,6 @@ export default function BooksTable({
             setCurrentPage(1);
         }
     }, [currentPage]);
-
-    const handleFilterChange = useCallback((filter: string) => {
-        setSelectedFilter(filter);
-        setCurrentPage(1);
-    }, []);
 
     const handleGenreChange = useCallback((genres: number[]) => {
         setSelectedGenres(genres);
@@ -723,7 +701,7 @@ export default function BooksTable({
     // needs the same refresh a save or a delete already gets.
     const handleBookRestored = () => {
         cacheInvalidatedRef.current = true;
-        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
+        performSearch(searchTerm, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
     };
 
     const handleBookEdited = async (bookId: number, isDeleted = false) => {
@@ -738,19 +716,19 @@ export default function BooksTable({
             bookLoader.close();
 
             setTimeout(() => {
-                performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
+                performSearch(searchTerm, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
             }, 100);
             return;
         }
 
         bookLoader.close();
-        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
+        performSearch(searchTerm, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
     };
 
     const handleBookAdded = async () => {
         cacheInvalidatedRef.current = true;
         setIsAddModalOpen(false);
-        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
+        performSearch(searchTerm, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
     };
 
     const getGenreName = (genreId: number) => {
@@ -770,7 +748,8 @@ export default function BooksTable({
     const suggestionFilterLabel = (key: CatalogueFilterKey): string => {
         switch (key) {
             case 'filter':
-                return `Rechercher dans : ${SEARCH_FIELD_LABELS[selectedFilter] ?? selectedFilter}`;
+                // No field select any more, so nothing here ever sets this key.
+                return 'Rechercher dans un champ';
             case 'genres': {
                 const names = selectedGenres.map(getGenreName).filter(Boolean);
                 return `${names.length > 1 ? 'Genres' : 'Genre'} : ${names.join(', ')}`;
@@ -795,7 +774,6 @@ export default function BooksTable({
 
     const applySuggestion = (suggestion: BookSearchSuggestion<Book>) => {
         const lifted = suggestion.lifted;
-        if (lifted.includes('filter')) setSelectedFilter('all');
         if (lifted.includes('genres')) setSelectedGenres([]);
         if (lifted.includes('available')) setSelectedAvailable('all');
         if (lifted.includes('hidden')) setSelectedHidden('all');
@@ -874,25 +852,6 @@ export default function BooksTable({
                                     <CircleX aria-hidden="true" size={20} />
                                 </button>
                             )}
-                        </div>
-
-                        <div className="flex flex-col gap-1 w-full sm:w-44">
-                            <label htmlFor="book-search-field" className="text-xs font-medium text-muted-foreground">
-                                Rechercher dans
-                            </label>
-                            <select
-                                id="book-search-field"
-                                value={selectedFilter}
-                                onChange={(e) => handleFilterChange(e.target.value)}
-                                className="w-full px-4 py-2 rounded-md bg-card text-foreground border-border focus:ring-2 focus:ring-ring"
-                            >
-                                <option value="all">Tous les champs</option>
-                                <option value="title">Titre</option>
-                                <option value="author">Auteur</option>
-                                <option value="isbn">ISBN</option>
-                                <option value="description">Description</option>
-                                <option value="genre">Genre</option>
-                            </select>
                         </div>
 
                         <div className="flex flex-col gap-1 w-full sm:w-auto">
@@ -1058,7 +1017,6 @@ export default function BooksTable({
                     info={listInfo}
                     query={bookListQuery({
                         search: searchTerm,
-                        filter: selectedFilter,
                         genres: selectedGenres,
                         page: currentPage,
                         available: selectedAvailable,
@@ -1278,7 +1236,7 @@ export default function BooksTable({
                     // with it the colour of the button that opened this dialogue.
                     onChanged={() => {
                         cacheInvalidatedRef.current = true;
-                        performSearch(searchTerm, selectedFilter, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
+                        performSearch(searchTerm, selectedGenres, currentPage, selectedAvailable, selectedHidden, selectedAudio, true);
                     }}
                 />
             )}

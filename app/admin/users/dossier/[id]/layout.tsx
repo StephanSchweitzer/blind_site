@@ -164,7 +164,7 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                 </CardContent>
             </Card>
 
-            <DossierTabs userId={user.id} />
+            <DossierTabs userId={user.id} memberType={user.memberType} />
 
             {children}
             </div>

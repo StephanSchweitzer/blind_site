@@ -20,11 +20,13 @@ export default async function DossierIndex({
 
     // Land on the tab that matches what the member does: an auditeur's file is
     // about what they asked for, a lecteur's about what they are reading.
-    // Anyone else keeps the attributions default.
+    // A donateur only has payments; anyone else keeps the attributions default.
     const tab =
         user?.memberType === 'auditeur' || user?.memberType === 'ecouteur'
             ? 'demandes'
-            : 'affectations';
+            : user?.memberType === 'bienfaiteur'
+                ? 'paiements'
+                : 'affectations';
 
     redirect(`/admin/users/dossier/${id}/${tab}`);
 }

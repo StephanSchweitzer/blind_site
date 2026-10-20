@@ -16,7 +16,7 @@ La barre de navigation en haut de la page reprend les mêmes liens que les carte
 
 En haut, la partie « **En ce moment** » réunit ce que le tableau de bord est seul à dire : le bandeau « À traiter » (voir plus bas) et les trois files d'attente du catalogue, « Doublons », « Audio orphelin » et « Corbeille audio », dont le nombre, en gras, dit s'il reste du travail. Viennent ensuite les cartes des sections Livres, Gestion, Membres et Pages du site.
 
-Chaque carte donne, sous son nom, le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours ; sur « Statistiques », celui des modifications gardées au journal. Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…).
+Chaque carte des sections Livres, Gestion et Membres donne, sous son nom, le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours. Les cartes « Statistiques » et celles des Pages du site n'affichent aucun nombre. Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…).
 
 ![Page principale - capture 1](/admin/aide/images/page-principale-01.jpg)
 

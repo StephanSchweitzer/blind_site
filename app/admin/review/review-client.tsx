@@ -687,7 +687,6 @@ function PairCard({
                     {diffCount === 0
                         ? 'Les champs comparés sont identiques.'
                         : `${diffCount} champ${diffCount > 1 ? 's' : ''} diffère${diffCount > 1 ? 'nt' : ''}.`}
-                    {mode === 'collapsed' && !picking && ' Cliquez pour comparer les deux fiches.'}
                 </div>
 
                 {picking && (

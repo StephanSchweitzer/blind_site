@@ -44,7 +44,7 @@ Toutes les pages dédiées aux membres comporteront (1) un bouton « Ajouter un 
 
 ![Membres - capture 1](/admin/aide/images/membres-01.jpg)
 
-Vous pouvez également filtrer les profils grâce aux deux compteurs situés en haut, sous le titre : « actifs » et « non actifs ». « Non actifs » regroupe tous les autres — indisponibles aujourd'hui, radiés, décédés —, si bien que les deux compteurs font toujours le total. Les statistiques détaillent ce second nombre en deux colonnes, « Indispo. » et « Inactifs ». Sur la capture ci-dessous, antérieure au changement de nom, le second compteur s'appelle encore « inactifs ».
+Le filtre « Statut » limite la liste à un statut précis, ou à « Non actifs », qui regroupe tous les autres — indisponibles aujourd'hui, radiés, décédés. Le nombre total de membres s'affiche en bas du tableau (« 1–25 sur N »). Les statistiques détaillent les non actifs en deux colonnes, « Indispo. » et « Inactifs ». Sur la capture ci-dessous, antérieure à ce changement, les compteurs « actifs » et « non actifs » figuraient encore sous le titre, ainsi qu'une colonne « Dernière mise à jour ».
 
 ![Membres - capture 2](/admin/aide/images/membres-02.jpg)
 
@@ -148,11 +148,11 @@ Lorsque vous cliquez dessus, vous accédez au dossier de ce membre.
 
 ![Membres - capture 20](/admin/aide/images/membres-20.jpg)
 
-À l'aide des onglets situés au milieu de la page, vous pouvez consulter : (1) toutes les demandes que cette personne a jamais effectuées, (2) toutes ses factures, (3) tous ses paiements, et (4) les attributions qu'elle a lues ou qui lui ont été lues.
+Les onglets situés au milieu de la page dépendent du type de membre. Un auditeur en a quatre : (1) toutes les demandes qu'il a jamais effectuées, (2) toutes ses factures, (3) tous ses paiements, et (4) les attributions qui lui ont été lues. Un lecteur n'a que ses attributions et ses paiements, et un donateur que ses paiements. Les autres types de membres (permanents, trésorière…) gardent les quatre onglets.
 
 ![Membres - capture 21](/admin/aide/images/membres-21.jpg)
 
-Tous ces onglets fonctionnent presque exactement de la même manière que les sections correspondantes. Si vous avez besoin d'explications, veuillez vous reporter à ces sections. Dans l'onglet « Demandes », la colonne « Auditeur » n'apparaît pas, puisque c'est toujours la personne du dossier, et les filtres ne s'affichent que lorsque ses demandes tiennent sur plusieurs pages.
+Tous ces onglets fonctionnent presque exactement de la même manière que les sections correspondantes. Si vous avez besoin d'explications, veuillez vous reporter à ces sections. Dans les onglets « Demandes » et « Factures », la colonne « Auditeur » n'apparaît pas, ni la colonne « Client » dans l'onglet « Paiements », puisque c'est toujours la personne du dossier, et les filtres ne s'affichent que lorsque ses demandes tiennent sur plusieurs pages.
 
 Vous pouvez aussi ouvrir un dossier en cliquant sur le nom d'une personne dans la liste des [Demandes](/admin/aide/demandes) ou des [Attributions](/admin/aide/attributions).
 

@@ -49,7 +49,6 @@ import {
 import { describeUnavailability, resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
 import { CopyIdButton } from '@/admin/CopyableId';
 import { MobileFilters } from '@/admin/MobileFilters';
-import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
@@ -68,7 +67,6 @@ interface UsersTableProps {
         activityStatus: string;
         unavailableFrom: Date | string | null;
         unavailableUntil: Date | string | null;
-        lastUpdated: string | null;
         civility?: { name: string } | null;
     }>;
     /** Page courante, taille, total — lib/pagination.ts `pageInfo`. */
@@ -77,9 +75,6 @@ interface UsersTableProps {
     initialStatus: string;
     initialLanguage: string;
     initialCotisation: string;
-    scopedTotal: number;
-    activeCount: number;
-    inactiveCount: number;
     currentUserAccessLevel?: string;
     /** « Vouliez-vous dire … ? », computed only when the search found nobody. */
     searchSuggestions?: RescueSuggestion[];
@@ -118,9 +113,6 @@ export default function UsersTable({
                                        initialStatus,
                                        initialLanguage,
                                        initialCotisation,
-                                       scopedTotal,
-                                       activeCount,
-                                       inactiveCount,
                                        currentUserAccessLevel,
                                        searchSuggestions,
                                        alsoFoundIn = [],
@@ -145,11 +137,6 @@ export default function UsersTable({
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     const { plural, singular } = USER_TYPE_META[type];
-
-    // Which activity segment (if any) the current status filter is showing. The
-    // actif/inactif figures double as toggle chips that drive this filter.
-    const activeSelected = statusFilter === 'ACTIVE' || statusFilter === 'active';
-    const inactiveSelected = statusFilter === 'inactive';
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -237,15 +224,6 @@ export default function UsersTable({
         window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
     };
 
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return 'Non disponible';
-        return parisDate(dateString, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        });
-    };
-
     return (
         <Card className="border-border bg-card shadow-xl">
             <CardHeader className="border-b border-border">
@@ -254,40 +232,6 @@ export default function UsersTable({
                         <div className="flex flex-wrap items-center gap-2">
                             <CardTitle className="text-2xl text-foreground">{plural}</CardTitle>
                             <AideLink section="membres" />
-                        </div>
-                        <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
-                            <span>
-                                {scopedTotal} {singular}{scopedTotal > 1 ? 's' : ''} au total
-                            </span>
-                            <span aria-hidden className="text-muted-foreground/50">&#8226;</span>
-                            <button
-                                type="button"
-                                aria-pressed={activeSelected}
-                                onClick={() => handleStatusFilter(activeSelected ? 'all' : 'ACTIVE')}
-                                title={activeSelected ? 'Retirer le filtre' : 'Afficher uniquement les actifs'}
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
-                                    activeSelected
-                                        ? 'bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-800'
-                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                                }`}
-                            >
-                                <span className={`h-1.5 w-1.5 rounded-full ${activeSelected ? 'bg-emerald-400' : 'bg-emerald-500/50'}`} />
-                                {activeCount} actif{activeCount > 1 ? 's' : ''}
-                            </button>
-                            <button
-                                type="button"
-                                aria-pressed={inactiveSelected}
-                                onClick={() => handleStatusFilter(inactiveSelected ? 'all' : 'inactive')}
-                                title={inactiveSelected ? 'Retirer le filtre' : 'Afficher uniquement les non actifs'}
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
-                                    inactiveSelected
-                                        ? 'bg-red-100 text-red-900 ring-1 ring-inset ring-red-300 dark:bg-red-950 dark:text-red-300 dark:ring-red-800'
-                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                                }`}
-                            >
-                                <span className={`h-1.5 w-1.5 rounded-full ${inactiveSelected ? 'bg-red-400' : 'bg-red-500/50'}`} />
-                                {inactiveCount} non actif{inactiveCount > 1 ? 's' : ''}
-                            </button>
                         </div>
                     </div>
                     {canCreateUsers && (
@@ -462,7 +406,6 @@ export default function UsersTable({
                                                 <TableHead className="text-foreground font-medium">Niveau d&apos;acc&#232;s</TableHead>
                                             )}
                                             <TableHead className="text-foreground font-medium">Statut</TableHead>
-                                            <TableHead className="text-foreground font-medium">Derni&#232;re mise &#224; jour</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -493,7 +436,6 @@ export default function UsersTable({
                                                 <TableCell>
                                                     <StatusCell user={user} />
                                                 </TableCell>
-                                                <TableCell className="text-foreground">{formatDate(user.lastUpdated)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>

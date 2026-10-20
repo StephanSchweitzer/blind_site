@@ -490,7 +490,6 @@ function AlertGroup({
 export default function AvailabilityDashboard({ data }: { data: AvailabilityResponse }) {
     const router = useRouter();
     const [isRefreshing, startRefresh] = useTransition();
-    const [isSweeping, setIsSweeping] = useState(false);
     const [period, setPeriod] = useState<PeriodPreset>('3m');
     const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
     const [search, setSearch] = useState('');
@@ -621,28 +620,6 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
         (p) => isTakingAttributions(p) && p.activeAssignments < (p.maxConcurrentAssignments ?? 3)
     );
     const freeRoster = freeReaders(people, today);
-
-    const runSweep = async () => {
-        setIsSweeping(true);
-        try {
-            const response = await fetch('/api/availability/expire', { method: 'POST' });
-            const body = await response.json();
-            toast({
-                title: response.ok ? 'Indisponibilités clôturées' : 'Erreur',
-                description: body.message,
-                variant: response.ok ? undefined : 'destructive',
-            });
-            if (response.ok) router.refresh();
-        } catch {
-            toast({
-                title: 'Erreur',
-                description: 'La clôture des indisponibilités a échoué.',
-                variant: 'destructive',
-            });
-        } finally {
-            setIsSweeping(false);
-        }
-    };
 
     const displayedReaders = useMemo(() => {
         const rows = readerRows.filter(
@@ -978,33 +955,9 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                         : 'aucune précision sur la fiche',
                                 }))}
                             />
-                            <AlertGroup
-                                title="Absences terminées"
-                                icon={<CheckCircle2 size={15} className="text-muted-foreground" />}
-                                onOpen={openPerson}
-                                rows={filteredAlerts.elapsed.map((a) => ({
-                                    key: a.person.id,
-                                    person: a.person,
-                                    meta: `fin le ${formatDayKeyShort(a.until!)}`,
-                                    detail: `terminée le ${formatDayKey(a.until!)}`,
-                                }))}
-                            />
                         </div>
                     )}
 
-                    {/* Sweeps every elapsed indisponibilité server-side, not just the
-                        filtered ones on screen, so this stays gated on the unfiltered
-                        count. */}
-                    {alerts.elapsed.length > 0 && (
-                        <Button variant="outline" size="sm" onClick={runSweep} disabled={isSweeping}>
-                            {isSweeping ? (
-                                <Loader2 size={15} className="mr-2 animate-spin" />
-                            ) : (
-                                <CheckCircle2 size={15} className="mr-2" />
-                            )}
-                            Clôturer les indisponibilités terminées
-                        </Button>
-                    )}
                 </div>
             </section>
 

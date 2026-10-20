@@ -95,6 +95,6 @@ Sur le catalogue du site public, ouvrir la fiche d'un livre met son adresse dans
 
 C'est la page la plus utilisée. Écrivez simplement : beaucoup de nos auditeurs écoutent ces textes avec un lecteur d'écran.
 
-Pour retrouver une info, tapez dans la barre de recherche : un mot du titre, du texte, le nom de l'auteur, ou le numéro de l'info. Les accents et les majuscules ne comptent pas (« evenement » trouve « Événement »). Le menu « **Rechercher dans** » limite la recherche au titre, au contenu ou à l'auteur. Quand une info remonte grâce à son texte, le passage trouvé s'affiche sous son titre.
+Pour retrouver une info, tapez dans la barre de recherche : un mot du titre, du texte, le nom de l'auteur, ou le numéro de l'info. Les accents et les majuscules ne comptent pas (« evenement » trouve « Événement »). Quand une info remonte grâce à son texte, le passage trouvé s'affiche sous son titre.
 
 Sous le titre de la page, le nombre d'infos trouvées est détaillé par type : cliquez sur un type pour n'afficher que celui-là, et cliquez de nouveau pour retirer le filtre.
