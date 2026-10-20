@@ -103,7 +103,7 @@ export function EditAssignmentModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[80dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-4xl max-h-[80dvh] overflow-y-auto bg-card border-border">
                 <DialogHeader>
                     <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">
                         Modifier l&apos;attribution

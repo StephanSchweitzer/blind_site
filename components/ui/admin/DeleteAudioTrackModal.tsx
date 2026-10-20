@@ -110,7 +110,7 @@ export function DeleteAudioTrackModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-lg bg-card border-border">
                 <DialogHeader>
                     <DialogTitle className="text-foreground flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-red-500" />

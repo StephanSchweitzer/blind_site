@@ -427,7 +427,7 @@ export default function ReviewClient({ pairs, pagination, queueTotal, search, se
                     if (!open && !isPending) setEscalation(null);
                 }}
             >
-                <DialogContent className="max-w-lg bg-card border-border [&>button>svg]:text-white">
+                <DialogContent className="max-w-lg bg-card border-border">
                     <DialogHeader>
                         <DialogTitle>Signaler ce doublon à Stéphan</DialogTitle>
                         <DialogDescription>

@@ -654,7 +654,7 @@ export default function OrphansClient({
                 open={pending?.kind === 'create'}
                 onOpenChange={(open) => !open && setPending(null)}
             >
-                <DialogContent className="max-w-lg bg-card border-border [&>button>svg]:text-white">
+                <DialogContent className="max-w-lg bg-card border-border">
                     <DialogHeader>
                         <DialogTitle>Créer un livre pour ce dossier</DialogTitle>
                         <DialogDescription className="break-all font-mono text-xs">
@@ -742,7 +742,7 @@ export default function OrphansClient({
                 open={pending?.kind === 'dismiss'}
                 onOpenChange={(open) => !open && setPending(null)}
             >
-                <DialogContent className="max-w-lg bg-card border-border [&>button>svg]:text-white">
+                <DialogContent className="max-w-lg bg-card border-border">
                     <DialogHeader>
                         <DialogTitle>Écarter ce dossier</DialogTitle>
                         <DialogDescription>

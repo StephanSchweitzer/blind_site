@@ -126,7 +126,7 @@ export function RenameAudioTrackModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-lg bg-card border-border">
                 <DialogHeader>
                     <DialogTitle className="text-foreground flex items-center gap-2">
                         <Pencil className="h-5 w-5" />

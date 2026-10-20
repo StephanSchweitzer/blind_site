@@ -367,13 +367,12 @@ export function BookFormBackendBase({
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label htmlFor="publishedYear" className="text-sm font-medium text-foreground">
-                                    Année de publication *
+                                    Année de publication
                                 </label>
                                 <Input
                                     type="number"
                                     name="publishedYear"
                                     id="publishedYear"
-                                    required
                                     min="1800"
                                     max={new Date().getFullYear()}
                                     value={formData.publishedYear || ''}

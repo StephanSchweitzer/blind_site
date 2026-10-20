@@ -95,7 +95,7 @@ export function EditUserModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                 <DialogHeader>
                     <div className="flex items-center justify-between gap-4 pr-8">
                         <DialogTitle className="text-foreground flex flex-wrap items-center gap-2">

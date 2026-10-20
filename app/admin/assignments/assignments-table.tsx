@@ -34,6 +34,7 @@ import {
     AssignmentWithCurrentReader,
 } from '@/types';
 import { STATUS } from '@/lib/statusSync';
+import { orderStatusStyle } from '@/lib/orders/statusDisplay';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { CopyIdButton } from '@/admin/CopyableId';
 import { parisDate } from '@/lib/paris-day';
@@ -211,33 +212,17 @@ export default function AssignmentsTable({
         return parisDate(dateString);
     };
 
-    const getStatusDisplayName = (statusName: string) => {
-        const displayMap: Record<string, string> = {
-            'Attente envoi vers lecteur': 'Attente envoi',
-            'En attente de réception': 'En attente',
-            'Réceptionné': 'Réceptionné',
-            'Envoyé au lecteur': 'Envoyé',
-            'Chez le lecteur': 'Chez lecteur',
-            'Retourné aux ECA': 'Retourné',
-            'Attribution terminée': 'Terminée',
-            'Attribution annulée': 'Annulée',
-        };
-        return displayMap[statusName] || statusName;
+    // Une attribution ne porte que trois statuts (lib/statusSync.ts) ; on lit l'id,
+    // pas le libellé, et on reprend la palette des Demandes.
+    const getStatusDisplayName = (status: { id: number; name: string }) => {
+        if (status.id === STATUS.ATTENTE) return 'Attente envoi';
+        if (status.id === STATUS.EN_COURS) return 'En cours';
+        if (status.id === STATUS.TERMINE) return 'Terminée';
+        return status.name;
     };
 
-    const getStatusColor = (statusName: string) => {
-        const colorMap: Record<string, string> = {
-            'Attente envoi vers lecteur': 'bg-yellow-100 text-yellow-800 border border-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-800',
-            'En attente de réception': 'bg-orange-100 text-orange-800 border border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800',
-            'Réceptionné': 'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800',
-            'Envoyé au lecteur': 'bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800',
-            'Chez le lecteur': 'bg-indigo-100 text-indigo-800 border border-indigo-300 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800',
-            'Retourné aux ECA': 'bg-teal-100 text-teal-800 border border-teal-300 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-800',
-            'Attribution terminée': 'bg-green-100 text-green-800 border border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800',
-            'Attribution annulée': 'bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800',
-        };
-        return colorMap[statusName] || 'bg-muted text-muted-foreground border border-border';
-    };
+    const getStatusColor = (status: { id: number; name: string }) =>
+        orderStatusStyle(status).badge;
 
     return (
         <Card className="w-full bg-card border-border">
@@ -542,8 +527,8 @@ export default function AssignmentsTable({
                                                     {formatDate(assignment.returnedToECADate)}
                                                 </TableCell>
                                                 <TableCell className="w-[1%]">
-                                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(assignment.status.name)}`}>
-                                                        {getStatusDisplayName(assignment.status.name)}
+                                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(assignment.status)}`}>
+                                                        {getStatusDisplayName(assignment.status)}
                                                     </span>
                                                     {/* Same wording as on the demandes list: the reason in
                                                         words, only past a line. */}

@@ -219,7 +219,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
 
             {/* Which address? Only ever shown when the member has more than one. */}
             <Dialog open={!!choices} onOpenChange={(open) => !open && setChoices(null)}>
-                <DialogContent className="max-w-md bg-card border-border [&>button>svg]:text-white">
+                <DialogContent className="max-w-md bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Quelle adresse ?</DialogTitle>
                         <DialogDescription className="text-muted-foreground">
@@ -253,7 +253,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
 
             {/* Nothing to print, or the lookup failed. */}
             <Dialog open={!!error} onOpenChange={(open) => !open && setError(null)}>
-                <DialogContent className="max-w-md bg-card border-border [&>button>svg]:text-white">
+                <DialogContent className="max-w-md bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">
                             Étiquette d&apos;adresse

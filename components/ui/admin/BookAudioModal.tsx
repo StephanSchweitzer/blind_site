@@ -690,7 +690,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                     onEscapeKeyDown={(e) => busy && e.preventDefault()}
                     onPointerDownOutside={(e) => busy && e.preventDefault()}
                     onInteractOutside={(e) => busy && e.preventDefault()}
-                    className={`max-w-4xl max-h-[88dvh] flex flex-col overflow-hidden bg-card border-border [&>button>svg]:text-white ${
+                    className={`max-w-4xl max-h-[88dvh] flex flex-col overflow-hidden bg-card border-border ${
                         busy ? '[&>button]:hidden' : ''
                     }`}
                 >

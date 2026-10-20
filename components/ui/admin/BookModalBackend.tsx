@@ -25,7 +25,7 @@ export function BookModalBackend({ isOpen, onOpenChange, onBookAdded }: BookModa
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[85dvh] flex flex-col overflow-hidden bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-4xl max-h-[85dvh] flex flex-col overflow-hidden bg-card border-border">
 
                 <DialogHeader className="flex-shrink-0">
                     <DialogTitle className="text-foreground">Ajouter un nouveau livre</DialogTitle>

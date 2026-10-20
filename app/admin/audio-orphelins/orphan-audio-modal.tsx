@@ -112,7 +112,7 @@ export function OrphanAudioModal({ orphanId, onOpenChange }: Props) {
 
     return (
         <Dialog open={orphanId != null} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl max-h-[88dvh] flex flex-col overflow-hidden bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-3xl max-h-[88dvh] flex flex-col overflow-hidden bg-card border-border">
                 <DialogHeader className="flex-shrink-0">
                     <DialogTitle className="text-foreground">
                         Écouter le dossier {data ? `— ${data.title}` : ''}

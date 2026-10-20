@@ -209,7 +209,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
                     if (!busy && !open) setDraftBill(null);
                 }}
             >
-                <DialogContent className="max-w-md bg-card border-border [&>button>svg]:text-white">
+                <DialogContent className="max-w-md bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Cette facture est un brouillon</DialogTitle>
                         <DialogDescription className="text-muted-foreground">
@@ -261,7 +261,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
                 variant — the button variant already has the bill in hand and
                 shows its errors inside the draft dialog. */}
             <Dialog open={!!error && !draftBill} onOpenChange={(open) => !open && setError(null)}>
-                <DialogContent className="max-w-md bg-card border-border [&>button>svg]:text-white">
+                <DialogContent className="max-w-md bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Facture</DialogTitle>
                         <DialogDescription className="text-muted-foreground">{error}</DialogDescription>

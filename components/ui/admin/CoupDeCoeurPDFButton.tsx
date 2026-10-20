@@ -124,7 +124,7 @@ export const CoupDeCoeurPDFButton: React.FC<CoupDeCoeurPDFButtonProps> = ({
             )}
 
             <Dialog open={!!error} onOpenChange={(open) => !open && setError(null)}>
-                <DialogContent className="max-w-md bg-card border-border [&>button>svg]:text-white">
+                <DialogContent className="max-w-md bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Liste de livres</DialogTitle>
                         <DialogDescription className="text-muted-foreground">{error}</DialogDescription>

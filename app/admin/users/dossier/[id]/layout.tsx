@@ -7,6 +7,8 @@ import DossierHeaderName from './dossier-header-name';
 import DossierDeletedNotice from './dossier-deleted-notice';
 import { MEMBER_TYPE_LABELS, getMemberTypeColor } from '@/lib/user-enums';
 import { formatPhone } from '@/lib/utils';
+import { resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
+import { getUserActivityStatusColor, getUserActivityStatusLabel } from '@/lib/user-activity-enums';
 import { computeCotisationStatus, formatCotisationDate, isCotisationExempt } from '@/lib/cotisation';
 import { getCurrentUser, isAdmin, isSuperAdmin } from '@/lib/auth/guards';
 import { MailingLabelButton } from '@/admin/MailingLabelButton';
@@ -44,7 +46,9 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
             // Un compte permanent ne se restaure que par un super administrateur
             // (POST /api/user/[id]/restore) : le bandeau n'offre le bouton qu'à lui.
             accessLevel: true,
-            isActive: true,
+            activityStatus: true,
+            unavailableFrom: true,
+            unavailableUntil: true,
             // A soft-deleted person still resolves by id on purpose (findUnique
             // is not filtered — see lib/prisma.ts), so the dossier has to say so
             // itself. Without this the page renders identically to a live one.
@@ -70,6 +74,9 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
         [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Sans nom';
 
     const isDeleted = user.deletedAt !== null;
+    const activityStatus = resolveEffectiveActivityStatus(user);
+    // Un téléphone importé peut valoir "0" : moins de 6 chiffres, ce n'est pas un numéro.
+    const phones = [user.cellPhone, user.homePhone].filter((p) => (p ?? '').replace(/\D/g, '').length >= 6);
 
     return (
         <div className="space-y-4">
@@ -105,9 +112,9 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                                         Supprimé
                                     </span>
                                 )}
-                                {user.isActive === false && (
-                                    <span className="inline-flex items-center rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 px-2.5 py-1 text-xs font-medium">
-                                        Inactif
+                                {activityStatus !== 'ACTIVE' && (
+                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getUserActivityStatusColor(activityStatus)}`}>
+                                        {getUserActivityStatusLabel(activityStatus)}
                                     </span>
                                 )}
                                 {cotisation.isPaid && (
@@ -126,8 +133,8 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                             </div>
                             <div className="mt-2 text-sm text-muted-foreground space-y-0.5">
                                 {user.email && <div>{user.email}</div>}
-                                {(user.cellPhone || user.homePhone) && (
-                                    <div>{[user.cellPhone, user.homePhone].map((p) => formatPhone(p)).filter(Boolean).join(' · ')}</div>
+                                {phones.length > 0 && (
+                                    <div>{phones.map((p) => formatPhone(p)).filter(Boolean).join(' · ')}</div>
                                 )}
                             </div>
                             {/* Étiquette d'adresse, printable at any time — the point

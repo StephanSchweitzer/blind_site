@@ -262,7 +262,7 @@ export function DeleteBookModal({
                 onOpenChange(open);
             }}
         >
-            <DialogContent className="max-w-xl bg-card border-border [&>button>svg]:text-white">
+            <DialogContent className="max-w-xl bg-card border-border">
                 <DialogHeader>
                     <DialogTitle className="text-foreground flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-red-500" />

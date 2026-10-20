@@ -589,8 +589,7 @@ export default function BooksTable({
                     // UTC year, not local: what this field shows is what the save
                     // writes back, so reading it in the viewer's timezone moves the
                     // date every time a book is edited west of Greenwich.
-                    publishedYear: (calendarYear(bookDetails.publishedDate) ?? new Date().getFullYear())
-                        .toString(),
+                    publishedYear: calendarYear(bookDetails.publishedDate)?.toString() ?? '',
                     genres: genreIds.map(String),
                     isbn: bookDetails.isbn || undefined,
                     description: bookDetails.description || undefined,
