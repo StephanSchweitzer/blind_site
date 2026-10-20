@@ -210,7 +210,7 @@ export function AdminPaginationTop({
                 {totalPages > 1 && (
                     <nav aria-label={`${label} (haut)`} className="flex items-center gap-1.5">
                         {prev}
-                        <span className="px-1 text-sm text-muted-foreground tabular-nums">
+                        <span className="px-1 text-sm text-muted-foreground tabular-nums whitespace-nowrap">
                             Page <span className="font-medium text-foreground">{nf.format(page)}</span> sur {nf.format(totalPages)}
                         </span>
                         {next}
@@ -362,7 +362,10 @@ export function AdminPaginatedList({
     return (
         <div aria-busy={props.pending} className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
+                {/* flex-auto, pas flex-1 : la barre part de sa largeur réelle, donc
+                    sur téléphone c'est `aside` qui passe à la ligne, au lieu
+                    d'écraser « Page 1 sur 8 » sur trois lignes à côté de lui. */}
+                <div className="min-w-0 flex-auto">
                     <AdminPaginationTop {...props} anchorId={anchorId} />
                 </div>
                 {aside}

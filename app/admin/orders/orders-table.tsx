@@ -471,7 +471,9 @@ export default function OrdersTable({
                 {/* The list — aria-busy while a filter, sort or page change loads. */}
                 <div aria-busy={isPending} className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
+                        {/* flex-auto, comme dans AdminPaginatedList : sur téléphone
+                            le bouton passe à la ligne plutôt que d'écraser la barre. */}
+                        <div className="min-w-0 flex-auto">
                             <AdminPaginationTop
                                 info={pagination}
                                 noun={NOUN}
