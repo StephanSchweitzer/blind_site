@@ -144,11 +144,13 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
         setNotes((prev) => withNote(prev, bookId, note));
     };
 
-    const { navigateWithoutWarning, NavigationWarningDialog } = useWarnIfUnsavedChanges({
+    const { navigateWithoutWarning } = useWarnIfUnsavedChanges({
         unsaved: isDirty && !isSaving && !isDeleting,
-        message:
-            'Les modifications de cette liste de livres ne sont pas enregistrées.\n\n' +
-            'Pour les garder, cliquez sur « Enregistrer » en bas de la page ; sinon quittez la page.',
+        prompt: {
+            description:
+                'Les modifications de cette liste de livres ne sont pas enregistrées.\n\n' +
+                'Pour les garder, cliquez sur « Enregistrer » en bas de la page ; sinon quittez la page.',
+        },
     });
 
     const leave = () => {
@@ -506,8 +508,6 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-            <NavigationWarningDialog />
         </form>
     );
 }

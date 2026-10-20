@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { useWarnIfUnsavedChanges } from '@/components/userWarnIfUnsavedChanges';
 import { useAudioUpload, type FileProgress, type UploadPhase } from '@/hooks/useAudioUpload';
 import { safeZipName, useAudioFolderZip, type ZipEntry } from '@/hooks/useAudioFolderZip';
 import {
@@ -595,14 +596,20 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
      * The bytes go browser → B2 directly, so leaving the page IS the abort:
      * there is no server-side job to pick the transfer back up. The dialogue is
      * sealed below (no Escape, no click-outside, no close button); this covers
-     * the exits the app doesn't own — reload, back, closing the tab.
+     * the other exits — Précédent through our dialogue, reload and closing the
+     * tab through the browser's prompt.
      */
-    useEffect(() => {
-        if (!busy) return;
-        const warn = (e: BeforeUnloadEvent) => e.preventDefault();
-        window.addEventListener('beforeunload', warn);
-        return () => window.removeEventListener('beforeunload', warn);
-    }, [busy]);
+    useWarnIfUnsavedChanges({
+        unsaved: busy,
+        prompt: {
+            title: 'Envoi en cours',
+            description:
+                'Des fichiers sont en cours d’envoi. Si vous quittez la page, l’envoi sera interrompu ' +
+                'et le dossier restera incomplet.',
+            confirmLabel: 'Quitter quand même',
+            cancelLabel: 'Continuer l’envoi',
+        },
+    });
 
     /** Second phase: bytes sent, storage not done. See CloudFinalisingPanel. */
     const finalising =

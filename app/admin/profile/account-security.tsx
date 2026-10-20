@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
+import { confirmLeavingPage } from '@/components/userWarnIfUnsavedChanges';
 import { KeyRound, Loader2, LogOut, Save } from 'lucide-react';
 import { AdminCard } from '@/components/ui/admin';
 import { Button } from '@/components/ui/button';
@@ -140,7 +141,9 @@ export default function AccountSecurity({ email }: AccountSecurityProps) {
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+                        onClick={async () => {
+                            if (await confirmLeavingPage()) void signOut({ callbackUrl: '/auth/signin' });
+                        }}
                     >
                         <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
                         Déconnexion

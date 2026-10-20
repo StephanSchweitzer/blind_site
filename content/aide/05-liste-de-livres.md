@@ -111,7 +111,7 @@ Lorsque vous êtes prêt, cliquez sur « **Créer la liste** » (ou « **Enregis
 
 Une fois la liste créée, sa page s'ouvre : vous pouvez continuer à la compléter, ou l'imprimer.
 
-Sur une liste existante, « **Enregistrer** » vous laisse sur la page : un message « Liste enregistrée » le confirme, et la barre indique de nouveau « Aucune modification ». Vous pouvez donc enregistrer en cours de route, autant de fois que vous le souhaitez. Pour revenir au tableau des listes, cliquez sur « **Fermer** » dans la barre, ou sur « Listes de livres » en haut de la page. Tant qu'il reste des modifications non enregistrées, ce bouton s'appelle « **Annuler** » : il quitte la page sans les garder.
+Sur une liste existante, « **Enregistrer** » vous laisse sur la page : un message « Liste enregistrée » le confirme, et la barre indique de nouveau « Aucune modification ». Vous pouvez donc enregistrer en cours de route, autant de fois que vous le souhaitez. Pour revenir au tableau des listes, cliquez sur « **Fermer** » dans la barre, ou sur « Listes de livres » en haut de la page. Tant qu'il reste des modifications non enregistrées, ce bouton s'appelle « **Annuler** » : il quitte la page sans les garder. Si vous quittez la page autrement — un autre lien, ou « Précédent » dans le navigateur — une fenêtre vous demande de confirmer : « Rester sur la page » garde vos modifications, « Quitter la page » les abandonne.
 
 ## Modification des listes de livres
 
