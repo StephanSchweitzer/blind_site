@@ -1,8 +1,7 @@
 import { prisma } from '@/lib/prisma';
+import { lateBillsWhere } from '@/lib/billing';
 import { BillingStatus, Prisma } from '@prisma/client';
 
-// ⚠️ ADJUST this import to wherever your bills-table.tsx actually lives.
-// Your bills page imports it as `./bills-table`; from here it needs a path/alias.
 import BillsTable from '@/app/admin/bills/bills-table';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
@@ -37,10 +36,7 @@ export default async function FacturesTab({ params, searchParams }: PageProps) {
     const whereClause: Prisma.BillWhereInput = { isActive: true, clientId };
 
     if (showLate) {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        whereClause.state = BillingStatus.BILLED;
-        whereClause.issueDate = { lt: thirtyDaysAgo };
+        Object.assign(whereClause, lateBillsWhere());
     } else if (status) {
         whereClause.state = status;
     }

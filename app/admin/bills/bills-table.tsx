@@ -34,6 +34,7 @@ import {
     BILL_KIND_LABELS,
     getBillingStatusColor,
     getBillingStatusLabel,
+    BILL_LATE_AFTER_DAYS,
 } from '@/lib/billing-enums';
 import { AddBillFormBackend } from '@/admin/BillFormBackendBase';
 import { EditBillModal } from '@/admin/EditBillModal';
@@ -62,12 +63,10 @@ interface BillsTableProps {
     searchSuggestions?: RescueSuggestion[];
 }
 
-const LATE_THRESHOLD_DAYS = 30;
-
 const isBillLate = (bill: Bill): boolean => {
     if (bill.state !== BillingStatus.BILLED || !bill.issueDate) return false;
     const threshold = new Date();
-    threshold.setDate(threshold.getDate() - LATE_THRESHOLD_DAYS);
+    threshold.setDate(threshold.getDate() - BILL_LATE_AFTER_DAYS);
     return new Date(bill.issueDate) < threshold;
 };
 

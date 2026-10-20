@@ -15,9 +15,8 @@ export type DashboardStatusRow = {
      * volunteers' tasks, nothing is an emergency).
      * `todo` — work to do now that isn't late yet (duplications: they're meant
      * to be done straight away, so « À jour » would hide them).
-     * `neutral` — for information only, nothing anyone can act on yet.
      */
-    tone: 'warning' | 'todo' | 'ok' | 'neutral';
+    tone: 'warning' | 'todo' | 'ok';
     value: string;
     count: number;
 };
@@ -31,7 +30,6 @@ const toneClass: Record<DashboardStatusRow['tone'], string> = {
     warning: 'rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200',
     todo: 'rounded-full bg-blue-100 px-2.5 py-0.5 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200',
     ok: 'text-emerald-700 dark:text-emerald-300',
-    neutral: 'text-muted-foreground',
 };
 
 const countFormat = new Intl.NumberFormat('fr-FR');

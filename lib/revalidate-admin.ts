@@ -9,7 +9,7 @@ import { CACHE_TAGS } from '@/lib/cache-tags';
  * and re-query the database on every request, and from a route handler it
  * can't reach the browser's Router Cache either. Its only effect was to throw
  * away what IS cached under /admin — the prerendered pages (/admin/aide/*,
- * /admin/books/new, /admin/listes-de-livres/new…) and the reference-data entry
+ * /admin/listes-de-livres/new…) and the reference-data entry
  * below, which unstable_cache ties to the layout's path — so the next visit
  * rebuilt and rewrote them. Each rebuild is an ISR write on Vercel.
  *

@@ -72,7 +72,7 @@ Isolated from the public layout via its own `layout.tsx` + `Backend-Navbar`, gro
 
 | Route | Purpose |
 |---|---|
-| `/admin/books`, `/books/new`, `/books/[id]` | Catalogue CRUD. Search with availability pills, audio-presence and "hidden from catalogue" filters consolidated into a *Filtres* popover; create with ISBN check + Google Books lookup; per-book edit. |
+| `/admin/books` | Catalogue CRUD. Search with availability pills, audio-presence and "hidden from catalogue" filters consolidated into a *Filtres* popover; create with ISBN check + Google Books lookup; per-book edit. |
 | `/admin/genres` | Genre taxonomy applied to books. |
 | `/admin/listes-de-livres` (+ `new`, `[id]`) | Build staff-pick selections: pick books, record a description, reorder, export to PDF. |
 | `/admin/review` | **Doublons.** The duplicate-fusion queue, fed by `needsReview` / `id_arbre` from the Access import. Pairs a flagged book with its counterpart, shows the diff, and fuses on confirmation. A pair holding **two different recordings** cannot be fused: it is escalated instead (`escalatedAt` + an email via `lib/email/sendReviewEscalation.ts`) and left for a human. |
@@ -292,7 +292,6 @@ The two purges additionally accept a **signed-in super admin**, so they can be f
 Standard REST CRUD per entity (`books`, `genres`, `news`, `orders`, `assignments`, `bills`, `payments`, `listes-de-livres`, `user`), plus:
 
 **Audio**
-- `books/[id]/audio` — ordered tracks with presigned playback URLs (`withAuth`: auditeurs are the audience).
 - `books/[id]/audio/manage` — the same folder as the management dialogue needs it: raw keys, empty folders included (`withAdmin`).
 - `books/[id]/audio/state` — the cached columns only; cheap enough to ask for on sight, for a badge.
 - `books/[id]/audio/upload-url` — mints presigned PUTs, assigns filenames, creates the book's folder inline the first time it uploads; refuses (409, points at `/admin/audio-orphelins`) when the folder number the corpus would give it is already occupied by something else.
@@ -355,7 +354,7 @@ Built on semantic theme tokens (`bg-card`, `border-border`, `text-foreground`) s
 
 - **Layout primitives** — `AdminCard`, `AdminDashboardCard`.
 - **Entity search kit** — `EntitySearchCombobox` (debounced search-and-pick popover: `AbortController` cancellation, stale-results-while-loading, keyboard navigation, a spinner while a selection resolves) on `hooks/useEntitySearch`, plus `UserSearchCombobox` (optionally `assignable`-filtered), `BookSearchCombobox` and `BillSearchCombobox` (bill number, linked book/author, or payment reference — used by `PaymentFormBackendBase` to pick the facture a payment settles, replacing what used to be a plain dropdown of up to 100 bills). Don't hand-roll a search popover.
-- **Form bases** — `BookFormBackendBase`, `UserFormBackendBase`, `OrderFormBackendBase`, `AssignmentFormBackendBase`, `BillFormBackendBase`, `PaymentFormBackendBase`, `GenreFormBackendBase`, `NewsFormBackendBase`. **The "new" page and the "edit" modal render the same base**, differing only in whether `initialData` is present — the DRY spine of the admin.
+- **Form bases** — `BookFormBackendBase`, `UserFormBackendBase`, `OrderFormBackendBase`, `AssignmentFormBackendBase`, `BillFormBackendBase`, `PaymentFormBackendBase`, `GenreFormBackendBase`, `NewsFormBackendBase`. **The "new" form and the "edit" modal render the same base**, differing only in whether `initialData` is present — except for demandes, whose create form (`AddOrderFormBackend`) takes several books at once — the DRY spine of the admin.
 - **Modals** — `BookModalBackend`, `EditBookModal`, `Add`/`EditAssignmentModal`, `EditOrderModal`, `EditBillModal`, `EditPaymentModal`, `EditUserModal`, `DeleteBillModal` / `DeletePaymentModal`. `EditBillModal` encodes the billing state machine (DRAFT→BILLED→PAID→SOLDE, BILLED can reopen); `EditUserModal` is permission-aware.
 - **Audio manager** — `BookAudioButton` / `BookAudioModal` (upload with per-file progress, folder or plain-file picker with the same batching UX, per-track durations, folder zip download, corbeille with restore), plus `RenameAudioTrackModal`, `DeleteAudioTrackModal`, `DeleteAllAudioTracksModal`.
 - **Auxiliary display** — `BillHistory`, `UserActivityHistory`, `UserActivityGuardDialog` (blocks assigning work to inactive users, pairs with `useUserActivityGuard`), `CotisationStatusBanner`, `ActivityStatusFields`, `ReaderLanguagesField`, `AssignmentFormErrors`, and `BillPDF` / `BillPDFButton` (`@react-pdf/renderer`; the button also issues the bill DRAFT→BILLED). **`BillPDF` uses adaptive density spacing — preserve that logic when editing.**
@@ -378,7 +377,7 @@ Built on semantic theme tokens (`bg-card`, `border-border`, `text-foreground`) s
 
 ## 13. Tech stack
 
-Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL (Supabase) · NextAuth v4 · Tailwind CSS + shadcn/ui + Radix · Zod 4 · **Backblaze B2 via `@aws-sdk/client-s3` + `s3-request-presigner`** · AWS Polly · Vercel Blob · `client-zip` · React Email + Resend · `@react-pdf/renderer` · pnpm · Husky + lint-staged · deployed on Vercel.
+Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL (Supabase) · NextAuth v4 · Tailwind CSS + shadcn/ui + Radix · Zod 4 · **Backblaze B2 via `@aws-sdk/client-s3` + `s3-request-presigner`** · AWS Polly · Vercel Blob · `client-zip` · React Email + Resend · `@react-pdf/renderer` · pnpm · Husky · deployed on Vercel.
 
 Server state is fetched in the route handlers and in `hooks/` with plain `fetch` + `AbortController` (see `useEntitySearch`), and freshness comes from `router.refresh()` after a mutation plus the two revalidation helpers. There is deliberately **no client-side query cache** — `@tanstack/react-query` sat in `package.json` for a long time without a single import, and was removed rather than left to look like the house pattern. Adding one back is a decision to take on purpose, not by reaching for a dependency that happens to be installed.
 

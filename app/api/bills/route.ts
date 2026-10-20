@@ -13,13 +13,12 @@ import {
     guardForcedOrderPriced,
     billKindForOrders,
     type OrderAttachBlock,
+    lateBillsWhere,
 } from '@/lib/billing';
 import { buildBillSearchWhere } from '@/lib/search';
 import { billsTableInclude } from '@/types/models/bill.model';
 import { withAdmin } from '@/lib/auth/guards';
 import { parsePageParam, parseLimitParam, pageSkip } from '@/lib/pagination';
-
-const LATE_THRESHOLD_DAYS = 30;
 
 export const GET = withAdmin(async (request) => {
     try {
@@ -48,10 +47,7 @@ export const GET = withAdmin(async (request) => {
         }
 
         if (late) {
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - LATE_THRESHOLD_DAYS);
-            whereClause.state = BillingStatus.BILLED;
-            whereClause.issueDate = { lt: thirtyDaysAgo };
+            Object.assign(whereClause, lateBillsWhere());
         } else if (rawStatus && Object.values(BillingStatus).includes(rawStatus as BillingStatus)) {
             whereClause.state = rawStatus as BillingStatus;
         } else if (searchParams.get('excludeDraft') === 'true') {

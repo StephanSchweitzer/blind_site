@@ -4,7 +4,6 @@ import { andClauses, buildAssignmentSearchWhere } from '@/lib/search';
 import { getOpenAssignmentDelais, retardWhere, serializeDelaisFor } from '@/lib/orders/delais';
 import { resolveBookFilter } from '@/lib/books/bookFilter';
 
-// ⚠️ ADJUST this import to wherever your assignments-table.tsx actually lives.
 import AssignmentsTable from '@/app/admin/assignments/assignments-table';
 import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 

@@ -6,6 +6,7 @@ import {
     HAND_TYPED_SETTLEMENT_ARCHIVED,
     FORCE_REASON_MIN,
     FORCE_REASON_MAX,
+    BILL_LATE_AFTER_DAYS,
 } from '@/lib/billing-enums';
 import { STATUS, type GuardResult } from '@/lib/statusSync';
 // Le jour français, partagé — voir lib/paris-day.ts pour le pourquoi du fuseau.
@@ -19,8 +20,6 @@ type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0
  * lisent cette même clause, pour que le nombre affiché soit celui de la liste
  * qu'il ouvre.
  */
-export const BILL_LATE_AFTER_DAYS = 30;
-
 export function lateBillsWhere(now: Date = new Date()): Prisma.BillWhereInput {
     const threshold = new Date(now);
     threshold.setDate(threshold.getDate() - BILL_LATE_AFTER_DAYS);

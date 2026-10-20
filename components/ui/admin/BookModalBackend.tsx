@@ -1,13 +1,10 @@
 // BookModalBackend.tsx
-import React from 'react';
-import { Plus } from "lucide-react";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { AddBookFormBackend } from '@/admin/BookFormBackendBase';
 
 interface BookModalBackendProps {
@@ -38,34 +35,5 @@ export function BookModalBackend({ isOpen, onOpenChange, onBookAdded }: BookModa
                 </div>
             </DialogContent>
         </Dialog>
-    );
-}
-
-export function AddBookButtonBackend({ onBookAdded }: { onBookAdded?: (bookId: number) => void }) {  // Update type here too
-    const [isOpen, setIsOpen] = React.useState(false);
-
-    const handleButtonClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsOpen(true);
-    };
-
-    return (
-        <>
-            <Button
-                onClick={handleButtonClick}
-                className="bg-muted hover:bg-muted text-foreground"
-                type="button"
-            >
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter un nouveau livre
-            </Button>
-
-            <BookModalBackend
-                isOpen={isOpen}
-                onOpenChange={setIsOpen}
-                onBookAdded={onBookAdded}
-            />
-        </>
     );
 }
