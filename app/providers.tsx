@@ -4,7 +4,7 @@ import { SessionProvider, useSession } from 'next-auth/react'
 import { ThemeProvider } from 'next-themes';
 import React, { useEffect, useState } from "react";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
-import { clearSessionHint, hasSessionHint } from '@/lib/auth/session-hint';
+import { clearSessionHint, hasSessionHint, setSessionHint } from '@/lib/auth/session-hint';
 
 type Props = {
     children?: React.ReactNode
@@ -28,11 +28,17 @@ function initialSession(): null | undefined {
     return hasSessionHint() ? undefined : null;
 }
 
-/** A hint whose session has expired or been signed out costs one read, then goes. */
-function ForgetStaleSessionHint() {
+/**
+ * Keeps the hint in step with what the session read answered: renewed while
+ * someone is signed in, so it rolls with the JWT instead of lapsing 30 days
+ * after the last /admin visit; dropped once the session has expired or been
+ * signed out, after costing one read.
+ */
+function SyncSessionHint() {
     const { status } = useSession();
     useEffect(() => {
-        if (status === 'unauthenticated') clearSessionHint();
+        if (status === 'authenticated') setSessionHint();
+        else if (status === 'unauthenticated') clearSessionHint();
     }, [status]);
     return null;
 }
@@ -51,7 +57,7 @@ export const Providers = ({ children }: Props) => {
     const [session] = useState(initialSession);
     return (
         <SessionProvider session={session} refetchOnWindowFocus={false}>
-            <ForgetStaleSessionHint />
+            <SyncSessionHint />
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
                 <ConfirmProvider>{children}</ConfirmProvider>
             </ThemeProvider>
