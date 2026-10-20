@@ -16,13 +16,6 @@ import { MailingLabelButton } from '@/admin/MailingLabelButton';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const formatCurrency = (amount: string | number | null | undefined) =>
-    amount === null || amount === undefined
-        ? '-'
-        : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(
-            typeof amount === 'string' ? parseFloat(amount) : amount,
-        );
-
 interface LayoutProps {
     children: ReactNode;
     params: Promise<{ id: string }>;
@@ -53,8 +46,6 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
             // is not filtered — see lib/prisma.ts), so the dossier has to say so
             // itself. Without this the page renders identically to a live one.
             deletedAt: true,
-            currentBalance: true,
-            paymentThreshold: true,
             // Only to know whether an étiquette d'adresse can be printed — the
             // address itself is fetched on click, not rendered here.
             addresses: { select: { id: true }, take: 1 },
@@ -146,19 +137,6 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                                     hasAddress={user.addresses.length > 0}
                                 />
                             </div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Solde courant
-                            </div>
-                            <div className="text-xl font-semibold text-foreground">
-                                {formatCurrency(user.currentBalance?.toString() ?? null)}
-                            </div>
-                            {user.paymentThreshold && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                    Seuil: {formatCurrency(user.paymentThreshold.toString())}
-                                </div>
-                            )}
                         </div>
                     </div>
                 </CardContent>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,8 +28,6 @@ import {
     getMemberTypeLabel,
     ACCESS_LEVEL_VALUES,
     getAccessLevelLabel,
-    SAVE_TYPE_VALUES,
-    getSaveTypeLabel,
     DELIVERY_METHOD_VALUES,
     getDeliveryMethodLabel,
 } from '@/lib/user-enums';
@@ -100,6 +99,24 @@ function sanitizeInitialData(
             country: addr.country || 'France',
         })),
     };
+}
+
+/**
+ * Columns this form loads but no longer shows: a lecteur's availability, its
+ * notes and the attribution cap belong to the Disponibilités panel; the
+ * affiliation and the recording software are import leftovers. They stay out
+ * of the save so it never writes back the values it loaded over a change made
+ * in the panel meanwhile — the API reads an absent field as « unchanged », and
+ * on creation falls back to its own defaults (disponible, 3 attributions).
+ */
+function withoutHiddenFields(data: UserFormData): UserFormData {
+    const payload: Partial<UserFormData> = { ...data };
+    delete payload.isAvailable;
+    delete payload.availabilityNotes;
+    delete payload.maxConcurrentAssignments;
+    delete payload.nonProfitAffiliation;
+    delete payload.saveType;
+    return payload as UserFormData;
 }
 
 export function UserFormBackendBase({
@@ -212,7 +229,7 @@ export function UserFormBackendBase({
         setIsLoading(true);
         setError(null);
         try {
-            const newUserId = await onSubmit(formData);
+            const newUserId = await onSubmit(withoutHiddenFields(formData));
             if (onSuccess) {
                 onSuccess(newUserId);
             }
@@ -735,15 +752,6 @@ export function UserFormBackendBase({
                             )}
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Affiliation non-profit</label>
-                                <Input
-                                    value={formData.nonProfitAffiliation}
-                                    onChange={(e) => setFormData({ ...formData, nonProfitAffiliation: e.target.value })}
-                                    className="bg-field border-border text-foreground"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">ID Gestconte</label>
                                 <Input
                                     type="number"
@@ -764,67 +772,10 @@ export function UserFormBackendBase({
                         </div>
                     </div>
 
-                    {/* Disponibilité (attributions) — lecteur only (#18b). */}
-                    {formData.memberType === 'lecteur' && (
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
-                                Disponibilit&#233; (attributions)
-                            </h3>
-
-                            <div className="space-y-4">
-                                {/* Disponible Checkbox - Only for Lecteurs */}
-                                {formData.memberType === 'lecteur' && (
-                                    <>
-                                        <div className="bg-gradient-to-br from-card/40 to-card/20 p-4 rounded-lg border border-border/50 hover:border-border/50 transition-all">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="relative">
-                                                        <Checkbox
-                                                            checked={formData.isAvailable}
-                                                            onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked as boolean })}
-                                                            className="h-5 w-5 border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-md transition-all"
-                                                        />
-                                                        {formData.isAvailable && (
-                                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-sm font-medium text-foreground cursor-pointer">
-                                                            Disponible pour nouvelles attributions
-                                                        </label>
-                                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                                            {formData.isAvailable
-                                                                ? 'Peut recevoir de nouveaux livres'
-                                                                : 'Ne peut pas recevoir de nouveaux livres'}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                                    formData.isAvailable
-                                                        ? 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30'
-                                                        : 'bg-muted/20 text-muted-foreground border border-border/30'
-                                                }`}>
-                                                    {formData.isAvailable ? 'Disponible' : 'Indisponible'}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">Notes de disponibilité</label>
-                                            <Textarea
-                                                value={formData.availabilityNotes}
-                                                onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
-                                                className="bg-field border-border text-foreground"
-                                                placeholder="Ex: Il ne peut venir récupérer les livres que le samedi...."
-                                            />
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Reader-specific fields - Only for Lecteurs — next to their availability. */}
+                    {/* Reader-specific fields - Only for Lecteurs. Availability (the
+                        « disponible » switch, its notes) and the attribution cap are
+                        edited in the Disponibilités panel only — two editors for the
+                        same three columns drifted apart. The languages stay here. */}
                     {formData.memberType === 'lecteur' && (
                         <div className="space-y-4">
                             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
@@ -840,37 +791,18 @@ export function UserFormBackendBase({
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-foreground">Logiciel d&apos;enregistrement</label>
-                                    <Select
-                                        value={formData.saveType || 'none'}
-                                        onValueChange={(value) =>
-                                            setFormData({ ...formData, saveType: value === 'none' ? '' : value })
-                                        }
+                                <p className="text-sm text-muted-foreground md:col-span-2">
+                                    Disponibilité et charge : à gérer dans{' '}
+                                    <Link
+                                        prefetch={false}
+                                        href={userId ? `/admin/disponibilites?person=${userId}` : '/admin/disponibilites'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
                                     >
-                                        <SelectTrigger className="bg-field border-border text-foreground">
-                                            <SelectValue placeholder="Sélectionner..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-card border-border">
-                                            <SelectItem value="none" className="text-foreground">—</SelectItem>
-                                            {withCurrentValue(SAVE_TYPE_VALUES, formData.saveType).map((v) => (
-                                                <SelectItem key={v} value={v} className="text-foreground">
-                                                    {getSaveTypeLabel(v)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-foreground">Nombre maximum d&apos;attributions simultanées</label>
-                                    <Input
-                                        type="number"
-                                        value={formData.maxConcurrentAssignments || ''}
-                                        onChange={(e) => setFormData({ ...formData, maxConcurrentAssignments: e.target.value ? parseInt(e.target.value) : null })}
-                                        className="bg-field border-border text-foreground"
-                                    />
-                                </div>
+                                        Disponibilités
+                                    </Link>
+                                </p>
                             </div>
                         </div>
                     )}

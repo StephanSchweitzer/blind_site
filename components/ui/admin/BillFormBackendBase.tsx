@@ -14,7 +14,6 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Search, Loader2, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePickerField } from '@/components/ui/admin/DatePickerField';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -22,14 +21,9 @@ import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
 import { PaymentMethod, getPaymentMethodLabel } from '@/lib/payment-enums';
 import { useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
-import { getUserDisplayName } from '@/lib/users/displayName';
 import { parisDate } from '@/lib/paris-day';
-import { useVerifiedSuggestions } from '@/hooks/useVerifiedSuggestions';
-import { SearchSuggestions } from '@/components/ui/search-suggestions';
-import type { VocabularyDomain } from '@/lib/search-suggestion-types';
+import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { OrderNotFinishedNote, REVUE_ALONE, UnavailableOrderList, type UnavailableOrder } from './BillOrderPicker';
-
-const PEOPLE_DOMAIN: readonly VocabularyDomain[] = ['people'];
 
 // N3 — required fields top→bottom.
 const FIELD_ORDER = ['client', 'orders', 'issueDate'];
@@ -39,14 +33,11 @@ const FIELD_ORDER = ['client', 'orders', 'issueDate'];
  * route accepte.
  *
  * POST /api/bills ne crée qu'un brouillon ou une facture émise ; « Payée » reste
- * un état qu'on ATTEINT. Mais « Payée » et la case « Facture déjà réglée » ont
- * toujours désigné la même chose, et les avoir séparées obligeait à comprendre
- * qu'un menu et une case parlaient du même fait : le menu proposait deux états
- * pendant que la case en posait un troisième, sans que rien ne les relie.
- *
- * Ce sont donc maintenant DEUX VUES DU MÊME ÉTAT — cocher la case met le menu
- * sur « Payée », choisir « Payée » coche la case. À l'envoi, « Payée » part en
- * « Émise » accompagnée du règlement : la route crée le paiement, puis encaisse.
+ * un état qu'on ATTEINT. Une case « Facture déjà réglée » disait la même chose
+ * que « Payée » dans ce menu — deux commandes pour un seul fait —, elle a donc
+ * disparu : choisir « Payée » suffit, et fait apparaître le règlement. À
+ * l'envoi, « Payée » part en « Émise » accompagnée du règlement : la route crée
+ * le paiement, puis encaisse.
  */
 const SELECTABLE_STATES: BillingStatus[] = [
     BillingStatus.DRAFT,
@@ -141,19 +132,11 @@ export function BillFormBackendBase({
     const [issueDate, setIssueDate] = useState<Date | null>(null);
 
     // Saisie d'une facture déjà réglée, en un seul geste : la route en crée le
-    // paiement. Voir SELECTABLE_STATES — la case et le menu sont le même état.
+    // paiement. Voir SELECTABLE_STATES.
     const markAsPaid = state === BillingStatus.PAID;
-    const setMarkAsPaid = (next: boolean) =>
-        setState(next ? BillingStatus.PAID : BillingStatus.BILLED);
     const [paymentReference, setPaymentReference] = useState('');
     const [paymentDate, setPaymentDate] = useState<Date>(new Date());
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
-
-    // Client search
-    const [users, setUsers] = useState<User[]>([]);
-    const [userSearch, setUserSearch] = useState('');
-    const [isSearchingUsers, setIsSearchingUsers] = useState(false);
-    const [userPopoverOpen, setUserPopoverOpen] = useState(false);
 
     // Eligible orders for the selected client
     const [eligibleOrders, setEligibleOrders] = useState<EligibleOrder[]>([]);
@@ -176,42 +159,6 @@ export function BillFormBackendBase({
         unavailable: UnavailableOrder[];
         total: number;
     } | null>(null);
-
-    // Search users
-    useEffect(() => {
-        const searchUsers = async () => {
-            if (userSearch.length < 2) {
-                setUsers([]);
-                return;
-            }
-            setIsSearchingUsers(true);
-            try {
-                const response = await fetch(`/api/user/search?q=${encodeURIComponent(userSearch)}`);
-                if (response.ok) {
-                    setUsers(await response.json());
-                }
-            } catch (err) {
-                console.error('Error searching users:', err);
-            } finally {
-                setIsSearchingUsers(false);
-            }
-        };
-        const debounce = setTimeout(searchUsers, 300);
-        return () => clearTimeout(debounce);
-    }, [userSearch]);
-
-    // « Vouliez-vous dire … ? » once the person search has settled on nobody —
-    // checked through the same route, see useVerifiedSuggestions.
-    const userSuggestions = useVerifiedSuggestions<User>({
-        query: userSearch,
-        active: userSearch.length >= 2 && !isSearchingUsers && users.length === 0,
-        domains: PEOPLE_DOMAIN,
-        fetcher: async (q, signal) => {
-            const res = await fetch(`/api/user/search?q=${encodeURIComponent(q)}`, { signal });
-            return res.ok ? res.json() : [];
-        },
-        resultLimit: 20,
-    });
 
     // When client changes, load their eligible (unbilled) orders
     useEffect(() => {
@@ -362,8 +309,6 @@ export function BillFormBackendBase({
         setSelectedClient(user);
         setOrderSearch('');
         setOrderSearchResult(null);
-        setUserPopoverOpen(false);
-        setUserSearch('');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -425,8 +370,6 @@ export function BillFormBackendBase({
         }
     };
 
-    const getReaderDisplayName = (user: User) => (user ? getUserDisplayName(user) : null);
-
     return (
         <div>
                 {error && (
@@ -442,79 +385,12 @@ export function BillFormBackendBase({
                         <label className="text-sm font-medium text-foreground">
                             Auditeur <span className="text-red-500">*</span>
                         </label>
-                        <div className="flex items-center gap-1.5">
-                        <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    ref={registerField('client')}
-                                    variant="outline"
-                                    role="combobox"
-                                    className="w-full justify-between bg-field border-border text-foreground hover:bg-muted transition-colors"
-                                >
-                                    {selectedClient ? (
-                                        <span className="truncate">{getUserDisplayName(selectedClient)}</span>
-                                    ) : (
-                                        <span className="text-muted-foreground">Rechercher un auditeur ...</span>
-                                    )}
-                                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[min(400px,calc(100vw-2rem))] p-0 bg-card border-border" align="start" collisionPadding={16}>
-                                <div className="p-2">
-                                    <Input
-                                        placeholder="Rechercher par nom ou email..."
-                                        value={userSearch}
-                                        onChange={(e) => setUserSearch(e.target.value)}
-                                        className="bg-field border-border text-foreground"
-                                    />
-                                </div>
-                                <div className="max-h-[200px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
-                                    {isSearchingUsers && <div className="p-4 text-center text-muted-foreground">Recherche...</div>}
-                                    {!isSearchingUsers && users.length === 0 && userSearch.length >= 2 && (
-                                        <>
-                                            <div className="p-4 text-center text-muted-foreground">Aucune personne trouvée</div>
-                                            <SearchSuggestions
-                                                suggestions={userSuggestions}
-                                                onPick={setUserSearch}
-                                                renderItem={(user) => (
-                                                    <>
-                                                        <div className="font-medium">{getReaderDisplayName(user)}</div>
-                                                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                                                    </>
-                                                )}
-                                                getItemKey={(user) => user.id}
-                                                onPickItem={handleClientSelect}
-                                                compact
-                                            />
-                                        </>
-                                    )}
-                                    {users.map((user) => (
-                                        <button
-                                            key={user.id}
-                                            type="button"
-                                            onClick={() => handleClientSelect(user)}
-                                            className="w-full text-left px-4 py-2 hover:bg-muted text-foreground transition-colors"
-                                        >
-                                            <div className="font-medium">{getReaderDisplayName(user)}</div>
-                                            <div className="text-sm text-muted-foreground">{user.email}</div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                        {selectedClient && (
-                            <a
-                                href={`/admin/users/dossier/${selectedClient.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Voir le dossier"
-                                aria-label="Voir le dossier"
-                                className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            >
-                                <ExternalLink className="h-4 w-4" />
-                            </a>
-                        )}
-                        </div>
+                        <UserSearchCombobox<User>
+                            value={selectedClient}
+                            onSelect={handleClientSelect}
+                            triggerRef={registerField('client')}
+                            viewHref={(user) => `/admin/users/dossier/${user.id}`}
+                        />
                     </div>
 
                     {/* Eligible orders */}
@@ -702,82 +578,67 @@ export function BillFormBackendBase({
                     </div>
 
                     {/* Facture déjà réglée — évite la création puis l'encaissement en deux temps.
-                        La case et le menu ci-dessus sont le MÊME état (voir SELECTABLE_STATES) :
-                        cocher met le menu sur « Payée », choisir « Payée » coche. Les champs du
-                        règlement restent cachés tant que la case n'est pas cochée : le cas
-                        courant est une facture qu'on émet, pas une qu'on rattrape.
-                        Un brouillon n'ayant rien à encaisser, le bloc disparaît pour lui. */}
-                    {state !== BillingStatus.DRAFT && (
+                        Le règlement n'apparaît qu'avec « Payée » dans le menu ci-dessus (voir
+                        SELECTABLE_STATES) : le cas courant est une facture qu'on émet, pas une
+                        qu'on rattrape. */}
+                    {markAsPaid && (
                         <div className="space-y-3 rounded-md border border-border p-3">
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <Checkbox
-                                    checked={markAsPaid}
-                                    onCheckedChange={(checked) => setMarkAsPaid(checked === true)}
-                                    className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            <p className="text-xs text-muted-foreground">
+                                La facture sera créée émise, son paiement enregistré, puis elle sera
+                                marquée payée — en une seule opération. Le règlement devient un
+                                paiement à part entière, visible dans « Paiements » et modifiable
+                                là-bas ; la facture ne fait que le refléter.
+                            </p>
+
+                            {/* Méthode et référence côte à côte, comme dans le formulaire des paiements. */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">
+                                        Méthode de paiement
+                                    </label>
+                                    <Select
+                                        value={paymentMethod || 'NONE'}
+                                        onValueChange={(v) => setPaymentMethod(v === 'NONE' ? '' : (v as PaymentMethod))}
+                                    >
+                                        <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-card border-border">
+                                            <SelectItem value="NONE" className="text-muted-foreground hover:bg-muted focus:bg-muted cursor-pointer">
+                                                Non renseignée
+                                            </SelectItem>
+                                            {Object.values(PaymentMethod).map((m) => (
+                                                <SelectItem key={m} value={m} className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer">
+                                                    {getPaymentMethodLabel(m)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">
+                                        Référence de paiement
+                                        <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
+                                    </label>
+                                    <Input
+                                        value={paymentReference}
+                                        onChange={(e) => setPaymentReference(e.target.value)}
+                                        placeholder="N° de chèque, référence de virement..."
+                                        className="bg-field border-border text-foreground"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-foreground">
+                                    Date de paiement <span className="text-red-500">*</span>
+                                </label>
+                                <DatePickerField
+                                    value={paymentDate}
+                                    onChange={(d) => d && setPaymentDate(d)}
                                 />
-                                <span className="text-sm font-medium text-foreground">Facture déjà réglée</span>
-                            </label>
-
-                            {markAsPaid && (
-                                <>
-                                    <p className="text-xs text-muted-foreground">
-                                        La facture sera créée émise, son paiement enregistré, puis elle sera
-                                        marquée payée — en une seule opération. Le règlement devient un
-                                        paiement à part entière, visible dans « Paiements » et modifiable
-                                        là-bas ; la facture ne fait que le refléter.
-                                    </p>
-
-                                    {/* Méthode et référence côte à côte, comme dans le formulaire des paiements. */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">
-                                                Méthode de paiement
-                                            </label>
-                                            <Select
-                                                value={paymentMethod || 'NONE'}
-                                                onValueChange={(v) => setPaymentMethod(v === 'NONE' ? '' : (v as PaymentMethod))}
-                                            >
-                                                <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-card border-border">
-                                                    <SelectItem value="NONE" className="text-muted-foreground hover:bg-muted focus:bg-muted cursor-pointer">
-                                                        Non renseignée
-                                                    </SelectItem>
-                                                    {Object.values(PaymentMethod).map((m) => (
-                                                        <SelectItem key={m} value={m} className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer">
-                                                            {getPaymentMethodLabel(m)}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">
-                                                Référence de paiement
-                                                <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
-                                            </label>
-                                            <Input
-                                                value={paymentReference}
-                                                onChange={(e) => setPaymentReference(e.target.value)}
-                                                placeholder="N° de chèque, référence de virement..."
-                                                className="bg-field border-border text-foreground"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-foreground">
-                                            Date de paiement <span className="text-red-500">*</span>
-                                        </label>
-                                        <DatePickerField
-                                            value={paymentDate}
-                                            onChange={(d) => d && setPaymentDate(d)}
-                                        />
-                                    </div>
-                                </>
-                            )}
+                            </div>
                         </div>
                     )}
 

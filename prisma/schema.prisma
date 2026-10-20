@@ -23,7 +23,6 @@ model User {
   password                  String?
   memberType                MemberType          @default(auditeur)
   accessLevel               AccessLevel         @default(member)
-  role                      String              @default("user")
   createdAt                 DateTime            @default(now())
   passwordNeedsChange       Boolean             @default(true)
   firstName                 String?
@@ -44,10 +43,6 @@ model User {
   /// has elapsed, reads as ACTIVE. Nothing rewrites these rows on a schedule.
   unavailableFrom           DateTime?
   unavailableUntil          DateTime?
-  /// LEGACY: superseded by UserActivityEvent history; no longer written. Refactor out.
-  terminationDate           DateTime?
-  /// LEGACY: superseded by UserActivityEvent.reason; no longer written. Refactor out.
-  terminationReason         String?
   lastUpdated               DateTime?           @updatedAt
   /// Lower-case, accent-folded « prénom nom email », maintained by the
   /// `user_search_key` trigger — never written by the app (whatever it writes is
@@ -150,8 +145,6 @@ model Book {
   pageCount              Int?
   subtitle               String?
   audio_filepath         String?
-  stock_date             DateTime?
-  last_downloaded_date   DateTime?
   assignments            Assignment[]
   addedBy                User                @relation(fields: [addedById], references: [id])
   genres                 BookGenre[]

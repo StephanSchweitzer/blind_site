@@ -97,18 +97,11 @@ export const POST = withAdmin(async (request, { me }) => {
             passwordNeedsChange = true;
         }
 
-        // Derive legacy role from accessLevel for backward compatibility
-        const derivedRole =
-            body.accessLevel === 'super_admin' ? 'super_admin' :
-                body.accessLevel === 'admin' ? 'admin' :
-                    'user';
-
         const newUser = await prisma.user.create({
             data: {
                 email: normalizedEmail,
                 password: hashedPassword,
                 passwordNeedsChange: passwordNeedsChange,
-                role: derivedRole, // legacy – kept for backward compatibility
                 memberType: body.memberType ?? MemberType.auditeur,
                 accessLevel: body.accessLevel ?? AccessLevel.member,
                 civilityId: body.civilityId ?? null,

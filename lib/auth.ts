@@ -9,7 +9,6 @@ type CustomUser = {
     email: string | null;
     name: string | null;
     randomKey: string;
-    role?: string;
     memberType?: string;
     accessLevel: string;
     passwordNeedsChange?: boolean;
@@ -20,7 +19,6 @@ type AuthorizedUser = {
     email: string | null;
     firstName: string | null;
     lastName: string | null;
-    role: string;
     memberType: string;
     accessLevel: string;
     passwordNeedsChange: boolean;
@@ -35,7 +33,6 @@ function toSessionUser(user: AuthorizedUser): CustomUser {
         // NextAuth's own `name` slot, filled from the fiche's prénom / nom.
         name: getUserNameOnly(user) || null,
         randomKey: 'Hey cool',
-        role: user.role,
         memberType: user.memberType,
         accessLevel: user.accessLevel,
         passwordNeedsChange: user.passwordNeedsChange,
@@ -152,7 +149,6 @@ export const authOptions: NextAuthOptions = {
                         },
                         select: {
                             id: true,
-                            role: true,
                             email: true,
                             firstName: true,
                             lastName: true,
@@ -164,7 +160,6 @@ export const authOptions: NextAuthOptions = {
 
                     if (freshUser) {
                         token.id = String(freshUser.id);
-                        token.role = freshUser.role;
                         token.accessLevel = freshUser.accessLevel;
                         token.memberType = freshUser.memberType;
                         token.email = freshUser.email;
@@ -182,7 +177,6 @@ export const authOptions: NextAuthOptions = {
                     ...session.user,
                     id: token.id,
                     randomKey: token.randomKey,
-                    role: token.role,
                     accessLevel: token.accessLevel,
                     memberType: token.memberType,
                     passwordNeedsChange: token.passwordNeedsChange,
@@ -196,7 +190,6 @@ export const authOptions: NextAuthOptions = {
                     ...token,
                     id: u.id,
                     randomKey: u.randomKey,
-                    role: u.role,
                     accessLevel: u.accessLevel,
                     memberType: u.memberType,
                     passwordNeedsChange: u.passwordNeedsChange,

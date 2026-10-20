@@ -10,7 +10,6 @@ declare module "next-auth" {
             accessLevel: string
             memberType?: string | null
             passwordNeedsChange?: boolean | null
-            role?: string // legacy – remove when role column is dropped
         }
     }
 }

@@ -38,6 +38,8 @@ Une indisponibilité se referme d'elle-même à la fin de sa période : la perso
 
 « Prend des attributions » est indépendant du statut : une personne active peut être retirée des sélecteurs de lecteur sans être indisponible. Le retour automatique au statut « Actif », à la fin d'une indisponibilité, ne réactive pas cet interrupteur.
 
+C'est ici seulement que se modifient « Prend des attributions », les notes de disponibilité et le maximum d'attributions simultanées d'un lecteur : sa fiche n'a plus ces champs, mais un lien « Disponibilités » qui ouvre directement cette fenêtre.
+
 Rien n'est enregistré avant d'avoir cliqué sur « Enregistrer ». Si l'on ferme la fenêtre avec des modifications en cours, elle demande confirmation avant de les abandonner.
 
 Une fois le volet « Attributions » déplié, nous pouvons (1) ouvrir dans un nouvel onglet l'attribution, en cliquant sur le titre du livre, ou la demande mentionnée, et (2) afficher les attributions terminées. Un symbole orange, visible même volet replié, signale les livres encore chez une personne qui n'est pas disponible ; une date en orange signale un livre parti depuis plus de six mois.

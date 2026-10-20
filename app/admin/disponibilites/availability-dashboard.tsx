@@ -498,8 +498,26 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
     const [onlyDormant, setOnlyDormant] = useState(false);
     const [onlyAssignable, setOnlyAssignable] = useState(true);
     const [readerSort, setReaderSort] = useState<ReaderSort>('freest');
-    // Who the availability panel is open on. Null = closed.
-    const [openPersonId, setOpenPersonId] = useState<number | null>(null);
+    const searchParams = useSearchParams();
+    // Who the availability panel is open on. Null = closed. A lecteur's fiche
+    // links here as ?person=<id> — the only place their availability and
+    // attribution cap are edited — so that panel opens straight away. Read once,
+    // in the initialiser: an effect would render the page closed first.
+    const [openPersonId, setOpenPersonId] = useState<number | null>(() => {
+        const id = Number(searchParams.get('person'));
+        return Number.isInteger(id) && id > 0 ? id : null;
+    });
+
+    /** Closing drops ?person=, so a reload doesn't reopen the panel. */
+    const closePerson = () => {
+        setOpenPersonId(null);
+        if (searchParams.has('person')) {
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('person');
+            const qs = params.toString();
+            window.history.replaceState(window.history.state, '', qs ? `?${qs}` : window.location.pathname);
+        }
+    };
     // The last person saved from the panel, highlighted in the calendar.
     const [highlightPersonId, setHighlightPersonId] = useState<number | null>(null);
 
@@ -1237,7 +1255,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
 
             <PersonAvailabilityPanel
                 personId={openPersonId}
-                onClose={() => setOpenPersonId(null)}
+                onClose={closePerson}
                 onSaved={(savedId) => {
                     // Ringed in the calendar until somebody else is opened, so
                     // closing the panel lands on the change instead of on a page

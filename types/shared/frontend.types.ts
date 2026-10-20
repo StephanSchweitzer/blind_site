@@ -148,7 +148,6 @@ export interface BookFormData {
 
 export interface UserFormData {
     email: string;
-    role?: string; // legacy – remove once role column is dropped
     memberType: MemberType;
     accessLevel: AccessLevel;
     civilityId: number | null;

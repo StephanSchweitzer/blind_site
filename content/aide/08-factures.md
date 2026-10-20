@@ -78,7 +78,7 @@ Enfin, pour la nouvelle facture, vous pouvez :
 
 (3) Indiquer une date de création
 
-(4) Indiquer la date d'émission. Laissée vide, c'est la date de création qui compte comme date d'émission : c'est d'elle que partent les trente jours de « Factures à relancer », et c'est elle qui s'imprime. Un brouillon n'a pas de date d'émission ; le champ disparaît quand vous choisissez « Brouillon ». Pour une facture « déjà réglée », la date d'émission reste obligatoire.
+(4) Indiquer la date d'émission. Laissée vide, c'est la date de création qui compte comme date d'émission : c'est d'elle que partent les trente jours de « Factures à relancer », et c'est elle qui s'imprime. Un brouillon n'a pas de date d'émission ; le champ disparaît quand vous choisissez « Brouillon ». Pour une facture créée « Payée », la date d'émission reste obligatoire.
 
 (5) Enregistrer la facture et la verser dans la base de données.
 
@@ -88,7 +88,7 @@ Le montant total se calcule tout seul à partir des demandes cochées ; il s'aff
 
 ### Saisir une facture déjà réglée
 
-Si le règlement est déjà arrivé, cochez la case « **Facture déjà réglée** », puis renseignez la méthode, la référence (facultative) et la date de paiement — dans cet ordre, le même que dans le formulaire des [paiements](/admin/aide/paiements#ajout-des-paiements). La facture et son paiement sont créés en même temps ; le paiement apparaît ensuite dans la page [Paiements](/admin/aide/paiements).
+Si le règlement est déjà arrivé, choisissez « **Payée** » dans « État de la facture » : le bloc du règlement apparaît. Renseignez la méthode, la référence (facultative) et la date de paiement — dans cet ordre, le même que dans le formulaire des [paiements](/admin/aide/paiements#ajout-des-paiements). La facture et son paiement sont créés en même temps ; le paiement apparaît ensuite dans la page [Paiements](/admin/aide/paiements). Sur la capture ci-dessous, antérieure à ce changement, une case « Facture déjà réglée » figure encore au-dessus du règlement : elle faisait la même chose que « Payée », et a disparu.
 
 ![Factures - capture 7](/admin/aide/images/factures-07.jpg)
 
@@ -130,7 +130,7 @@ Pour corriger la référence, la méthode ou la date d'un règlement, ouvrez le 
 
 ### Une facture finalisée
 
-Une facture « Payée » ou « Soldée » ne peut plus être modifiée. Ses demandes non plus, pour ce qui s'imprime sur la facture : leur livre, leur date de clôture, leur type (duplication ou enregistrement), leurs pages et leur coût sont refusés tant qu'elle n'est pas rouverte. Le reste d'une demande (notes, format…) se modifie normalement. Pour la corriger, cliquez sur (1) « **Rouvrir la facture** » : elle repasse à « émise ».
+Une facture « Payée » ou « Soldée » ne peut plus être modifiée. Ses demandes non plus, pour ce qui s'imprime sur la facture : leur livre, leur date de clôture, leur type (duplication ou enregistrement), leurs pages et leur coût sont refusés tant qu'elle n'est pas rouverte. Le reste d'une demande (notes, format…) se modifie normalement. Pour la corriger, cliquez sur (1) « **Rouvrir la facture** » : elle repasse à « émise ». Une fenêtre de confirmation rappelle, avant de rouvrir, que ses paiements en seront détachés ; ils restent dans « Paiements ». Sur la capture ci-dessous, antérieure à ce changement, le bouton figure encore dans un encadré « Facture finalisée ».
 
 ![Factures - capture 11](/admin/aide/images/factures-11.jpg)
 

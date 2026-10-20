@@ -283,7 +283,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle className="text-foreground">Gérer les dernières infos</CardTitle>
+                        <CardTitle className="text-foreground">Dernières infos</CardTitle>
                         <AideLink section="pages-publiques" />
                     </div>
                     <div className="text-sm text-muted-foreground mt-2 flex flex-wrap items-center gap-x-1 gap-y-1">

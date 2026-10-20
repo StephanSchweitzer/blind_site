@@ -114,10 +114,6 @@ export default async function Dashboard() {
             auditeursCount,
             bienfaiteursCount,
             permanentsCount,
-            assignmentCount,
-            orderCount,
-            billCount,
-            paymentCount,
         ],
         // Active lecteurs with no attribution in progress — the count the
         // Disponibilités card leads with.
@@ -148,13 +144,6 @@ export default async function Dashboard() {
             prisma.user.count({ where: { memberType: 'auditeur' } }),
             prisma.user.count({ where: { memberType: 'bienfaiteur' } }),
             prisma.user.count({ where: { accessLevel: { in: ['admin', 'super_admin'] } } }),
-            prisma.assignment.count(),
-            prisma.orders.count(),
-            // Bill and Payment are soft-deleted by `isActive` and sit outside the
-            // lib/prisma.ts extension: a bare count() also tallied the deleted
-            // ones, and the tile read 2 781 factures over a list of 2 777.
-            prisma.bill.count({ where: { isActive: true } }),
-            prisma.payment.count({ where: { isActive: true } }),
         ]),
         getFreeReaderCount(),
         getOpenOrderDelais(),
@@ -267,10 +256,13 @@ export default async function Dashboard() {
             <section className="mb-10" aria-labelledby="dashboard-gestion">
                 <h2 id="dashboard-gestion" className="text-lg font-semibold text-foreground mb-4 px-1">Gestion</h2>
                 <ul className={GRID}>
-                    <li><AdminDashboardCard title="Demandes" count={orderCount} countLabel="au total" href="/admin/orders" /></li>
-                    <li><AdminDashboardCard title="Attributions" count={assignmentCount} countLabel="au total" href="/admin/assignments" /></li>
-                    <li><AdminDashboardCard title="Factures" count={billCount} countLabel="au total" href="/admin/bills" /></li>
-                    <li><AdminDashboardCard title="Paiements" count={paymentCount} countLabel="au total" href="/admin/payments" /></li>
+                    {/* No lifetime totals here: a count of every demande ever
+                        made says nothing about the day's work, which the
+                        « À traiter » band above already counts. */}
+                    <li><AdminDashboardCard title="Demandes" href="/admin/orders" /></li>
+                    <li><AdminDashboardCard title="Attributions" href="/admin/assignments" /></li>
+                    <li><AdminDashboardCard title="Factures" href="/admin/bills" /></li>
+                    <li><AdminDashboardCard title="Paiements" href="/admin/payments" /></li>
                     {isSuper && (
                         <li><AdminDashboardCard title="Statistiques" href="/admin/stats" /></li>
                     )}

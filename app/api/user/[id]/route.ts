@@ -471,7 +471,6 @@ export const PATCH = withAdmin(async (
         // Profile fields
         if (body.firstName !== undefined) updateData.firstName = body.firstName || null;
         if (body.lastName !== undefined) updateData.lastName = body.lastName || null;
-        if (body.role !== undefined) updateData.role = body.role; // legacy
         if (body.memberType !== undefined) updateData.memberType = body.memberType;
         if (body.accessLevel !== undefined) updateData.accessLevel = body.accessLevel;
         if (body.homePhone !== undefined) updateData.homePhone = body.homePhone || null;
@@ -486,8 +485,8 @@ export const PATCH = withAdmin(async (
 
         // Status fields — VOLONTAIREMENT NON ÉCRITS ICI.
         //
-        // isActive, terminationDate et terminationReason sont marqués LEGACY dans le
-        // schéma : « replaced by activityStatus + UserActivityEvent » et « no longer
+        // isActive (et terminationDate / terminationReason, depuis supprimées) sont
+        // marqués LEGACY dans le schéma : « replaced by activityStatus + UserActivityEvent » et « no longer
         // written. Refactor out. » Cette route les écrivait quand même, et c'était
         // pire qu'inutile.
         //
@@ -624,7 +623,6 @@ export const PATCH = withAdmin(async (
                 email: true,
                 firstName: true,
                 lastName: true,
-                role: true,
                 memberType: true,
                 accessLevel: true,
                 isActive: true,

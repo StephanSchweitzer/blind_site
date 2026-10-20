@@ -74,7 +74,6 @@ async function main() {
         lastName: 'Dev',
         memberType: 'informaticien' as const,
         accessLevel: 'super_admin' as const,
-        role: 'admin',
         specialization: 'Compte de développement (agent)',
         notes: 'Compte de développement local — ne pas créer en production.',
         activityStatus: 'ACTIVE' as const,

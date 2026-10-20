@@ -14,6 +14,7 @@ import {
     Send,
     Replace,
     X,
+    MoreHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CopyIdButton } from '@/admin/CopyableId';
 import {
     Dialog,
@@ -271,7 +273,7 @@ export default function ReviewClient({ pairs, pagination, queueTotal, search, se
                 <CardHeader className="space-y-4">
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle>Révision des doublons</CardTitle>
+                            <CardTitle>Doublons</CardTitle>
                             <AideLink section="doublons" />
                         </div>
                         <CardDescription>
@@ -639,6 +641,30 @@ function PairCard({
     const diffFields = FIELDS.filter((f) => differs(f, flagged, matched));
     const sameFields = FIELDS.filter((f) => !differs(f, flagged, matched));
 
+    // The card's secondary ways out, in one menu next to its main button rather
+    // than three buttons scattered over it. Escalation is in there on every
+    // card; a double recording keeps its own button in the amber box instead,
+    // where it is the only way out.
+    const moreActions = (
+        <PairActionsMenu
+            busy={busy}
+            onReplace={picking ? undefined : () => setPicking(true)}
+            onDistinct={mode === 'distinct' ? undefined : () => setMode('distinct')}
+            onEscalate={
+                audioConflict
+                    ? undefined
+                    : () =>
+                          onEscalate({
+                              flaggedId: flagged.id,
+                              matchedId: matched.id,
+                              title: flagged.title,
+                              audioConflict: false,
+                          })
+            }
+            escalated={!!flagged.escalatedAt}
+        />
+    );
+
     return (
         <Card>
             {/* Clicking the pair opens the comparison — the whole card is the
@@ -651,15 +677,7 @@ function PairCard({
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3">
                     <BookHead book={flagged} onListen={onListen} />
                     <ArrowLeftRight className="hidden sm:block h-5 w-5 text-muted-foreground mx-auto" />
-                    <BookHead
-                        book={matched}
-                        align="right"
-                        onListen={onListen}
-                        // L'affordance est portée par la fiche de droite, pas par
-                        // la rangée de boutons : c'est en lisant ce livre-là qu'on
-                        // se rend compte que ce n'est pas le bon.
-                        onReplace={picking ? undefined : () => setPicking(true)}
-                    />
+                    <BookHead book={matched} align="right" onListen={onListen} />
                 </div>
 
                 {chosenMatch && (
@@ -734,9 +752,7 @@ function PairCard({
                         <Button size="sm" disabled={busy} onClick={() => setMode('fuse')}>
                             <ArrowLeftRight className="h-4 w-4" /> Comparer les deux fiches
                         </Button>
-                        <Button variant="outline" size="sm" disabled={busy} onClick={() => setMode('distinct')}>
-                            Livres distincts
-                        </Button>
+                        {moreActions}
                     </div>
                 )}
 
@@ -844,12 +860,10 @@ function PairCard({
                             <Button size="sm" disabled={busy || audioConflict} onClick={startFuse}>
                                 <ArrowLeftRight className="h-4 w-4" /> Fusionner les deux fiches
                             </Button>
-                            <Button variant="outline" size="sm" disabled={busy} onClick={() => setMode('distinct')}>
-                                Livres distincts
-                            </Button>
                             <Button variant="ghost" size="sm" disabled={busy} onClick={() => setMode('collapsed')}>
                                 Annuler
                             </Button>
+                            {moreActions}
                         </div>
                     </div>
                 )}
@@ -914,6 +928,7 @@ function PairCard({
                             <Button variant="ghost" size="sm" disabled={busy} onClick={() => setMode('collapsed')}>
                                 Annuler
                             </Button>
+                            {moreActions}
                         </div>
                         {sameFields.length > 0 && (
                             <p className="text-xs text-muted-foreground">
@@ -925,23 +940,17 @@ function PairCard({
                 )}
 
                 {/* Ce qui reste après le sélecteur. Un rapprochement faux se
-                    corrige désormais sur la carte — « pas le bon livre ? » — donc
-                    la passe-main ne sert plus qu'au cas qu'aucun choix ne règle :
-                    le bon livre n'est pas dans le catalogue. Mesuré sur la base,
-                    c'est le cas de 90 % de la file, d'où le maintien de la sortie
-                    quel que soit l'état de la carte. Le double audio a déjà la
+                    corrige sur la carte — « pas le bon livre ? » — donc la
+                    passe-main ne sert plus qu'au cas qu'aucun choix ne règle : le
+                    bon livre n'est pas dans le catalogue. Mesuré sur la base,
+                    c'est le cas de 90 % de la file : elle reste dans le menu
+                    quel que soit l'état de la carte, et ce cachet dit, menu
+                    fermé, qu'elle est déjà partie. Le double audio a déjà la
                     sienne dans l'encadré ci-dessus. */}
-                {!audioConflict && (
-                    <div className="border-t border-border/60 pt-3">
-                        <EscalateRow
-                            book={flagged}
-                            matchedId={matched.id}
-                            audioConflict={false}
-                            busy={busy}
-                            onEscalate={onEscalate}
-                            hint="Le bon livre n’existe pas dans le catalogue ?"
-                        />
-                    </div>
+                {!audioConflict && flagged.escalatedAt && (
+                    <p className="text-xs text-muted-foreground">
+                        Signalé le {fmtDate(flagged.escalatedAt)} — traitement manuel en attente.
+                    </p>
                 )}
             </CardContent>
         </Card>
@@ -1010,17 +1019,85 @@ function EscalateRow({
     );
 }
 
+/**
+ * « Autres actions » on a pair card: the three ways out that are not the
+ * comparison itself. An item the card's state makes pointless is left out
+ * (no « Livres distincts » while already looking at them as distinct, no
+ * « Pas le bon livre ? » with the picker open).
+ */
+function PairActionsMenu({
+    busy,
+    onReplace,
+    onDistinct,
+    onEscalate,
+    escalated,
+}: {
+    busy: boolean;
+    onReplace?: () => void;
+    onDistinct?: () => void;
+    /** Absent on a double recording, whose amber box carries the escalation. */
+    onEscalate?: () => void;
+    /** Escalating twice sends the same mail twice: the item locks once sent. */
+    escalated: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const run = (action: () => void) => {
+        setOpen(false);
+        action();
+    };
+    const itemClass =
+        'flex w-full items-start gap-2 rounded-sm px-3 py-2 text-left text-sm text-foreground hover:bg-muted disabled:pointer-events-none disabled:opacity-50';
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm" disabled={busy}>
+                    <MoreHorizontal className="h-4 w-4" /> Autres actions
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72 p-1 bg-card border-border">
+                {onReplace && (
+                    <button type="button" className={itemClass} onClick={() => run(onReplace)}>
+                        <Replace className="h-4 w-4 mt-0.5 shrink-0" />
+                        <span>
+                            Pas le bon livre ?
+                            <span className="block text-xs text-muted-foreground">Chercher un autre livre à mettre en face</span>
+                        </span>
+                    </button>
+                )}
+                {onDistinct && (
+                    <button type="button" className={itemClass} onClick={() => run(onDistinct)}>
+                        <Check className="h-4 w-4 mt-0.5 shrink-0" />
+                        <span>
+                            Livres distincts
+                            <span className="block text-xs text-muted-foreground">Garder les deux fiches, ou en supprimer une</span>
+                        </span>
+                    </button>
+                )}
+                {onEscalate && (
+                    <button type="button" className={itemClass} disabled={escalated} onClick={() => run(onEscalate)}>
+                        <Send className="h-4 w-4 mt-0.5 shrink-0" />
+                        <span>
+                            Signaler à Stéphan
+                            <span className="block text-xs text-muted-foreground">
+                                {escalated ? 'Déjà signalé' : 'Le bon livre n’existe pas dans le catalogue'}
+                            </span>
+                        </span>
+                    </button>
+                )}
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 function BookHead({
     book,
     align,
     onListen,
-    onReplace,
 }: {
     book: ReviewBook;
     align?: 'right';
     onListen: (book: ReviewBook) => void;
-    /** Présent uniquement sur la fiche que le permanent peut remplacer. */
-    onReplace?: () => void;
 }) {
     return (
         <div className={align === 'right' ? 'sm:text-right' : ''}>
@@ -1040,20 +1117,6 @@ function BookHead({
                     </Badge>
                 )}
                 <ListenButton book={book} onListen={onListen} />
-                {onReplace && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-                        // La carte derrière ce bouton ouvre la comparaison au clic.
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onReplace();
-                        }}
-                    >
-                        <Replace className="h-3.5 w-3.5" /> Pas le bon livre ?
-                    </Button>
-                )}
             </div>
         </div>
     );

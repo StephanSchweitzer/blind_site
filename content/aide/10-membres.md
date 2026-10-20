@@ -96,11 +96,11 @@ Cela ouvrira le modal « Modifier un membre ».
 
 ![Membres - capture 11](/admin/aide/images/membres-11.jpg)
 
-Tout ici est identique à le modal « Ajouter un membre », à l'exception de deux éléments en haut et d'un élément en bas. Les différences en haut sont les suivantes : (1) la bannière qui affiche le statut de la cotisation, et (2) le bouton « Voir le dossier ».
+Tout ici est identique à le modal « Ajouter un membre », à l'exception de trois éléments en haut : (1) la bannière qui affiche le statut de la cotisation, (2) le bouton « Voir le dossier », et (3) la section « Statut ».
 
 ![Membres - capture 12](/admin/aide/images/membres-12.jpg)
 
-En bas du modal, la différence réside dans la présence d'une section « Statut ».
+La section « Statut » se trouve en haut du modal, au-dessus des champs de la fiche. Sur la capture ci-dessous, antérieure à ce changement, elle figure encore en bas, sous les boutons.
 
 ![Membres - capture 13](/admin/aide/images/membres-13.jpg)
 
@@ -116,13 +116,13 @@ Cette section est pratiquement identique à celle consacrée à l'ajout d'un aud
 
 Si vous attribuez à quelqu'un le niveau d'accès « permanent » ou « super-administrateur », vous devez indiquer son adresse e-mail pour qu'il puisse se connecter. Soyez prudent lorsque vous effectuez cette opération, car toute personne capable de se connecter peut accéder à la section /admin, qui contient de nombreuses informations confidentielles que nous ne souhaitons pas rendre accessibles à n'importe qui.
 
-Vous disposez également des capacités et des compétences des lecteurs, notamment un indicateur précisant s'ils peuvent recevoir de nouvelles attributions ou non, ainsi que certaines préférences et remarques.
+Vous disposez également des compétences des lecteurs, ainsi que de certaines préférences et remarques. La disponibilité d'un lecteur pour de nouvelles attributions, ses notes de disponibilité et le nombre maximal d'attributions simultanées ne se modifient plus sur la fiche, mais uniquement sur la page [Disponibilités](/admin/aide/disponibilites) : la ligne « Disponibilité et charge : à gérer dans Disponibilités » y mène et ouvre directement la fenêtre de ce lecteur.
 
 Si vous mettez à jour les préférences, ces options seront renseignées automatiquement lorsque vous les associez à des attributions.
 
 ![Membres - capture 16](/admin/aide/images/membres-16.jpg)
 
-Dans « Paramètres de lecture », vous pouvez également (1) indiquer le nombre maximal de lectures / enregistrements / attributions qu'un lecteur peut gérer simultanément, (2) préciser les langues que le lecteur maîtrise, afin que nous puissions filtrer les lecteurs disponibles par langue si un livre nécessite une autre langue que le français pour être lu, et indiquer son logiciel d'enregistrement.
+Dans « Paramètres de lecture », vous pouvez également préciser les langues que le lecteur maîtrise, afin que nous puissions filtrer les lecteurs disponibles par langue si un livre nécessite une autre langue que le français pour être lu. Les captures ci-dessous, antérieures à ce changement, montrent encore les champs « Disponibilité (attributions) », « Nombre maximum d'attributions simultanées » et « Logiciel d'enregistrement », qui ne figurent plus sur la fiche.
 
 ![Membres - capture 17](/admin/aide/images/membres-17.jpg)
 
@@ -132,7 +132,7 @@ Une fois que vous avez saisi toutes les informations, cliquez sur le bouton « C
 
 ## Modification des lecteurs
 
-La modification des « lecteurs » s'effectue de la même manière que celle des « auditeurs » ; elle comporte simplement des champs supplémentaires pour les « lecteurs », qui se modifient de la même façon que dans la fenêtre contextuelle d'ajout d'un « lecteur ». Des statuts sont également disponibles en bas de la page, mais j'aborderai ce point plus en détail dans la section consacrée aux statuts.
+La modification des « lecteurs » s'effectue de la même manière que celle des « auditeurs » ; elle comporte simplement des champs supplémentaires pour les « lecteurs », qui se modifient de la même façon que dans la fenêtre contextuelle d'ajout d'un « lecteur ». Des statuts sont également disponibles en haut du modal, mais j'aborderai ce point plus en détail dans la section consacrée aux statuts.
 
 **LES AUTRES CATÉGORIES DE MEMBRES**
 
@@ -182,6 +182,6 @@ Une personne qui n'est pas active ne peut pas être marquée « disponible » : 
 
 ![Membres - capture 24](/admin/aide/images/membres-24.jpg)
 
-La modification du statut d'un utilisateur est un événement enregistré, et l'historique de cet utilisateur peut être consulté au bas de leur modal de modification.
+La modification du statut d'un utilisateur est un événement enregistré, et l'historique de cet utilisateur peut être consulté en haut de leur modal de modification, sous « Changer le statut ».
 
 ![Membres - capture 25](/admin/aide/images/membres-25.jpg)

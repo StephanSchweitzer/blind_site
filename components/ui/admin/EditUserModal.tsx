@@ -119,6 +119,10 @@ export function EditUserModal({
                     <FormLoadingGate loading={!user} error={error} fields={8}>
                         {user && (
                             <>
+                                {/* Le statut d'abord : c'est là qu'il se change, et
+                                    sous les boutons Enregistrer / Supprimer on ne le
+                                    trouvait qu'en faisant défiler toute la fiche. */}
+                                <UserActivityHistory userId={userId} />
                                 <EditUserFormBackend
                                     userId={userId}
                                     initialData={user.data}
@@ -126,7 +130,6 @@ export function EditUserModal({
                                     currentUserAccessLevel={currentUserAccessLevel}
                                     userType={userType ?? user.userType}
                                 />
-                                <UserActivityHistory userId={userId} />
                             </>
                         )}
                     </FormLoadingGate>

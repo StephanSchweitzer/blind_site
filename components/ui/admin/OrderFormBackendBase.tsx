@@ -722,14 +722,14 @@ export function OrderFormBackendBase({
                             triggerRef={registerField('aveugleId')}
                             viewHref={(user) => `/admin/users/dossier/${user.id}`}
                         />
-                        {hasBill && initialBill && (
+                        {/* Sur une facture émise, le bandeau du haut dit déjà que
+                            l'auditeur est verrouillé : la note ne reste que pour un
+                            brouillon, qu'aucun bandeau n'annonce. */}
+                        {hasBill && !billIssued && initialBill && (
                             <p className="text-xs text-amber-700 dark:text-amber-400">
                                 Auditeur verrouillé : la demande figure sur la{' '}
                                 <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink>, qui
-                                appartient à cet auditeur.{' '}
-                                {billIssued
-                                    ? 'Rouvrez la facture et retirez-en la demande pour le modifier.'
-                                    : 'Retirez-la de la facture pour le modifier.'}{' '}
+                                appartient à cet auditeur. Retirez-la de la facture pour le modifier.{' '}
                                 <BillLink billId={initialBill.id}>
                                     Vous pouvez la voir ici
                                     <ExternalLink className="inline h-3 w-3 ml-1 align-[-1px]" aria-hidden="true" />
@@ -1083,13 +1083,9 @@ export function OrderFormBackendBase({
                                     : '.'}
                             </p>
                         )}
-                        {statusRollbackLocked && initialBill && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                                La demande ne peut plus être rouverte : la facture #{initialBill.id} annonce
-                                cette prestation comme rendue et elle est déjà partie. Rouvrez-la et
-                                retirez-en la demande d&apos;abord.
-                            </p>
-                        )}
+                        {/* Rouverture refusée sur une facture émise (statusRollbackLocked) :
+                            le bandeau du haut le dit — « la date de clôture ne peut plus
+                            être effacée » —, le bouton ci-dessous est seulement grisé. */}
                         {canReopen && (
                             <div className="pt-1">
                                 <Button
@@ -1133,82 +1129,69 @@ export function OrderFormBackendBase({
                         </Select>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                        {/* Billing Status */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">État de facturation</label>
-                            {formData.billingStatus === 'BILLED' ? (
-                                <div className="bg-card border border-border rounded-md px-3 py-2.5 text-foreground">
-                                    Facturé <span className="text-xs text-muted-foreground">(géré par la facture liée)</span>
-                                </div>
-                            ) : (
-                                <Select
-                                    value={formData.billingStatus}
-                                    onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'UNBILLABLE'})}
+                    {/* Facturation — un seul champ. Avec une facture, c'est elle qui dit
+                        l'état (« Facturé » ne se choisit pas, il se constate) ; sans, le
+                        choix entre « Non facturé » et « Non facturable ». */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Facturation</label>
+                        {initialBill ? (
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-card border border-border rounded-md text-sm">
+                                <span className="text-foreground">
+                                    Facture #{initialBill.id} — {getBillingStatusLabel(initialBill.state as BillingStatus)}
+                                </span>
+                                <span aria-hidden className="text-muted-foreground">·</span>
+                                <Link
+                                    prefetch={false}
+                                    href={`/admin/bills?bill=${initialBill.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
                                 >
-                                    <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-card border-border">
-                                        <div className="py-1">
-                                            <SelectItem
-                                                value="UNBILLED"
-                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
-                                            >
-                                                <span className="font-medium">Non facturé</span>
-                                            </SelectItem>
-                                            <SelectItem
-                                                value="UNBILLABLE"
-                                                disabled={hasBill}
-                                                className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-                                            >
-                                                <span className="font-medium">Non facturable</span>
-                                            </SelectItem>
-                                        </div>
-                                    </SelectContent>
-                                </Select>
-                            )}
-                            {/* Le total d'une facture se calcule par billId, pas par état de
-                                facturation : une ligne « Non facturable » resterait facturée
-                                tout en se déclarant hors du cycle. */}
-                            {hasBill && initialBill && formData.billingStatus !== 'BILLED' && (
-                                <p className="text-xs text-amber-700 dark:text-amber-400">
-                                    « Non facturable » indisponible : la demande figure sur la{' '}
-                                    <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink> et son
-                                    montant y est compté.{' '}
-                                    {billIssued
-                                        ? 'Rouvrez la facture et retirez-en la demande d’abord.'
-                                        : 'Retirez-la de la facture d’abord.'}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Linked Bill — read-only */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Facture associée</label>
-                            {initialBill ? (
-                                <div className="flex items-center justify-between gap-3 px-3 py-2 bg-card border border-border rounded-md">
-                                    <span className="text-foreground text-sm">
-                                        Facture #{initialBill.id} — {getBillingStatusLabel(initialBill.state as BillingStatus)}
-                                    </span>
-                                    <Link
-                                        prefetch={false}
-                                        href={`/admin/bills?bill=${initialBill.id}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-sm font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
-                                    >
-                                        Voir la facture
-                                    </Link>
-                                </div>
-                            ) : (
-                                <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground text-sm italic">
-                                    Aucune facture associée
-                                </div>
-                            )}
-                        </div>
+                                    Voir la facture
+                                </Link>
+                            </div>
+                        ) : formData.billingStatus === 'BILLED' ? (
+                            <div className="bg-card border border-border rounded-md px-3 py-2.5 text-foreground">
+                                Facturé
+                            </div>
+                        ) : (
+                            <Select
+                                value={formData.billingStatus}
+                                onValueChange={(value) => setFormData({ ...formData, billingStatus: value as 'UNBILLED' | 'BILLED' | 'UNBILLABLE'})}
+                            >
+                                <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <div className="py-1">
+                                        <SelectItem
+                                            value="UNBILLED"
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 border-b border-border/50 transition-colors"
+                                        >
+                                            <span className="font-medium">Non facturé</span>
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="UNBILLABLE"
+                                            className="text-foreground hover:bg-muted focus:bg-muted cursor-pointer pl-8 pr-3 py-2.5 transition-colors"
+                                        >
+                                            <span className="font-medium">Non facturable</span>
+                                        </SelectItem>
+                                    </div>
+                                </SelectContent>
+                            </Select>
+                        )}
+                        {/* Le total d'une facture se calcule par billId, pas par état de
+                            facturation : une ligne « Non facturable » resterait facturée
+                            tout en se déclarant hors du cycle. Sur une facture émise, le
+                            bandeau du haut suffit. */}
+                        {hasBill && !billIssued && initialBill && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                                « Non facturable » indisponible : la demande figure sur la{' '}
+                                <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink> et son
+                                montant y est compté. Retirez-la de la facture d&apos;abord.
+                            </p>
+                        )}
                     </div>
-
 
                     {/* Tarification à la page. La case ne bouge plus une fois la demande
                         sur une facture (le serveur refuse : une pro-forma et une facture
@@ -1219,7 +1202,9 @@ export function OrderFormBackendBase({
                         value={formData.isDuplication ? { ...formData.pagePricing, pageBased: false } : formData.pagePricing}
                         onChange={(pagePricing) => setFormData({ ...formData, pagePricing })}
                         toggleDisabledReason={
-                            hasBill
+                            billIssued
+                                ? 'Indisponible sur une demande rattachée à une facture.'
+                                : hasBill
                                 ? `Modifiable seulement tant que la demande n'est pas rattachée à une facture (#${initialBill?.id}). Détachez-la d'abord.`
                                 : formData.isDuplication
                                     ? "Une duplication n'a pas de lecture : elle ne se tarife pas à la page."

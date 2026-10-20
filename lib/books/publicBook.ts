@@ -8,7 +8,7 @@ import type { BookWithGenres } from '@/types/book';
  * key (bucket layout), `source_access_id`/`id_arbre`/`needsReview` are
  * Access-import/duplicate-review provenance, `polly_audio_url`/
  * `audioLinkStatus`/`audioCheckedAt`/`audioTrackCount`/`audioSizeKb`/
- * `escalatedAt` are audio-pipeline state, `stock_date`/`last_downloaded_date`/
+ * `escalatedAt` are audio-pipeline state,
  * `addedById`/`createdAt`/`updatedAt` are internal timestamps, and
  * `hiddenFromCatalogue` is meaningless once the row has already been filtered
  * to `false`. None of it is rendered anywhere on /catalogue or

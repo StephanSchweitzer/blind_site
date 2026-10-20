@@ -90,7 +90,6 @@ export const UserCreateInputSchema = z.object({
     lastName: z.string().optional(),
     accessLevel: z.nativeEnum(AccessLevel).default(AccessLevel.member),
     memberType: z.nativeEnum(MemberType).default(MemberType.auditeur),
-    role: z.string().default('user'),
     homePhone: z.string().optional(),
     cellPhone: z.string().optional(),
     gestconteNotes: z.string().optional(),
@@ -118,7 +117,6 @@ export const UserUpdateInputSchema = z.object({
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     email: z.string().email().optional(),
-    role: z.string().optional(),
     accessLevel: z.nativeEnum(AccessLevel).optional(),
     memberType: z.nativeEnum(MemberType).optional(),
     homePhone: z.string().optional(),
@@ -127,8 +125,6 @@ export const UserUpdateInputSchema = z.object({
     gestconteId: z.number().optional(),
     nonProfitAffiliation: z.string().optional(),
     isActive: z.boolean().optional(),
-    terminationDate: z.string().datetime().optional().nullable(),
-    terminationReason: z.string().optional(),
     preferredDeliveryMethod: z.nativeEnum(DeliveryMethod).optional(),
     preferredMediaFormatId: z.number().int().optional().nullable(),
     paymentThreshold: z.number().or(z.string()).optional().nullable(),
@@ -149,7 +145,6 @@ export type UserUpdateData = {
     firstName?: string | null;
     lastName?: string | null;
     email?: string | null;
-    role?: string;
     accessLevel?: AccessLevel;
     memberType?: MemberType;
     homePhone?: string | null;
@@ -158,8 +153,6 @@ export type UserUpdateData = {
     gestconteId?: number | null;
     nonProfitAffiliation?: string | null;
     isActive?: boolean | null;
-    terminationDate?: Date | null;
-    terminationReason?: string | null;
     preferredDeliveryMethod?: DeliveryMethod | null;
     preferredMediaFormatId?: number | null;
     paymentThreshold?: number | null;

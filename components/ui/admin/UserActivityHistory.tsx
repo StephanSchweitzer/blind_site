@@ -144,7 +144,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
     };
 
     return (
-        <div className="mt-6 border-t border-border pt-4">
+        <div className="mb-6 border-b border-border pb-4">
             <div className="flex items-center justify-between gap-2 mb-3">
                 <h3 className="text-sm font-semibold text-foreground">Historique de statut</h3>
                 {/* Until the route answers there is no status to show: the

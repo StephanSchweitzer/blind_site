@@ -14,7 +14,8 @@ Chaque carte montre un livre signalé et, en dessous, les « **Livres au titre p
 
 - « **Comparer** » les deux fiches côte à côte ;
 - « **Écouter** » l'enregistrement, s'il y en a un ;
-- « **Pas un doublon** » pour retirer la carte de la liste. Les deux fiches restent au catalogue.
+- « **Pas un doublon** » pour retirer la carte de la liste. Les deux fiches restent au catalogue ;
+- ouvrir le menu « **Autres actions** », qui regroupe « Pas le bon livre ? » (mettre un autre livre en face), « Livres distincts » (garder les deux fiches, ou en supprimer une) et « Signaler à Stéphan », quand le bon livre n'existe pas dans le catalogue. Une fois le signalement parti, la carte l'indique : « Signalé le … — traitement manuel en attente. »
 
 Si aucun des livres proposés ne convient, cherchez-en un autre dans le champ « **ou chercher un autre livre** ».
 

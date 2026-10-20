@@ -851,32 +851,19 @@ export function EditBillModal({
                             </div>
                         )}
 
-                        {/* Reopen (finalized bills) */}
+                        {/* Reopen (finalized bills). Just the button: its
+                            confirmation already says what reopening does —
+                            back to « émise », payments detached. */}
                         {(bill.state === BillingStatus.PAID || bill.state === BillingStatus.SOLDE) && (
-                            <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/15 dark:border-amber-800/50 rounded-md">
-                                <div className="text-xs text-amber-700 dark:text-amber-300/90 uppercase tracking-wide">Facture finalisée</div>
-                                {/* Une soldée sans paiement n'a rien à détacher : lui
-                                    promettre le contraire ferait douter du geste. */}
-                                <p className="text-sm text-foreground">
-                                    Pour corriger le coût d&apos;une demande de cette facture, rouvrez-la d&apos;abord.
-                                    Elle repassera à « émise »
-                                    {bill.payments.length > 0 ? (
-                                        <>
-                                            {' '}et ses paiements en seront détachés — ils restent dans « Paiements »,
-                                            et leur numéro part à l&apos;historique.
-                                        </>
-                                    ) : writtenOff ? (
-                                        <> et redeviendra une créance à réclamer.</>
-                                    ) : (
-                                        <>.</>
-                                    )}
-                                </p>
+                            <div>
                                 <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={handleReopen}
                                     disabled={isReopening}
-                                    className="bg-amber-600 hover:bg-amber-700 text-white h-8 text-sm flex items-center gap-1.5"
+                                    className="border-border bg-card text-foreground hover:bg-muted"
                                 >
-                                    {isReopening ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                                    {isReopening ? <Loader2 className="animate-spin" /> : <RotateCcw />}
                                     Rouvrir la facture
                                 </Button>
                             </div>

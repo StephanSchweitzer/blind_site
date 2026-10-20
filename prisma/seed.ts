@@ -123,7 +123,6 @@ const MEDIA_FORMATS = [
     { name: "K7", description: "Cassette audio" },
     { name: "CDR", description: "CD enregistrable" },
     { name: "DVDR", description: "DVD enregistrable" },
-    { name: "MD", description: "MiniDisc" },
     { name: "WeTransfer", description: "Transfert numérique via WeTransfer" },
     { name: "Clé USB", description: "Clé USB" },
     // Les revues (Revue AFTC, LUMEN, COLIN MAILLARD, Gazette Paris en Compagnie,
@@ -313,7 +312,7 @@ async function main() {
         data: {
             ...base, email: 'superadmin@eca.test',
             firstName: 'Camille', lastName: 'Dubois', memberType: 'administration',
-            accessLevel: 'super_admin', role: 'admin',
+            accessLevel: 'super_admin',
             civilityId: civilityId.get('Madame'), cellPhone: '+33 6 12 34 56 78',
         },
     });
@@ -323,7 +322,7 @@ async function main() {
         data: {
             ...base, email: 'claude@eca.test',
             firstName: 'Claude', lastName: 'Dev', memberType: 'informaticien',
-            accessLevel: 'super_admin', role: 'admin',
+            accessLevel: 'super_admin',
             password: await hash('ClaudeDev2026!', 10),
             specialization: 'Compte de développement (agent)',
             notes: 'Compte de développement local — ne pas créer en production.',
@@ -470,7 +469,7 @@ async function main() {
                 publishedDate: b.year ? yearStart(b.year) : null,
                 readingDurationMinutes: b.durationMinutes, pageCount: b.pageCount,
                 available: i % 9 !== 0, addedById: addedBy.id,
-                createdAt: daysAgo(60 - i), stock_date: hasAudio ? daysAgo(55 - i) : null,
+                createdAt: daysAgo(60 - i),
                 audio_filepath: hasAudio ? `audio/demo/${i + 1}-${b.title.slice(0, 20).replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}.mp3` : null,
                 source_access_id: 1000 + i,
                 genres: {

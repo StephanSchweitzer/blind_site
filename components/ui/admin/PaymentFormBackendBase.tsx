@@ -105,7 +105,9 @@ interface PaymentFormBackendBaseProps {
 }
 
 const NONE = 'NONE';
-const COMPTABLE_OPTIONS = ['Comptable', 'ECA', 'AUXILIAIRES'] as const;
+// « Comptable » used to be a third choice — the field's own label offered as a
+// value — and no payment ever carried it.
+const COMPTABLE_OPTIONS = ['ECA', 'AUXILIAIRES'] as const;
 
 export function PaymentFormBackendBase({
                                            onSubmit,

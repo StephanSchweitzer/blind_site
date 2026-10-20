@@ -106,7 +106,7 @@ En cliquant dessus, vous ouvrez le modal « Nouvelle demande ».
 
 ![Demandes - capture 5](/admin/aide/images/demandes-05.jpg)
 
-Vous pouvez saisir ici le nom de l'auditeur à l'origine de la demande, ainsi que toutes les métadonnées associées à celle-ci. Certaines demandes ne pouvant pas faire l'objet d'une facturation, une option permet de l'indiquer dans le champ « État de facturation », sous les ouvrages, juste avant les notes.
+Vous pouvez saisir ici le nom de l'auditeur à l'origine de la demande, ainsi que toutes les métadonnées associées à celle-ci. Certaines demandes ne pouvant pas faire l'objet d'une facturation, une option permet de l'indiquer dans le champ « Facturation », sous les ouvrages, juste avant les notes. Une fois la demande sur une facture, ce même champ affiche la facture et son état (« Facture #N — Émise · Voir la facture »).
 
 ![Demandes - capture 6](/admin/aide/images/demandes-06.jpg)
 
@@ -183,7 +183,7 @@ Nous pouvons mettre à jour la demande avec les informations que nous avons modi
 
 ![Demandes - capture 13](/admin/aide/images/demandes-13.jpg)
 
-La case « Tarifer à la page (pour les revues) » se retrouve aussi dans ce modal, juste au-dessus du coût, avec les mêmes champs : voir [Une demande tarifée à la page](#une-demande-tarifee-a-la-page-pour-les-revues). Elle est grisée quand la demande est déjà rattachée à une facture ou qu'il s'agit d'une duplication, et les champs se figent quand la facture est payée ou soldée.
+La case « Tarifer à la page (pour les revues) » se retrouve aussi dans ce modal, juste au-dessus du coût, avec les mêmes champs : voir [Une demande tarifée à la page](#une-demande-tarifee-a-la-page-pour-les-revues). Elle est grisée quand la demande est déjà rattachée à une facture ou qu'il s'agit d'une duplication, et les champs se figent quand la facture est payée ou soldée. Sur une facture émise, c'est le bandeau en haut du modal qui explique ce qui reste modifiable : les notes sous l'auditeur et sous le statut n'y sont pas répétées.
 
 Si vous corrigez le livre d'une demande, l'attribution liée prend automatiquement le même livre.
 
@@ -195,7 +195,7 @@ Si la demande figure sur un brouillon de facture, elle en est retirée et y revi
 
 ### Changer l'auditeur d'une demande
 
-Tant que la demande figure sur une facture, même un brouillon, son auditeur est verrouillé : c'est lui qui décide à qui la facture est adressée. La note sous le champ donne le numéro de la facture, avec un lien pour l'ouvrir dans un nouvel onglet : retirez-y la demande (« Retirer de la facture »), puis revenez corriger l'auditeur.
+Tant que la demande figure sur une facture, même un brouillon, son auditeur est verrouillé : c'est lui qui décide à qui la facture est adressée. Pour un brouillon, la note sous le champ donne le numéro de la facture, avec un lien pour l'ouvrir dans un nouvel onglet ; pour une facture émise, c'est le bandeau en haut du modal. Retirez-y la demande (« Retirer de la facture »), après avoir rouvert la facture si elle est émise, puis revenez corriger l'auditeur.
 
 Si la demande est déjà « Terminé », elle ne rejoindra plus de brouillon toute seule, puisque c'est le **passage** à « Terminé » qui l'y fait entrer. Dès que vous choisissez le nouvel auditeur, une case « **Facturer cette demande à …** » apparaît, cochée par défaut : à l'enregistrement, la demande est ajoutée au brouillon du nouvel auditeur (un brouillon est ouvert s'il n'en a pas), et une fenêtre vous indique lequel. Si ce brouillon atteint alors le seuil de facturation, il est émis, comme pour une demande qui vient d'être terminée. Une demande tarifée à la page reçoit sa facture pro-forma.
 

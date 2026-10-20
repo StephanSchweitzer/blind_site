@@ -63,7 +63,6 @@ export const basicUserSelect = {
     firstName: true,
     lastName: true,
     email: true,
-    role: true, // legacy
     memberType: true,
     accessLevel: true,
 } as const satisfies Prisma.UserSelect;
@@ -73,7 +72,6 @@ export const profileUserSelect = {
     email: true,
     firstName: true,
     lastName: true,
-    role: true, // legacy
     memberType: true,
     accessLevel: true,
     createdAt: true,
@@ -83,8 +81,6 @@ export const profileUserSelect = {
     gestconteId: true,
     nonProfitAffiliation: true,
     isActive: true,
-    terminationDate: true,
-    terminationReason: true,
     lastUpdated: true,
     preferredDeliveryMethod: true,
     paymentThreshold: true,
@@ -105,7 +101,6 @@ export const fullUserSelect = {
     email: true,
     firstName: true,
     lastName: true,
-    role: true, // legacy
     memberType: true,
     accessLevel: true,
     createdAt: true,
@@ -115,8 +110,6 @@ export const fullUserSelect = {
     gestconteId: true,
     nonProfitAffiliation: true,
     isActive: true,
-    terminationDate: true,
-    terminationReason: true,
     lastUpdated: true,
     preferredDeliveryMethod: true,
     paymentThreshold: true,

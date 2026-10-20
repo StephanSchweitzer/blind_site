@@ -158,8 +158,6 @@ const FIELD_LABELS: Record<string, string> = {
     specialization: 'Spécialisation',
     maxConcurrentAssignments: 'Attributions simultanées max',
     saveType: 'Logiciel d’enregistrement',
-    terminationDate: 'Date de fin',
-    terminationReason: 'Motif de fin',
 
     // address
     addressLine1: 'Adresse',
@@ -197,8 +195,6 @@ const FIELD_LABELS: Record<string, string> = {
     audioTrackCount: 'Nombre de pistes',
     audioSizeKb: 'Poids de l’audio (Kio)',
     polly_audio_url: 'Audio de synthèse',
-    stock_date: 'Date de stock',
-    last_downloaded_date: 'Dernier téléchargement',
     needsReview: 'À vérifier',
     escalatedAt: 'Escaladé le',
     addedById: 'Ajouté par',
