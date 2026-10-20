@@ -38,6 +38,10 @@ export const getCoupsDeCoeurPage = unstable_cache(
                         // deletedAt needs stating here too, same as hiddenFromCatalogue.
                         where: { book: { hiddenFromCatalogue: false, deletedAt: null } },
                         select: {
+                            // La note de ce livre pour cette liste (jamais sur la fiche).
+                            note: true,
+                            // Le rang choisi dans l'éditeur (lib/books/listGenres.ts).
+                            position: true,
                             book: {
                                 include: {
                                     genres: { include: { genre: true } },
@@ -60,6 +64,24 @@ export const getCoupsDeCoeurPage = unstable_cache(
 
         return { items, total };
     },
-    ['coups-de-coeur-page-v3'],
+    ['coups-de-coeur-page-v5'],
+    { tags: [CACHE_TAGS.coupsDeCoeur], revalidate: 86400 },
+);
+
+/**
+ * Le titre de chaque liste visible, dans l'ordre des pages (la plus récente en
+ * premier, comme getCoupsDeCoeurPage) : la page N est la liste N-1 du tableau.
+ * Pour « Toutes les listes » et le nom des boutons de pagination — des numéros
+ * seuls ne disaient pas quelle liste se trouvait derrière. Une entrée de cache
+ * à part, petite, sous la même étiquette : invalidée en même temps que les pages.
+ */
+export const getActiveListTitles = unstable_cache(
+    async () =>
+        prisma.coupsDeCoeur.findMany({
+            where: { active: true },
+            select: { id: true, title: true },
+            orderBy: { createdAt: 'desc' },
+        }),
+    ['coups-de-coeur-titles-v1'],
     { tags: [CACHE_TAGS.coupsDeCoeur], revalidate: 86400 },
 );

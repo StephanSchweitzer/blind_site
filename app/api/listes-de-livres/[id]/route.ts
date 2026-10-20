@@ -4,6 +4,7 @@ import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
 import { isRecordNotFound, notFoundResponse } from '@/lib/api-errors';
+import { parseListEntries } from '@/lib/books/listEntries';
 // Back-office only. The public /listes-de-livres page reads the active list
 // through `/api/listes-de-livres` (and /preview, /position), which stay open;
 // this route is the editor's view of a single entry.
@@ -48,11 +49,13 @@ export const PUT = withAdmin(async (req, { params }) => {
     }
 
     try {
-        const { title, description, audioPath, bookIds, active } = await req.json();
+        const body = await req.json();
+        const { title, description, audioPath, active } = body;
+        const entries = parseListEntries(body);
 
-        if (!title || !bookIds || !Array.isArray(bookIds)) {
+        if (!title || !entries) {
             return NextResponse.json(
-                { error: 'Title, description, audioPath, and bookIds array are required' },
+                { error: 'Title and a valid books array are required' },
                 { status: 400 }
             );
         }
@@ -73,25 +76,59 @@ export const PUT = withAdmin(async (req, { params }) => {
 
             // Sync the set, never replace it: a delete-all + create-all would
             // make the journal report every book as removed then added.
-            const wanted = new Set<number>(bookIds.map(bookId => parseInt(bookId, 10)));
+            const wanted = new Map(entries.map(entry => [entry.bookId, entry]));
             const current = await tx.coupsDeCoeurBooks.findMany({
                 where: { coupsDeCoeurId: coupId },
-                select: { bookId: true }
+                select: { bookId: true, note: true, position: true }
             });
-            const present = new Set(current.map(row => row.bookId));
+            const present = new Map(current.map(row => [row.bookId, row]));
 
-            const removed = [...present].filter(bookId => !wanted.has(bookId));
+            const removed = [...present.keys()].filter(bookId => !wanted.has(bookId));
             if (removed.length > 0) {
                 await tx.coupsDeCoeurBooks.deleteMany({
                     where: { coupsDeCoeurId: coupId, bookId: { in: removed } }
                 });
             }
 
-            const added = [...wanted].filter(bookId => !present.has(bookId));
+            const added = [...wanted.values()].filter(entry => !present.has(entry.bookId));
             if (added.length > 0) {
                 await tx.coupsDeCoeurBooks.createMany({
-                    data: added.map(bookId => ({ coupsDeCoeurId: coupId, bookId }))
+                    data: added.map(({ bookId, note, position }) => ({
+                        coupsDeCoeurId: coupId,
+                        bookId,
+                        note: note ?? null,
+                        position: position ?? null,
+                    }))
                 });
+            }
+
+            // Notes and ranks: only the rows where one actually changed.
+            // `undefined` (a client that doesn't send it) leaves it as it stands.
+            const changed = [...wanted.values()].flatMap(({ bookId, note, position }) => {
+                const row = present.get(bookId);
+                if (!row) return [];
+                const nextNote = note === undefined ? row.note : note;
+                const nextPosition = position === undefined ? row.position : position;
+                if (nextNote === row.note && nextPosition === row.position) return [];
+                return [{ bookId, note: nextNote, position: nextPosition }];
+            });
+            if (changed.length > 0) {
+                // One statement, not one update per row: reordering a list of
+                // forty books changes forty ranks, and each Prisma update on an
+                // owned collection costs the audit extension three more reads
+                // for an event that cannot exist — the trail identifies a
+                // liste's books by bookId (lib/audit/owned-collections.ts), so
+                // a note or a rank never shows in it. Raw SQL is outside the
+                // trail; that is all it loses.
+                await tx.$executeRaw`
+                    UPDATE "CoupsDeCoeurBooks" AS c
+                    SET "note" = v.note, "position" = v.position
+                    FROM UNNEST(
+                        ${changed.map(row => row.bookId)}::int[],
+                        ${changed.map(row => row.note)}::text[],
+                        ${changed.map(row => row.position)}::int[]
+                    ) AS v(book_id, note, position)
+                    WHERE c."coupsDeCoeurId" = ${coupId} AND c."bookId" = v.book_id`;
             }
 
             // Fetch the final result

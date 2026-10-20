@@ -80,9 +80,38 @@ Une fois la liste commencée, le bloc Livres se présente ainsi :
 
 ![Liste de Livres - capture 8](/admin/aide/images/liste-de-livres-08.jpg)
 
+### L'ordre des genres et des livres
+
+Le tableau range les livres comme le site public et la liste imprimée : par genre, chaque genre une seule fois, sous un bandeau à sa couleur. Un livre se range sous le premier de ses genres par ordre alphabétique ; pour le changer de section, modifiez ses genres dans sa fiche (crayon).
+
+Par défaut, les genres sont rangés par ordre alphabétique, et dans chacun les livres par titre. Vous pouvez choisir un autre ordre :
+
+- les flèches du bandeau d'un genre le **montent** ou le **descendent**, avec tous ses livres ;
+- les flèches au bout de la ligne d'un livre le déplacent **au sein de son genre**.
+
+Pour réordonner plusieurs genres d'un coup, cliquez sur « **Ordre des genres** », en haut du bloc Livres. Une fenêtre liste les genres : faites glisser chacun par sa poignée (les six points) à la place voulue, puis cliquez sur « **Appliquer** ». Au clavier, sélectionnez une poignée avec Tab et déplacez le genre avec les flèches haut et bas. « Annuler » referme la fenêtre sans rien changer.
+
+Dès qu'un ordre est choisi, le haut du bloc Livres indique « **Ordre choisi** », avec le lien « **Rétablir l'ordre alphabétique** » pour revenir au rangement par défaut. Un livre ajouté ensuite se place à la fin de son genre (et un genre nouveau, à la fin de la liste) ; déplacez-le s'il le faut. Comme le reste de la liste, l'ordre est enregistré avec « Enregistrer », et le site comme la liste imprimée le suivent.
+
+### Ajouter une note à un livre
+
+Une note donne une précision sur un livre pour cette liste seulement (« Prix Goncourt 2026 », « Lu par l'auteur »…). Le même livre dans une autre liste a sa propre note, ou aucune ; la fiche du livre, le catalogue et l'annonce vocale ne la montrent jamais.
+
+Sous le titre de chaque livre, cliquez sur « **+ Ajouter une note** ». Saisissez la note (500 caractères au plus) dans la fenêtre, puis cliquez sur « **Enregistrer la note** ». La note s'affiche en italique sous le titre du livre. Elle s'affiche aussi en italique après la présentation du livre, sur le site public et dans la liste imprimée.
+
+Pour changer une note, cliquez sur « **Modifier la note** », sous la note. Le bouton « **Supprimer la note** » de la fenêtre la retire. Une note vidée est retirée elle aussi.
+
+La note est enregistrée tout de suite, sans attendre le bouton « Enregistrer » de la liste : un message « Note enregistrée » le confirme. Seule exception : un livre que vous venez d'ajouter à la liste. Sa note est enregistrée avec la liste, et le bouton de la fenêtre s'appelle alors « **Valider** ». Il en va de même pour toutes les notes d'une liste pas encore créée.
+
+La capture ci-dessus date d'avant les notes : le lien « Ajouter une note » n'y figure pas encore.
+
 Lorsque vous êtes prêt, cliquez sur « **Créer la liste** » (ou « **Enregistrer** » pour une liste existante) dans la barre d'enregistrement en bas de l'écran (1).
 
 ![Liste de Livres - capture 9](/admin/aide/images/liste-de-livres-09.jpg)
+
+Une fois la liste créée, sa page s'ouvre : vous pouvez continuer à la compléter, ou l'imprimer.
+
+Sur une liste existante, « **Enregistrer** » vous laisse sur la page : un message « Liste enregistrée » le confirme, et la barre indique de nouveau « Aucune modification ». Vous pouvez donc enregistrer en cours de route, autant de fois que vous le souhaitez. Pour revenir au tableau des listes, cliquez sur « **Fermer** » dans la barre, ou sur « Listes de livres » en haut de la page. Tant qu'il reste des modifications non enregistrées, ce bouton s'appelle « **Annuler** » : il quitte la page sans les garder.
 
 ## Modification des listes de livres
 
@@ -90,6 +119,10 @@ La modification d'une liste s'effectue de la même manière que son ajout. La se
 
 En haut à droite, vous pouvez imprimer la liste, ou la supprimer avec le bouton « ⋯ ». Les livres eux-mêmes restent au catalogue.
 
+### Aperçu
+
+Le bouton « **Aperçu** », en haut à droite, ouvre dans un nouvel onglet la liste telle que les visiteurs la verront sur le site public : mêmes genres, mêmes couleurs, même fenêtre au clic sur un livre. Il marche aussi pour une liste **Masquée** : c'est le moyen de la relire avant de la rendre visible, un bandeau rappelant alors qu'elle n'est pas encore en ligne. L'aperçu montre la dernière version enregistrée : enregistrez d'abord vos modifications, puis rechargez l'onglet de l'aperçu.
+
 La liste imprimée contient exactement ce que montre le site public : les livres masqués du catalogue et les livres supprimés n'y figurent pas. Un livre supprimé reste dans la liste avec l'étiquette « **Supprimé** » : il reviendra tout seul si sa fiche est restaurée.
 
-La liste imprimée est mise en page pour tenir sur le moins de pages possible. En tête : le logo, le titre de la liste et le message habituel aux adhérents dans un cadre ; en pied : le numéro de page. Le reste : un seul corps de texte, un titre de genre centré en gras, puis pour chaque livre le titre et l'auteur en gras sur la même ligne (si le titre est trop long pour une ligne, l'auteur se place au bout de sa dernière ligne, calé à droite), suivis de l'éditeur, de l'année, du nombre de pages et de la durée d'écoute, puis de la présentation alignée à gauche, sans guillemets ; aucun mot n'est coupé en fin de ligne : un mot trop long pour la ligne passe entier à la ligne suivante. Plus les présentations sont courtes, moins il y a de pages : pensez à les résumer dans la fiche du livre.
+La liste imprimée est mise en page pour tenir sur le moins de pages possible. En tête : le logo, le titre de la liste et le message habituel aux adhérents dans un cadre ; en pied : le numéro de page. Le reste : un seul corps de texte, un titre de genre centré en gras (dans l'ordre choisi dans le tableau, comme sur le site), puis pour chaque livre le titre et l'auteur en gras sur la même ligne (si le titre est trop long pour une ligne, l'auteur se place au bout de sa dernière ligne, calé à droite), suivis de l'éditeur, de l'année, du nombre de pages et de la durée d'écoute, puis de la présentation alignée à gauche, sans guillemets, et de la note du livre pour cette liste en italique s'il en a une ; aucun mot n'est coupé en fin de ligne : un mot trop long pour la ligne passe entier à la ligne suivante. Plus les présentations sont courtes, moins il y a de pages : pensez à les résumer dans la fiche du livre.

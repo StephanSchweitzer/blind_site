@@ -30,6 +30,8 @@ interface CoupsDeCoeurClientProps {
     initialTotal: number;
     /** Les coordonnées du back-office (SiteContact) ; absentes seulement au build ou en dev. */
     contact: { phones: string; email: string } | null;
+    /** Le titre de chaque liste visible, dans l'ordre des pages (getActiveListTitles). */
+    listTitles: string[];
 }
 
 /**
@@ -46,6 +48,7 @@ export default function CoupsDeCoeurClient({
                                                initialContent,
                                                initialTotal,
                                                contact,
+                                               listTitles,
                                            }: CoupsDeCoeurClientProps) {
     const [currentPage, setCurrentPage] = useState(1);
     const [pages, setPages] = useState<Record<number, ListPage>>({
@@ -183,10 +186,51 @@ export default function CoupsDeCoeurClient({
                         />
                     </div>
 
+                    {/* Toutes les listes, par leur titre. La pagination ne donnait que
+                        des numéros : pour trouver « Liste de mars », il fallait ouvrir
+                        les listes une à une. Un <details> : replié, il ne prend
+                        qu'une ligne, et clavier comme lecteur d'écran l'ouvrent
+                        d'office. Le choix laisse le focus sur le bouton ; la région
+                        d'état de la pagination annonce la liste affichée. */}
+                    {listTitles.length > 1 && (
+                        <details className="glass-card p-4 sm:px-6">
+                            <summary className="cursor-pointer rounded-sm text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background">
+                                Toutes les listes ({listTitles.length})
+                            </summary>
+                            <nav aria-label="Toutes les listes de livres" className="mt-3">
+                                <ol className="grid list-none gap-1 p-0 sm:grid-cols-2">
+                                    {listTitles.map((title, index) => {
+                                        const page = index + 1;
+                                        const isCurrent = page === currentPage;
+                                        return (
+                                            <li key={`${page}-${title}`}>
+                                                <button
+                                                    type="button"
+                                                    aria-current={isCurrent ? 'page' : undefined}
+                                                    onClick={() => {
+                                                        if (!isCurrent) goToPage(page);
+                                                    }}
+                                                    className={`w-full rounded-lg px-3 py-2 text-left text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                                        isCurrent
+                                                            ? 'bg-primary font-semibold text-primary-foreground forced-colors:[forced-color-adjust:none] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]'
+                                                            : 'text-foreground hover:bg-primary/10 dark:hover:bg-white/10'
+                                                    }`}
+                                                >
+                                                    {title}
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ol>
+                            </nav>
+                        </details>
+                    )}
+
                     <PublicPaginatedList
                         info={pageInfo(currentPage, 1, total)}
                         noun={{ one: 'liste', many: 'listes', feminine: true }}
                         label="Pages des listes de livres"
+                        pageLabel={(page) => listTitles[page - 1]}
                         onPageChange={goToPage}
                         pending={isLoading}
                         announce={isLoading ? 'Chargement de la liste…' : failed ? '' : undefined}

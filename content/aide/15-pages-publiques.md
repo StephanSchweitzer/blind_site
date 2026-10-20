@@ -76,6 +76,11 @@ Ces réglages sont gardés sur l'appareil du visiteur, d'une visite à l'autre. 
 
 Sur la page des listes de livres, le lecteur de la présentation audio a ses propres boutons : « Écouter » / « Pause », reculer ou avancer de 15 secondes, et une **vitesse** d'écoute de 0,75 à 2 fois. Beaucoup d'auditeurs écoutent en accéléré : la vitesse choisie est gardée sur leur appareil.
 
+Deux aides pour s'y retrouver sur cette page, utiles à indiquer à un auditeur au téléphone :
+
+- « **Toutes les listes** », sous la recherche, se déplie sur le titre de chaque liste visible, la plus récente en premier : un clic l'affiche. Les numéros de la pagination, en bas, annoncent eux aussi le titre de leur liste.
+- Quand une liste compte au moins trois genres, une rangée de **raccourcis** au-dessus des livres mène directement à chacun (« Roman historique 4 »…), sans parcourir les livres qui précèdent.
+
 ## Page « Accessibilité »
 
 Le lien « **Accessibilité** », en bas de chaque page du site public, mène à une page qui explique aux visiteurs ce que le site leur propose, comment il est vérifié, ce qui reste imparfait, et comment signaler un problème. Le courriel et les numéros de téléphone qu'elle donne sont ceux de la page **Contact** : les modifier dans Arbre Rose les modifie aussi là.

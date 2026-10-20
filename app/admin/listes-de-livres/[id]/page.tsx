@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { LoadingSkeleton } from '@/components/loading-skeleton';
 import ListeDeLivresForm, { ListeDeLivresPayload, ListeDeLivresValues } from '../components/liste-de-livres-form';
+import { groupListByGenre, isAlphabeticalOrder } from '@/lib/books/listGenres';
 import { ListBook } from '../components/list-book';
 
 interface LoadedList {
@@ -13,7 +14,7 @@ interface LoadedList {
     audioPath: string | null;
     active: boolean;
     createdAt: string;
-    books: { book: ListBook }[];
+    books: { book: ListBook; note: string | null; position: number | null }[];
 }
 
 export default function ModifierListeDeLivresPage() {
@@ -41,7 +42,12 @@ export default function ModifierListeDeLivresPage() {
                         description: data.description ?? '',
                         audioPath: data.audioPath || null,
                         active: data.active,
-                        books: data.books.map((entry) => entry.book),
+                        // Dans l'ordre de la liste publiée — choisi, ou alphabétique.
+                        books: groupListByGenre(data.books).flatMap(([, entries]) => entries.map((entry) => entry.book)),
+                        notes: Object.fromEntries(
+                            data.books.filter((entry) => entry.note).map((entry) => [entry.book.id, entry.note as string])
+                        ),
+                        customOrder: !isAlphabeticalOrder(data.books),
                     },
                 });
             })

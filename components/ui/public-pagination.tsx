@@ -47,6 +47,12 @@ export type PublicPaginationProps = {
      * une liste vide, lu seulement — la page montre déjà son propre message.
      */
     announce?: string;
+    /**
+     * Ce qui se trouve derrière un numéro, quand une page est un tout nommé
+     * (une liste de livres) : lu avec le numéro, et en info-bulle. Sans lui,
+     * « Page 3 » ne dit pas ce qu'on ouvrira.
+     */
+    pageLabel?: (page: number) => string | undefined;
 };
 
 // Le verre des cartes (.glass-card), en pilule. « Contraste renforcé » le rend
@@ -188,6 +194,7 @@ export function PublicPaginationBar({
     onPageChange,
     pending = false,
     anchorId,
+    pageLabel,
 }: PublicPaginationProps & { anchorId: string }) {
     const jumpId = useId();
     const compactId = useId();
@@ -238,7 +245,8 @@ export function PublicPaginationBar({
                                     type="button"
                                     className={slot === page ? current : control}
                                     aria-current={slot === page ? 'page' : undefined}
-                                    aria-label={slot === page ? `Page ${slot}, page actuelle` : `Page ${slot}`}
+                                    aria-label={`Page ${slot}${pageLabel?.(slot) ? ` : ${pageLabel(slot)}` : ''}${slot === page ? ', page actuelle' : ''}`}
+                                    title={pageLabel?.(slot)}
                                     onClick={() => {
                                         if (slot !== page) go(slot);
                                     }}

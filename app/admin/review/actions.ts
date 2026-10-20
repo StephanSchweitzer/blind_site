@@ -188,7 +188,23 @@ export async function fuseBooks(
                 await tx.bookGenre.updateMany({ where: { bookId: removedId }, data: { bookId: survivorId } });
 
                 // CoupsDeCoeurBooks PK is (coupsDeCoeurId, bookId): same de-dup then move.
-                const keepLists = await tx.coupsDeCoeurBooks.findMany({ where: { bookId: survivorId }, select: { coupsDeCoeurId: true } });
+                const keepLists = await tx.coupsDeCoeurBooks.findMany({ where: { bookId: survivorId }, select: { coupsDeCoeurId: true, note: true } });
+                // A list holding both keeps the survivor's row: the doublon's
+                // note for that list goes with it unless the survivor has its own.
+                const droppedNotes = await tx.coupsDeCoeurBooks.findMany({
+                    where: {
+                        bookId: removedId,
+                        note: { not: null },
+                        coupsDeCoeurId: { in: keepLists.filter((c) => c.note === null).map((c) => c.coupsDeCoeurId) },
+                    },
+                    select: { coupsDeCoeurId: true, note: true },
+                });
+                for (const { coupsDeCoeurId, note } of droppedNotes) {
+                    await tx.coupsDeCoeurBooks.update({
+                        where: { coupsDeCoeurId_bookId: { coupsDeCoeurId, bookId: survivorId } },
+                        data: { note },
+                    });
+                }
                 await tx.coupsDeCoeurBooks.deleteMany({
                     where: { bookId: removedId, coupsDeCoeurId: { in: keepLists.map((c) => c.coupsDeCoeurId) } },
                 });

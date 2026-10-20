@@ -1,5 +1,5 @@
 import CoupsDeCoeurClient from './CoupsDeCoeurClient';
-import { getCoupsDeCoeurPage, COUPS_DE_COEUR_PAGE_SIZE } from './data';
+import { getActiveListTitles, getCoupsDeCoeurPage, COUPS_DE_COEUR_PAGE_SIZE } from './data';
 import { publicPageMetadata } from '@/lib/seo';
 import { getSiteContact } from '../contact/data';
 import { degradeOnReadError } from '@/lib/isr-read-error';
@@ -18,12 +18,17 @@ export const metadata = publicPageMetadata({
 export const revalidate = 86400;
 
 export default async function CoupsDeCoeurPage() {
-    const [{ items, total }, contact] = await Promise.all([
+    const [{ items, total }, contact, listTitles] = await Promise.all([
         getCoupsDeCoeurPage(1, COUPS_DE_COEUR_PAGE_SIZE),
         getSiteContact().catch((error) => {
             console.error('Coordonnées des listes de livres indisponibles :', error);
             if (!degradeOnReadError()) throw error;
             return null;
+        }),
+        getActiveListTitles().catch((error) => {
+            console.error('Titres des listes de livres indisponibles :', error);
+            if (!degradeOnReadError()) throw error;
+            return [];
         }),
     ]);
 
@@ -31,6 +36,7 @@ export default async function CoupsDeCoeurPage() {
         <CoupsDeCoeurClient
             initialContent={items}
             initialTotal={total}
+            listTitles={listTitles.map(({ title }) => title)}
             contact={contact && { phones: contact.phones, email: contact.email }}
         />
     );

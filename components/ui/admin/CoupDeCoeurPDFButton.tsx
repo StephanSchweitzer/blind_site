@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { printPdfBlob } from '@/lib/print-pdf';
 import { loadOnDemand } from '@/lib/load-on-demand';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
+import { visibleListEntries } from '@/lib/books/listEntries';
 
 interface CoupDeCoeurPDFButtonProps {
     /** The list is only ever printed by id — the table only carries rows, and the
@@ -72,12 +73,12 @@ export const CoupDeCoeurPDFButton: React.FC<CoupDeCoeurPDFButtonProps> = ({
             // back if the fiche is restored) and titles hidden from the public
             // catalogue. The printed list goes to auditeurs: it gets exactly what
             // the public export prints (app/(public)/listes-de-livres/data.ts), no more.
-            type AdminListBook = { book: CoupDeCoeur['books'][number]['book'] & { deletedAt?: string | null; hiddenFromCatalogue?: boolean } };
+            type AdminListBook = CoupDeCoeur['books'][number] & { book: { deletedAt?: string | null; hiddenFromCatalogue?: boolean } };
             const list = data as Omit<CoupDeCoeur, 'books'> & { books: AdminListBook[] };
             const content: CoupDeCoeur[] = [
                 {
                     ...list,
-                    books: list.books.filter(({ book }) => !book.deletedAt && !book.hiddenFromCatalogue),
+                    books: visibleListEntries(list.books),
                 },
             ];
             const blob = await pdf(<CoupDeCoeurPDF content={content} />).toBlob();

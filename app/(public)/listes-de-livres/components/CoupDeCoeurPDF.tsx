@@ -2,7 +2,7 @@
 import { Document, Page, View, Text, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import type { PublicBook } from '@/lib/books/publicBook';
-import { groupBy } from 'lodash';
+import { groupListByGenre } from '@/lib/books/listGenres';
 
 /**
  * Aucun mot n'est coupé en fin de ligne : un mot qui ne tient pas passe entier
@@ -50,6 +50,8 @@ Font.register({
     fonts: [
         { src: '/fonts/LiberationSerif-Regular.ttf' },
         { src: '/fonts/LiberationSerif-Bold.ttf', fontWeight: 'bold' },
+        // Pour la note d'un livre propre à la liste, seul texte en italique.
+        { src: '/fonts/LiberationSerif-Italic.ttf', fontStyle: 'italic' },
     ],
 });
 
@@ -87,6 +89,8 @@ const s = StyleSheet.create({
     // titre : on sait de quoi il s'agit (et combien ça dure) avant de lire.
     meta: { fontSize: META, lineHeight: '12pt', marginBottom: 4 },
     bookDesc: { lineHeight: LEADING },
+    // La note de la liste, en italique juste après la présentation.
+    bookNote: { fontStyle: 'italic', lineHeight: LEADING, marginTop: 2 },
 
     contact: { textAlign: 'center', marginTop: 22, lineHeight: LEADING },
     footer: { position: 'absolute', bottom: 20, left: 0, right: 0 },
@@ -124,16 +128,7 @@ const unquoted = (description: string) => {
         : text;
 };
 
-const groupBooksByGenre = (books: { book: PublicBook }[]) => {
-    const withGenres = books.map(({ book }) => ({
-        ...book,
-        genreNames: book.genres?.length
-            ? book.genres.map(g => g.genre?.name).filter(Boolean).sort()
-            : ['Sans genre'],
-    }));
-    return Object.entries(groupBy(withGenres, b => b.genreNames[0] || 'Sans genre'))
-        .sort(([a], [b]) => a.localeCompare(b));
-};
+type ListEntry = CoupDeCoeur['books'][number];
 
 // wrap={false} : une notice ne se coupe pas entre deux pages, donc son titre ne
 // reste jamais seul en bas de page (minPresenceAhead, essayé, n'est pas respecté
@@ -141,7 +136,8 @@ const groupBooksByGenre = (books: { book: PublicBook }[]) => {
 // énumère ses quarante volumes) : une vue insécable plus haute que la page ne
 // peut pas être posée, react-pdf la laisse déborder et laisse un trou avant elle.
 const KEEP_TOGETHER_MAX_CHARS = 1500;
-const keepsTogether = (book: PublicBook) => (book.description?.length ?? 0) <= KEEP_TOGETHER_MAX_CHARS;
+const keepsTogether = ({ book, note }: ListEntry) =>
+    (book.description?.length ?? 0) + (note?.length ?? 0) <= KEEP_TOGETHER_MAX_CHARS;
 
 /**
  * La ponctuation haute (« ? », « ! », « : », « ; ») et le guillemet fermant ne
@@ -162,11 +158,12 @@ const bindPunctuation = (text: string) =>
  */
 const titleWords = (title: string) => bindPunctuation(title.trim()).split(/[ \t\r\n]+/);
 
-const BookEntry = ({ book }: { book: PublicBook }) => {
+const BookEntry = ({ entry }: { entry: ListEntry }) => {
+    const { book, note } = entry;
     const meta = formatBookMeta(book);
     const words = titleWords(book.title);
     return (
-        <View style={s.book} wrap={!keepsTogether(book)}>
+        <View style={s.book} wrap={!keepsTogether(entry)}>
             <View style={s.bookHead}>
                 {words.map((word, i) => (
                     <Text
@@ -182,6 +179,9 @@ const BookEntry = ({ book }: { book: PublicBook }) => {
             {meta && <Text style={s.meta} hyphenationCallback={noHyphenation}>{meta}</Text>}
             {book.description && (
                 <Text style={s.bookDesc} hyphenationCallback={noHyphenation}>{bindPunctuation(unquoted(book.description))}</Text>
+            )}
+            {note && (
+                <Text style={s.bookNote} hyphenationCallback={noHyphenation}>{bindPunctuation(note)}</Text>
             )}
         </View>
     );
@@ -219,14 +219,14 @@ export const CoupDeCoeurPDF = ({ content, logoSrc = LOGO_SRC }: { content: CoupD
 
                 <Text style={s.notice} hyphenationCallback={noHyphenation}>{bindPunctuation(NOTICE)}</Text>
 
-                {groupBooksByGenre(cdc.books).flatMap(([genre, [firstBook, ...rest]]) => [
+                {groupListByGenre(cdc.books).flatMap(([genre, [firstEntry, ...rest]]) => [
                     // Le titre de section et sa première notice sont inséparables : s'ils
                     // ne tiennent pas, les deux passent à la page suivante.
-                    <View key={`genre-${genre}`} wrap={!keepsTogether(firstBook)}>
+                    <View key={`genre-${genre}`} wrap={!keepsTogether(firstEntry)}>
                         <Text style={s.genreTitle} minPresenceAhead={60} hyphenationCallback={noHyphenation}>{genre}</Text>
-                        <BookEntry book={firstBook} />
+                        <BookEntry entry={firstEntry} />
                     </View>,
-                    ...rest.map(book => <BookEntry key={book.id} book={book} />),
+                    ...rest.map(entry => <BookEntry key={entry.book.id} entry={entry} />),
                 ])}
 
                 <Text style={s.contact} hyphenationCallback={noHyphenation}>

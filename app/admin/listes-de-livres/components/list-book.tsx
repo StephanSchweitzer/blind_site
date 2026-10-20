@@ -1,4 +1,5 @@
 import React from 'react';
+import { groupListByGenre } from '@/lib/books/listGenres';
 import { ListRef, membershipLabel } from './list-membership';
 
 /** Un livre tel que la liste l'affiche — un sous-ensemble de la ligne Book. */
@@ -13,7 +14,31 @@ export interface ListBook {
     hiddenFromCatalogue?: boolean;
     /** Fiche supprimée (soft delete) : elle reste dans la liste, masquée du site et de l'impression. */
     deletedAt?: Date | string | null;
+    /** Ses genres : le premier, par ordre alphabétique, est la section où il se range. */
+    genres?: { genre?: { name?: string | null } | null }[] | null;
 }
+
+/**
+ * Les livres de la liste par genre, dans l'ordre où le site et le PDF les
+ * montreront (lib/books/listGenres.ts). En ordre personnalisé, le rang d'un livre
+ * est sa place dans le tableau `books` ; sinon, l'ordre alphabétique.
+ */
+export function listBookGroups(books: ListBook[], customOrder: boolean): [string, ListBook[]][] {
+    return groupListByGenre(books.map((book, index) => ({ book, position: customOrder ? index : null }))).map(
+        ([genre, entries]) => [genre, entries.map(({ book }) => book)]
+    );
+}
+
+/** Les mêmes livres, à plat, dans cet ordre-là. */
+export const orderedListBooks = (books: ListBook[], customOrder: boolean): ListBook[] =>
+    listBookGroups(books, customOrder).flatMap(([, group]) => group);
+
+/**
+ * La note de chaque livre propre à cette liste, par identifiant de livre —
+ * seulement les livres qui en ont une. À part des livres eux-mêmes : une fiche
+ * rechargée après modification ou un retrait annulé ne la touchent pas.
+ */
+export type ListNotes = Record<number, string>;
 
 const BADGE = 'inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium leading-4';
 

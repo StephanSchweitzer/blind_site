@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { BookPlus, Check, Loader2, Pencil, Search, Undo2, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { BookPlus, Check, ChevronDown, ChevronUp, Loader2, Pencil, Plus, Search, Undo2, X } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,12 +29,22 @@ import { calendarYear } from '@/lib/calendar-date';
 import { parisDate } from '@/lib/paris-day';
 import { cn } from '@/lib/utils';
 import { ListRef } from './list-membership';
-import { BookBadges, ListBook } from './list-book';
+import { BookBadges, ListBook, ListNotes, listBookGroups, orderedListBooks } from './list-book';
+import { sectionSpine } from '@/lib/books/genreFamily';
+import { ListNoteDialog } from './list-note-dialog';
+import { GenreOrderDialog } from './genre-order-dialog';
 import { RecentBooksControl, RecentBooksDialog, useRecentWindow } from './recent-books-picker';
 
 interface BooksSectionProps {
     books: ListBook[];
     setBooks: React.Dispatch<React.SetStateAction<ListBook[]>>;
+    notes: ListNotes;
+    /** Vrai quand genres et livres suivent l'ordre de `books` plutôt que l'alphabet. */
+    customOrder: boolean;
+    setCustomOrder: (custom: boolean) => void;
+    /** Enregistre aussitôt la note d'un livre déjà enregistré dans la liste, sinon la garde pour « Enregistrer ». */
+    onSaveNote: (bookId: number, note: string | null) => Promise<void>;
+    savesNoteNow: (bookId: number) => boolean;
     /** La liste en cours d'édition, exclue des avertissements « déjà dans ». */
     listId?: number;
 }
@@ -49,12 +59,13 @@ interface BooksSectionProps {
  * ligne est dans la liste ou n'y est pas : on la retire, et les cases ne servent
  * qu'à retirer plusieurs livres d'un coup.
  */
-export default function BooksSection({ books, setBooks, listId }: BooksSectionProps) {
+export default function BooksSection({ books, setBooks, notes, customOrder, setCustomOrder, onSaveNote, savesNoteNow, listId }: BooksSectionProps) {
     const win = useRecentWindow();
     const [isRecentOpen, setIsRecentOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [selected, setSelected] = useState<Set<number>>(new Set());
+    const [noteBook, setNoteBook] = useState<ListBook | null>(null);
     // Le dernier retrait, pour « Annuler » : l'état complet d'avant, effacé dès
     // que la liste change autrement.
     const [undo, setUndo] = useState<{ snapshot: ListBook[]; count: number } | null>(null);
@@ -104,12 +115,74 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
     const allSelected = books.length > 0 && selectedIds.length === books.length;
     const alreadyListed = books.filter((book) => membership.has(book.id));
 
-    /** Ajouts délibérés : en tête de liste, sans doublon. */
+    /**
+     * Ajouts délibérés, sans doublon. Le tableau est rangé par genre : en ordre
+     * alphabétique, un livre ajouté prend sa place d'office ; en ordre choisi,
+     * il arrive à la fin de son genre (ou son genre, nouveau, à la fin).
+     */
     const addBooks = (incoming: ListBook[]) => {
         if (incoming.length === 0) return;
         const ids = new Set(incoming.map((book) => book.id));
-        setBooks((prev) => [...incoming, ...prev.filter((book) => !ids.has(book.id))]);
+        setBooks((prev) => [...prev.filter((book) => !ids.has(book.id)), ...incoming]);
         setUndo(null);
+    };
+
+    // ── ordre ────────────────────────────────────────────────────────────
+    // Les genres une fois chacun, dans l'ordre du site et du PDF. Déplacer un
+    // genre emporte ses livres ; un livre ne bouge qu'au sein de son genre.
+    const groups = useMemo(() => listBookGroups(books, customOrder), [books, customOrder]);
+    // Après un déplacement, le focus revient sur le bouton utilisé : la ligne a
+    // changé de place dans le DOM, et le focus serait tombé sur la page.
+    const pendingFocus = useRef<string | null>(null);
+    const [moveMessage, setMoveMessage] = useState('');
+    useEffect(() => {
+        const key = pendingFocus.current;
+        if (!key) return;
+        pendingFocus.current = null;
+        document.querySelector<HTMLElement>(`[data-move="${key}"]`)?.focus();
+    });
+    const setFocusKey = (key: string) => {
+        pendingFocus.current = key;
+    };
+
+    const applyOrder = (next: [string, ListBook[]][]) => {
+        setBooks(next.flatMap(([, group]) => group));
+        setCustomOrder(true);
+    };
+
+    const moveGenre = (index: number, step: -1 | 1, key: string) => {
+        const target = index + step;
+        if (target < 0 || target >= groups.length) return;
+        const next = [...groups];
+        [next[index], next[target]] = [next[target], next[index]];
+        applyOrder(next);
+        setFocusKey(key);
+        setMoveMessage(`Genre « ${groups[index][0]} » déplacé vers le ${step < 0 ? 'haut' : 'bas'}.`);
+    };
+
+    const moveBook = (genreIndex: number, bookIndex: number, step: -1 | 1, key: string) => {
+        const group = groups[genreIndex][1];
+        const target = bookIndex + step;
+        if (target < 0 || target >= group.length) return;
+        const moved = [...group];
+        [moved[bookIndex], moved[target]] = [moved[target], moved[bookIndex]];
+        applyOrder(groups.map((entry, i) => (i === genreIndex ? [entry[0], moved] : entry)));
+        setFocusKey(key);
+        setMoveMessage(`« ${group[bookIndex].title.trim()} » déplacé vers le ${step < 0 ? 'haut' : 'bas'}.`);
+    };
+
+    const [isGenreOrderOpen, setIsGenreOrderOpen] = useState(false);
+    const applyGenreOrder = (order: string[]) => {
+        const byGenre = new Map(groups);
+        applyOrder(order.flatMap((genre) => (byGenre.has(genre) ? [[genre, byGenre.get(genre)!] as [string, ListBook[]]] : [])));
+        setIsGenreOrderOpen(false);
+        setMoveMessage('Ordre des genres modifié.');
+    };
+
+    const resetOrder = () => {
+        setBooks(orderedListBooks(books, false));
+        setCustomOrder(false);
+        setMoveMessage("Ordre alphabétique rétabli.");
     };
 
     const removeBooks = (ids: number[]) => {
@@ -211,6 +284,38 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                                 {books.length}
                             </span>
                         </CardTitle>
+                        {!isEmpty && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {customOrder ? (
+                                    <>
+                                        Ordre choisi ·{' '}
+                                        <button
+                                            type="button"
+                                            className="underline underline-offset-2 hover:text-foreground"
+                                            onClick={resetOrder}
+                                        >
+                                            Rétablir l&apos;ordre alphabétique
+                                        </button>
+                                    </>
+                                ) : (
+                                    'Par genre, puis par titre. Les flèches changent l’ordre.'
+                                )}
+                                {groups.length > 1 && (
+                                    <>
+                                        {' · '}
+                                        <button
+                                            type="button"
+                                            className="underline underline-offset-2 hover:text-foreground"
+                                            onClick={() => setIsGenreOrderOpen(true)}
+                                        >
+                                            Ordre des genres
+                                        </button>
+                                    </>
+                                )}
+                            </p>
+                        )}
+                        {/* Annonce les déplacements au lecteur d'écran. */}
+                        <p className="sr-only" aria-live="polite">{moveMessage}</p>
                     </div>
                     {isEmpty && addButtons}
                 </div>
@@ -322,11 +427,36 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                                         <TableHead className="text-foreground font-medium">Titre</TableHead>
                                         <TableHead className="hidden text-foreground font-medium md:table-cell">Auteur</TableHead>
                                         <TableHead className="hidden text-foreground font-medium whitespace-nowrap md:table-cell">Ajouté au catalogue</TableHead>
-                                        <TableHead className="w-24 pr-4"><span className="sr-only">Actions</span></TableHead>
+                                        <TableHead className="w-44 pr-4"><span className="sr-only">Actions</span></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {books.map((book) => {
+                                    {groups.map(([genre, group], genreIndex) => (
+                                    <React.Fragment key={genre}>
+                                        {/* Le genre, comme sur le site : sa couleur de dos,
+                                            son nom, et de quoi le déplacer avec ses livres. */}
+                                        <TableRow className="border-b border-border bg-muted/40 hover:bg-muted/40">
+                                            <TableCell colSpan={5} className="py-2 pl-4 pr-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span aria-hidden="true" className={`block h-4 w-1.5 shrink-0 rounded-[1px] ${sectionSpine(genreIndex)}`} />
+                                                    <span className="text-sm font-semibold text-foreground">{genre}</span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {group.length} {group.length === 1 ? 'livre' : 'livres'}
+                                                    </span>
+                                                    {groups.length > 1 && (
+                                                        <MoveButtons
+                                                            className="ml-auto"
+                                                            subject={`le genre « ${genre} »`}
+                                                            moveKey={`genre:${genre}`}
+                                                            canUp={genreIndex > 0}
+                                                            canDown={genreIndex < groups.length - 1}
+                                                            onMove={(step, key) => moveGenre(genreIndex, step, key)}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    {group.map((book, bookIndex) => {
                                         const isSelected = selected.has(book.id);
                                         return (
                                             <TableRow
@@ -354,6 +484,29 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                                                     <div className="font-medium">{book.title}</div>
                                                     <div className="text-xs text-muted-foreground md:hidden">{book.author}</div>
                                                     <BookBadges book={book} membership={membership.get(book.id)} />
+                                                    {/* La note et son action sous le titre, en mots : une icône
+                                                        de plus à côté du crayon de la fiche se confondait avec
+                                                        lui, et une note de liste écrite dans la fiche part au
+                                                        catalogue et dans toutes les listes. */}
+                                                    {notes[book.id] && (
+                                                        <p className="mt-1 whitespace-pre-wrap text-sm italic text-muted-foreground">
+                                                            {notes[book.id]}
+                                                        </p>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        className="mt-1 inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                                        onClick={() => setNoteBook(book)}
+                                                        aria-label={`${notes[book.id] ? 'Modifier la note' : 'Ajouter une note'} pour « ${book.title} »`}
+                                                    >
+                                                        {notes[book.id] ? (
+                                                            'Modifier la note'
+                                                        ) : (
+                                                            <>
+                                                                <Plus className="h-3 w-3" aria-hidden="true" /> Ajouter une note
+                                                            </>
+                                                        )}
+                                                    </button>
                                                 </TableCell>
                                                 <TableCell className="hidden text-muted-foreground md:table-cell">{book.author}</TableCell>
                                                 <TableCell className="hidden text-muted-foreground whitespace-nowrap md:table-cell">
@@ -361,6 +514,15 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                                                 </TableCell>
                                                 <TableCell className="pr-4">
                                                     <div className="flex justify-end gap-1">
+                                                        {group.length > 1 && (
+                                                            <MoveButtons
+                                                                subject={`« ${book.title.trim()} »`}
+                                                                moveKey={`book:${book.id}`}
+                                                                canUp={bookIndex > 0}
+                                                                canDown={bookIndex < group.length - 1}
+                                                                onMove={(step, key) => moveBook(genreIndex, bookIndex, step, key)}
+                                                            />
+                                                        )}
                                                         <Button
                                                             type="button"
                                                             variant="ghost"
@@ -388,6 +550,8 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                                             </TableRow>
                                         );
                                     })}
+                                    </React.Fragment>
+                                    ))}
                                 </TableBody>
                             </Table>
                         </div>
@@ -402,6 +566,32 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                     inListIds={inListIds}
                     membership={membership}
                     onAdd={addBooks}
+                />
+            )}
+
+            {isGenreOrderOpen && (
+                <GenreOrderDialog
+                    genres={groups.map(([name, group]) => ({ name, count: group.length }))}
+                    onClose={() => setIsGenreOrderOpen(false)}
+                    onApply={applyGenreOrder}
+                />
+            )}
+
+            {noteBook && (
+                <ListNoteDialog
+                    key={noteBook.id}
+                    bookTitle={noteBook.title}
+                    note={notes[noteBook.id] ?? null}
+                    savesNow={savesNoteNow(noteBook.id)}
+                    onClose={() => setNoteBook(null)}
+                    onSave={async (note) => {
+                        await onSaveNote(noteBook.id, note);
+                        // Dit, puisque c'est le seul geste de la page qui n'attend pas « Enregistrer ».
+                        if (savesNoteNow(noteBook.id)) {
+                            toast({ title: note ? 'Note enregistrée' : 'Note supprimée' });
+                        }
+                        setNoteBook(null);
+                    }}
                 />
             )}
 
@@ -433,6 +623,61 @@ export default function BooksSection({ books, setBooks, listId }: BooksSectionPr
                 />
             )}
         </Card>
+    );
+}
+
+/**
+ * Monter / descendre, pour un genre ou un livre. Au bout de son groupe, la
+ * flèche reste focalisable (`aria-disabled`, pas `disabled`) : un livre monté
+ * en tête aurait fait tomber le focus sur la page. `data-move` permet de
+ * remettre le focus sur le bouton après le déplacement de sa ligne.
+ */
+function MoveButtons({
+    subject,
+    moveKey,
+    canUp,
+    canDown,
+    onMove,
+    className,
+}: {
+    /** « le genre « Romans » » ou « « Titre » » — complète le nom du bouton. */
+    subject: string;
+    moveKey: string;
+    canUp: boolean;
+    canDown: boolean;
+    onMove: (step: -1 | 1, key: string) => void;
+    className?: string;
+}) {
+    const arrow = 'h-8 w-8 text-muted-foreground hover:text-foreground aria-disabled:cursor-default aria-disabled:opacity-30 aria-disabled:hover:bg-transparent';
+    return (
+        <div className={cn('flex gap-0.5', className)}>
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={arrow}
+                data-move={`${moveKey}:up`}
+                aria-disabled={!canUp || undefined}
+                onClick={() => canUp && onMove(-1, `${moveKey}:up`)}
+                title="Monter"
+                aria-label={`Monter ${subject}`}
+            >
+                <ChevronUp />
+            </Button>
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={arrow}
+                data-move={`${moveKey}:down`}
+                aria-disabled={!canDown || undefined}
+                onClick={() => canDown && onMove(1, `${moveKey}:down`)}
+                title="Descendre"
+                aria-label={`Descendre ${subject}`}
+            >
+                <ChevronDown />
+            </Button>
+        </div>
     );
 }
 

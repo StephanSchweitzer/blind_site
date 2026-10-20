@@ -3,6 +3,7 @@ import { revalidatePublic } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/auth/guards';
+import { parseListEntries } from '@/lib/books/listEntries';
 
 // Pas de GET ici. Il y en avait un, ouvert sans session et sans plus aucun
 // appelant depuis que /listes-de-livres est un composant serveur
@@ -15,9 +16,10 @@ import { withAdmin } from '@/lib/auth/guards';
 export const POST = withAdmin(async (req, { me }) => {
     try {
         const body = await req.json();
-        const { title, description, audioPath, bookIds, active } = body;
+        const { title, description, audioPath, active } = body;
+        const entries = parseListEntries(body);
 
-        if (!title || !Array.isArray(bookIds) || bookIds.length === 0) {
+        if (!title || !entries || entries.length === 0) {
             return NextResponse.json(
                 { error: 'Title and at least one book are required' },
                 { status: 400 }
@@ -32,7 +34,9 @@ export const POST = withAdmin(async (req, { me }) => {
                 active: active ?? true,
                 addedById: me.id,
                 books: {
-                    create: bookIds.map((bookId: number) => ({
+                    create: entries.map(({ bookId, note, position }) => ({
+                        note: note ?? null,
+                        position: position ?? null,
                         book: { connect: { id: bookId } }
                     }))
                 }

@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, AudioLines, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
+import { ArrowLeft, AudioLines, Eye, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,10 +25,11 @@ import { AideLink } from '@/components/ui/admin/AideLink';
 import AudioRecorder from '@/components/AudioRecorder';
 import { CoupDeCoeurPDFButton } from '@/admin/CoupDeCoeurPDFButton';
 import { useWarnIfUnsavedChanges } from '@/components/userWarnIfUnsavedChanges';
+import { toast } from '@/hooks/use-toast';
 import { extensionForMimeType } from '@/lib/audio-file-extension';
 import { parisDate } from '@/lib/paris-day';
 import BooksSection from './books-section';
-import { ListBook, ListStatusBadge } from './list-book';
+import { ListBook, ListNotes, ListStatusBadge, orderedListBooks } from './list-book';
 
 export interface ListeDeLivresValues {
     title: string;
@@ -36,6 +37,9 @@ export interface ListeDeLivresValues {
     audioPath: string | null;
     active: boolean;
     books: ListBook[];
+    notes: ListNotes;
+    /** Genres et livres dans l'ordre choisi (celui de `books`) ; faux : ordre alphabétique. */
+    customOrder: boolean;
 }
 
 export interface ListeDeLivresPayload {
@@ -43,7 +47,8 @@ export interface ListeDeLivresPayload {
     description: string | null;
     audioPath: string | null;
     active: boolean;
-    bookIds: number[];
+    /** Dans l'ordre affiché ; `position` null partout pour l'ordre alphabétique. */
+    books: { bookId: number; note: string | null; position: number | null }[];
 }
 
 interface ListeDeLivresFormProps {
@@ -51,12 +56,19 @@ interface ListeDeLivresFormProps {
     listId?: number;
     createdAt?: string;
     initialValues: ListeDeLivresValues;
-    /** Lève une erreur au message lisible si l'enregistrement échoue. */
-    onSave: (payload: ListeDeLivresPayload) => Promise<void>;
+    /** Lève une erreur au message lisible si l'enregistrement échoue. À la création, renvoie l'identifiant de la liste. */
+    onSave: (payload: ListeDeLivresPayload) => Promise<{ id: number } | void>;
     onDelete?: () => Promise<void>;
 }
 
 const LIST_URL = '/admin/listes-de-livres';
+
+const withNote = (map: ListNotes, bookId: number, note: string | null): ListNotes => {
+    const next = { ...map };
+    if (note) next[bookId] = note;
+    else delete next[bookId];
+    return next;
+};
 
 /**
  * L'éditeur d'une liste de livres, commun à la création et à la modification.
@@ -76,6 +88,12 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
     const [active, setActive] = useState(initialValues.active);
     const [audioPath, setAudioPath] = useState(initialValues.audioPath);
     const [books, setBooks] = useState<ListBook[]>(initialValues.books);
+    const [notes, setNotes] = useState<ListNotes>(initialValues.notes);
+    const [customOrder, setCustomOrder] = useState(initialValues.customOrder);
+    // La liste telle qu'enregistrée, à laquelle « Modifications non
+    // enregistrées » se compare. Elle avance à chaque enregistrement — on reste
+    // sur la page — et à chaque note posée seule (saveNote).
+    const [saved, setSaved] = useState<ListeDeLivresValues>(initialValues);
     const [tempAudioBlob, setTempAudioBlob] = useState<Blob | null>(null);
     const [isReplacingAudio, setIsReplacingAudio] = useState(false);
 
@@ -86,16 +104,45 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
     const [error, setError] = useState<string | null>(null);
 
     const isDirty = useMemo(() => {
-        const ids = (list: ListBook[]) => JSON.stringify(list.map((book) => book.id).sort((a, b) => a - b));
+        // Les livres et leur note : la note d'un livre retiré de la liste ne compte pas.
+        const entries = (list: ListBook[], map: ListNotes) =>
+            JSON.stringify(
+                list
+                    .map((book): [number, string | null] => [book.id, map[book.id] ?? null])
+                    .sort((a, b) => a[0] - b[0])
+            );
+        // L'ordre ne compte que s'il est choisi : en alphabétique, il découle des livres.
+        const order = (list: ListBook[], custom: boolean) =>
+            custom ? JSON.stringify(orderedListBooks(list, true).map((book) => book.id)) : 'alphabétique';
         return (
-            title !== initialValues.title ||
-            description !== initialValues.description ||
-            active !== initialValues.active ||
-            audioPath !== initialValues.audioPath ||
+            title !== saved.title ||
+            description !== saved.description ||
+            active !== saved.active ||
+            audioPath !== saved.audioPath ||
             tempAudioBlob !== null ||
-            ids(books) !== ids(initialValues.books)
+            entries(books, notes) !== entries(saved.books, saved.notes) ||
+            order(books, customOrder) !== order(saved.books, saved.customOrder)
         );
-    }, [title, description, active, audioPath, tempAudioBlob, books, initialValues]);
+    }, [title, description, active, audioPath, tempAudioBlob, books, notes, customOrder, saved]);
+
+    // Un livre déjà enregistré dans la liste a sa ligne en base : sa note s'y
+    // enregistre aussitôt. Un livre ajouté depuis, ou une liste pas encore
+    // créée, n'en a pas : sa note part avec « Enregistrer ».
+    const savedBookIds = useMemo(() => new Set(saved.books.map((book) => book.id)), [saved.books]);
+    const savesNoteNow = (bookId: number) => listId !== undefined && savedBookIds.has(bookId);
+
+    const saveNote = async (bookId: number, note: string | null) => {
+        if (savesNoteNow(bookId)) {
+            const res = await fetch(`/api/listes-de-livres/${listId}/books/${bookId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note }),
+            });
+            if (!res.ok) throw new Error("La note n'a pas pu être enregistrée. Réessayez.");
+            setSaved((prev) => ({ ...prev, notes: withNote(prev.notes, bookId, note) }));
+        }
+        setNotes((prev) => withNote(prev, bookId, note));
+    };
 
     const { navigateWithoutWarning, NavigationWarningDialog } = useWarnIfUnsavedChanges({
         unsaved: isDirty && !isSaving && !isDeleting,
@@ -132,14 +179,54 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                 finalAudioPath = (await uploadRes.json()).filepath;
             }
 
-            await onSave({
+            // Dans l'ordre affiché : en ordre choisi, le rang de chaque livre
+            // est sa place ici, et celui d'un genre la place de son premier livre.
+            const ordered = orderedListBooks(books, customOrder);
+            const payload: ListeDeLivresPayload = {
                 title: title.trim(),
                 description: description.trim() || null,
                 audioPath: finalAudioPath || null,
                 active,
-                bookIds: books.map((book) => book.id),
-            });
-            leave();
+                books: ordered.map((book, index) => ({
+                    bookId: book.id,
+                    note: notes[book.id] ?? null,
+                    position: customOrder ? index : null,
+                })),
+            };
+            const created = await onSave(payload);
+
+            // Une liste créée s'ouvre à sa propre page : elle existe désormais,
+            // avec son bouton d'impression, et ses notes s'enregistrent seules.
+            if (isNew) {
+                if (created) navigateWithoutWarning(`${LIST_URL}/${created.id}`);
+                else leave();
+                return;
+            }
+
+            // Une liste modifiée reste ouverte. Revenir au tableau après chaque
+            // enregistrement décourageait d'enregistrer en cours de route, et
+            // obligeait à rouvrir la liste pour l'imprimer ou la poursuivre.
+            const next: ListeDeLivresValues = {
+                title: payload.title,
+                description: payload.description ?? '',
+                audioPath: payload.audioPath,
+                active,
+                books: ordered,
+                notes: Object.fromEntries(
+                    books.filter((book) => notes[book.id]).map((book) => [book.id, notes[book.id]])
+                ),
+                customOrder,
+            };
+            setBooks(ordered);
+            setTitle(next.title);
+            setDescription(next.description);
+            setAudioPath(next.audioPath);
+            setTempAudioBlob(null);
+            setIsReplacingAudio(false);
+            setNotes(next.notes);
+            setSaved(next);
+            setIsSaving(false);
+            toast({ title: 'Liste enregistrée' });
         } catch (err) {
             setError(err instanceof Error ? err.message : "Échec de l'enregistrement de la liste de livres.");
             setIsSaving(false);
@@ -179,7 +266,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                                 livres » : le lien de retour dit déjà où l'on est, et
                                 le sous-titre répétait ce titre entre guillemets. */}
                             <h1 className="break-words text-2xl font-bold text-foreground">
-                                {isNew ? 'Nouvelle liste de livres' : initialValues.title}
+                                {isNew ? 'Nouvelle liste de livres' : saved.title}
                             </h1>
                             {/* Pas de statut avant la création : une liste qui
                                 n'existe pas encore n'est ni visible ni masquée. */}
@@ -194,6 +281,20 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                     </div>
                     {!isNew && (
                         <div className="flex items-center gap-2">
+                            {/* Nouvel onglet : l'éditeur, et ce qui n'y est pas encore
+                                enregistré, restent où ils sont. */}
+                            <Button asChild variant="outline" className="border-border bg-card text-foreground hover:bg-muted">
+                                <Link
+                                    prefetch={false}
+                                    href={`${LIST_URL}/${listId}/apercu`}
+                                    target="_blank"
+                                    rel="noopener"
+                                    title="La liste telle qu'elle apparaît sur le site, dans sa dernière version enregistrée"
+                                >
+                                    <Eye /> Aperçu
+                                    <span className="sr-only"> (s&apos;ouvre dans un nouvel onglet)</span>
+                                </Link>
+                            </Button>
                             <CoupDeCoeurPDFButton coupDeCoeurId={listId} />
                             <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                                 <PopoverTrigger asChild>
@@ -332,11 +433,11 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                                             Garder l&apos;audio actuel
                                         </button>
                                     )}
-                                    {!audioPath && initialValues.audioPath && (
+                                    {!audioPath && saved.audioPath && (
                                         <button
                                             type="button"
                                             className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                                            onClick={() => setAudioPath(initialValues.audioPath)}
+                                            onClick={() => setAudioPath(saved.audioPath)}
                                         >
                                             Remettre l&apos;audio retiré
                                         </button>
@@ -349,7 +450,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
             </div>
 
             {/* ── livres ──────────────────────────────────────────────── */}
-            <BooksSection books={books} setBooks={setBooks} listId={listId} />
+            <BooksSection books={books} setBooks={setBooks} notes={notes} customOrder={customOrder} setCustomOrder={setCustomOrder} onSaveNote={saveNote} savesNoteNow={savesNoteNow} listId={listId} />
 
             {/* ── barre d'enregistrement ──────────────────────────────────
                 Collante : une liste d'une trentaine de livres repousse le
@@ -375,7 +476,8 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                 </div>
                 <div className="ml-auto flex gap-2">
                     <Button type="button" variant="outline" onClick={leave} disabled={isSaving || isDeleting}>
-                        Annuler
+                        {/* Rien à annuler une fois tout enregistré : le bouton ne fait plus que sortir. */}
+                        {isDirty || isNew ? 'Annuler' : 'Fermer'}
                     </Button>
                     <Button type="submit" disabled={!canSave}>
                         {isSaving && <Loader2 className="animate-spin" />}
@@ -389,7 +491,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">Supprimer cette liste de livres ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            La liste « {initialValues.title} » sera supprimée, et retirée du site si elle y est
+                            La liste « {saved.title} » sera supprimée, et retirée du site si elle y est
                             visible. Les livres eux-mêmes restent au catalogue. Cette action est irréversible.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
