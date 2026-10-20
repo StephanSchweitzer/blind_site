@@ -189,7 +189,10 @@ const BookEntry = ({ book }: { book: PublicBook }) => {
 
 // Message fixe de l'ECA, repris tel quel de la liste papier : il ne dépend pas de la
 // liste (le champ « description » d'une liste est une note propre à celle-ci).
-const NOTICE = "Chers adhérentes et adhérents,\nN'oubliez pas de consulter également notre nouveau site ECA : https://www.eca-aveugles.fr";
+const NOTICE = "Chers adhérentes et adhérents,\nN'oubliez pas de consulter également notre nouveau site ECA : https://www.eca-aveugles.fr\nAdressez vos demandes par courrier ou par téléphone (en indiquant votre nom) ou par mail à ecapermanence@gmail.com";
+
+// Fin de liste, coupée en trois lignes comme demandé par l'ECA.
+const CONTACT = "Adressez vos demandes par courrier ou par téléphone\nau 01 88 32 31 47 ou 48 (en indiquant votre nom)\nou par mail à ecapermanence@gmail.com";
 
 export const CoupDeCoeurPDF = ({ content, logoSrc = LOGO_SRC }: { content: CoupDeCoeur[]; logoSrc?: string }) => {
     const cdc = content[0];
@@ -227,7 +230,7 @@ export const CoupDeCoeurPDF = ({ content, logoSrc = LOGO_SRC }: { content: CoupD
                 ])}
 
                 <Text style={s.contact} hyphenationCallback={noHyphenation}>
-                    À demander au 01 88 32 31 47 ou 48  ·  ecapermanence@gmail.com
+                    {CONTACT}
                 </Text>
 
             </Page>
