@@ -191,8 +191,11 @@ export function AdminPaginationTop({
                 role="status"
                 className="scroll-mt-20 text-sm text-muted-foreground outline-none"
             >
+                {/* À zéro, la liste dit déjà « Aucun paiement trouvé » juste en
+                    dessous : le compte ne reste que pour le lecteur d'écran, qui
+                    l'entend annoncé (role="status") après un filtre. */}
                 {total === 0 ? (
-                    <>{noun.feminine ? "Aucune" : "Aucun"} {noun.one}</>
+                    <span className="sr-only">{noun.feminine ? "Aucune" : "Aucun"} {noun.one}</span>
                 ) : (
                     <>
                         <span className="font-semibold text-foreground tabular-nums">

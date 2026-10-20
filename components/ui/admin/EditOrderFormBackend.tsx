@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
+import { markToasted } from "@/hooks/useFormToast";
 import { IntentLink } from '@/components/admin/IntentLink';
 import {
     Dialog,
@@ -179,7 +180,7 @@ export function EditOrderFormBackend({
             const errorMessage = errorData?.message || 'Échec de la suppression de la demande';
             toast({
                 variant: "destructive",
-                title: "Erreur",
+                title: "Suppression impossible",
                 description: (
                     <ErrorToastBody
                         message={errorMessage}
@@ -188,14 +189,13 @@ export function EditOrderFormBackend({
                     />
                 )
             });
-            // Signal failure to the caller (keeps the modal open, resets loading)
-            // without a message, so the inline fallback doesn't duplicate the toast.
-            throw new Error();
+            // Signal failure to the caller (keeps the modal open, resets loading),
+            // marked as already reported so the form says nothing more.
+            throw markToasted(new Error(errorMessage));
         }
 
         toast({
-            title: "Succès",
-            description: "La demande a été supprimée avec succès",
+            title: "Demande supprimée",
             className: "bg-green-100 border-green-500 text-green-900"
         });
         if (onSuccess) onSuccess(parseInt(orderId), true);
@@ -221,7 +221,7 @@ export function EditOrderFormBackend({
             const errorMessage = errorData?.message || 'Échec de la mise à jour de la demande';
             toast({
                 variant: "destructive",
-                title: "Erreur",
+                title: "Enregistrement impossible",
                 // Un refus causé par l'attribution (statut, duplication, clôture)
                 // porte son numéro : le toast mène directement à elle.
                 description: (
@@ -232,14 +232,13 @@ export function EditOrderFormBackend({
                     />
                 )
             });
-            return Promise.reject();
+            throw markToasted(new Error(errorMessage));
         }
 
         const data = await response.json().catch(() => null);
 
         toast({
-            title: "Succès",
-            description: "La demande a été mise à jour avec succès",
+            title: "Demande enregistrée",
             className: "bg-green-100 border-green-500 text-green-900"
         });
 

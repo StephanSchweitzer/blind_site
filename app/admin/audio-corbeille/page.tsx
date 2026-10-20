@@ -46,7 +46,11 @@ function groupKey(row: { bookId: number | null; originBookId: number | null; ori
  * moitié qui se regarde. Il répond aussi à une question que rien ne posait
  * jusqu'ici : QU'EST-CE QUI VA ÊTRE PURGÉ dans les prochains jours.
  */
-const TABS = ['a-purger', 'sans-fiche', 'restaurees', 'purgees'] as const;
+// Plus d'onglet « Sans fiche » : ces lignes — un livre supprimé pour de bon —
+// sont dans « Dans la corbeille » comme les autres, et leur carte le dit
+// (« fiche supprimée — livre inconnu »). Un sous-ensemble en onglet les
+// comptait deux fois. Un ancien lien ?tab=sans-fiche retombe sur la corbeille.
+const TABS = ['a-purger', 'restaurees', 'purgees'] as const;
 
 /**
  * Une ligne « vivante » : le fichier est dans la corbeille, ni restauré, ni
@@ -56,8 +60,6 @@ const ACTIVE: Prisma.DeletedAudioTrackWhereInput = { restoredAt: null, purgedAt:
 
 const TAB_WHERE: Record<TrashTab, Prisma.DeletedAudioTrackWhereInput> = {
     'a-purger': ACTIVE,
-    // La fiche a disparu : ces lignes étaient invisibles de partout.
-    'sans-fiche': { ...ACTIVE, bookId: null },
     restaurees: { restoredAt: { not: null } },
     purgees: { purgedAt: { not: null } },
 };
@@ -104,7 +106,7 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         ...(buildSearchWhere(term) ?? {}),
     });
 
-    const active = tab === 'a-purger' || tab === 'sans-fiche';
+    const active = tab === 'a-purger';
     const now = new Date();
 
     /**
@@ -238,8 +240,6 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         };
     });
 
-    const totalFiles = groups.reduce((sum, g) => sum + g.rows.length, 0);
-
     // Only when the search found nothing in this tab — see lib/search-suggest.ts.
     // Counted in files, not books: only « finds something or not » matters here.
     const searchSuggestions =
@@ -272,12 +272,10 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
             groups={groups}
             tab={tab}
             pagination={pagination}
-            totalFiles={totalFiles}
             tabCounts={{
                 'a-purger': counts[0],
-                'sans-fiche': counts[1],
-                restaurees: counts[2],
-                purgees: counts[3],
+                restaurees: counts[1],
+                purgees: counts[2],
             }}
             urgentCount={urgentCount}
             urgentDays={URGENT_DAYS}

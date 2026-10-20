@@ -10,8 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { DatePickerField, todayLocal, toDayString } from '@/components/ui/admin/DatePickerField';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -161,8 +160,7 @@ export function AddOrderFormBackend({
     const { toast } = useToast();
 
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { toastError } = useFormToast();
+    const { toastError, toastFailure } = useFormToast();
     const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
     const {
@@ -308,14 +306,11 @@ export function AddOrderFormBackend({
     const filledLines = lines.filter(l => l.book);
     const filledCount = filledLines.length;
     const emptyCount = lines.length - filledCount;
-    const dupCount = filledLines.filter(l => l.type === 'DUPLICATION').length;
-    const recCount = filledCount - dupCount;
     const closedCount = filledLines.filter(closesNow).length;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        setError(null);
 
         // N3 — collect failing required fields in visual order. Media format is
         // required per line now, so each open line contributes its own field name.
@@ -339,7 +334,6 @@ export function AddOrderFormBackend({
                 const idx = lines.findIndex((l) => `mediaFormatId-${l.key}` === firstName);
                 msg = `La ligne ${idx + 1} doit avoir un format média`;
             }
-            setError(msg);
             toastError(msg);
             focusFirstInvalid(fieldOrder, new Set(invalid));
             setIsLoading(false);
@@ -351,7 +345,6 @@ export function AddOrderFormBackend({
         );
         if (pageErrorLine !== -1) {
             const msg = `Ligne ${pageErrorLine + 1} : ${pagePricingError(lines[pageErrorLine].pagePricing)}`;
-            setError(msg);
             toastError(msg);
             setIsLoading(false);
             return;
@@ -364,7 +357,6 @@ export function AddOrderFormBackend({
             const msg = lines[closureErrorLine].closureDate
                 ? `Ligne ${closureErrorLine + 1} : la date de clôture ne peut pas précéder la date de réception`
                 : `Ligne ${closureErrorLine + 1} : indiquez la date de clôture`;
-            setError(msg);
             toastError(msg);
             setIsLoading(false);
             return;
@@ -410,17 +402,16 @@ export function AddOrderFormBackend({
                 const msg = data?.message || 'Échec de la création des demandes';
                 toast({
                     variant: "destructive",
-                    title: "Erreur",
+                    title: "Création impossible",
                     description: msg
                 });
-                setError(msg);
                 return;
             }
 
             const ids: number[] = data.orderIds || [];
             toast({
-                title: "Succès",
-                description: `${ids.length} demande(s) créée(s)${ids.length ? ` : #${ids.join(', #')}` : ''}`,
+                title: ids.length > 1 ? `${ids.length} demandes créées` : 'Demande créée',
+                description: ids.length ? `#${ids.join(', #')}` : undefined,
                 className: "bg-green-100 border-green-500 text-green-900"
             });
             // Une facture vient de partir en émission : le dire dans un toast, qui
@@ -438,9 +429,7 @@ export function AddOrderFormBackend({
             if (onSuccess && ids.length) onSuccess(ids[0]);
         } catch (err) {
             console.error('Batch submit error:', err);
-            const msg = 'Échec de la création des demandes';
-            setError(msg);
-            toastError(msg);
+            toastFailure(err, 'Création impossible');
         } finally {
             setIsLoading(false);
         }
@@ -449,13 +438,6 @@ export function AddOrderFormBackend({
     return (
         <>
         <div>
-                {error && (
-                    <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-red-800 dark:text-red-200">{error}</AlertDescription>
-                    </Alert>
-                )}
-
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Auditeur */}
                     <div className="space-y-2">
@@ -493,20 +475,14 @@ export function AddOrderFormBackend({
 
                     {/* Book lines */}
                     <div className="space-y-3 pt-4 border-t border-border">
-                        <div className="flex items-center justify-between">
-                            <h3 ref={registerField('lines')} tabIndex={-1} className="text-sm font-medium text-muted-foreground uppercase tracking-wide outline-none">Ouvrages ({lines.length})</h3>
-                            <span className="text-xs text-muted-foreground">
-                                {dupCount} duplication(s) · {recCount} enregistrement(s)
-                                {emptyCount > 0 && (
-                                    <span className="text-amber-600 dark:text-amber-400"> · {emptyCount} sans livre</span>
-                                )}
-                            </span>
-                        </div>
+                        {/* Le nombre de lignes se lit sur le bouton « Créer N demandes » :
+                            ni compteur ici, ni récapitulatif en bas. */}
+                        <h3 ref={registerField('lines')} tabIndex={-1} className="text-sm font-medium text-muted-foreground uppercase tracking-wide outline-none">Ouvrages</h3>
 
                         {lines.map((line, idx) => (
                             <div key={line.key} className="bg-card/50 p-4 rounded-lg border border-border space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-foreground">Ouvrage {idx + 1}</span>
+                                    <span className="text-sm font-medium text-foreground">{lines.length > 1 ? `Ouvrage ${idx + 1}` : 'Ouvrage'}</span>
                                     {lines.length > 1 && (
                                         <button type="button" onClick={() => removeLine(line.key)}
                                                 className="text-muted-foreground hover:text-red-400 transition-colors" aria-label="Retirer l'ouvrage">
@@ -697,33 +673,34 @@ export function AddOrderFormBackend({
                         <label className="text-sm font-medium text-foreground">Notes (communes)</label>
                         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
                                   className="bg-card border-border text-foreground min-h-[100px]"
-                                  placeholder="Ajouter des notes supplémentaires..." />
+                                  />
                     </div>
 
-                    <div className="rounded-md bg-card/50 border border-border p-3 text-sm text-foreground">
-                        {filledCount === 0
-                            ? 'Aucun livre choisi pour le moment.'
-                            : filledCount === 1
-                                ? '1 ouvrage → 1 demande sera créée.'
-                                : `${filledCount} ouvrages → ${filledCount} demandes seront créées.`}
-                        {closedCount > 0 && (
-                            <p className="mt-1">
-                                {closedCount === 1
-                                    ? '1 duplication sera créée « Terminé »'
-                                    : `${closedCount} duplications seront créées « Terminé »`}
-                                {billingStatus === 'UNBILLABLE'
-                                    ? '.'
-                                    : closedCount === 1 ? ' et facturée à l’auditeur.' : ' et facturées à l’auditeur.'}
-                            </p>
-                        )}
-                        {emptyCount > 0 && (
-                            <p className="mt-1 text-amber-700 dark:text-amber-300">
-                                {emptyCount === 1
-                                    ? '1 ligne sans livre : choisissez un livre ou retirez-la avant de valider.'
-                                    : `${emptyCount} lignes sans livre : choisissez un livre ou retirez-les avant de valider.`}
-                            </p>
-                        )}
-                    </div>
+                    {/* Seulement ce que le bouton ne dit pas : les duplications closes
+                        d'office, et les lignes encore sans livre — pas sur la seule
+                        ligne d'un formulaire qu'on vient d'ouvrir, que le bouton
+                        signalera s'il le faut. */}
+                    {(closedCount > 0 || (emptyCount > 0 && lines.length > 1)) && (
+                        <div className="rounded-md bg-card/50 border border-border p-3 text-sm text-foreground space-y-1">
+                            {closedCount > 0 && (
+                                <p>
+                                    {closedCount === 1
+                                        ? '1 duplication sera créée « Terminé »'
+                                        : `${closedCount} duplications seront créées « Terminé »`}
+                                    {billingStatus === 'UNBILLABLE'
+                                        ? '.'
+                                        : closedCount === 1 ? ' et facturée à l’auditeur.' : ' et facturées à l’auditeur.'}
+                                </p>
+                            )}
+                            {emptyCount > 0 && lines.length > 1 && (
+                                <p className="text-amber-700 dark:text-amber-300">
+                                    {emptyCount === 1
+                                        ? '1 ligne sans livre : choisissez un livre ou retirez-la avant de valider.'
+                                        : `${emptyCount} lignes sans livre : choisissez un livre ou retirez-les avant de valider.`}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <Button type="submit" disabled={isLoading}
                             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent">

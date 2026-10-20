@@ -81,7 +81,9 @@ function mailtoFor(error: UserFacingError, action?: string): string {
 }
 
 /**
- * Les props d'un toast d'erreur, au style des fenêtres audio et livre.
+ * Les props d'un toast d'erreur — à la taille des autres toasts : le grand
+ * format (titre 2xl, bordure double) criait plus fort que l'erreur ne le
+ * méritait, et les succès l'ont quitté le 19/10.
  *
  * Une erreur inconnue reste affichée jusqu'à ce qu'on la ferme : on y lit une
  * référence à recopier, et elle ne doit pas s'effacer pendant qu'on cherche un
@@ -100,16 +102,12 @@ export function apiErrorToast(
             ? 'Erreur inattendue'
             : error.kind === 'network'
               ? 'Connexion interrompue'
-              : (opts.title ?? 'Erreur');
+              : (opts.title ?? 'Action impossible');
     return {
         variant: 'destructive',
         duration: error.kind === 'known' ? 15_000 : Infinity,
-        // Le type du toast croise `title` avec l'attribut HTML (string) : même
-        // contournement que les `@ts-expect-error jsx in toast` des appelants.
-        title: (<span className="text-2xl font-bold">{title}</span>) as unknown as string,
-        description: (
-            <ApiErrorMessage error={error} action={opts.action} className="block text-xl mt-2" />
-        ),
-        className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
+        title,
+        description: <ApiErrorMessage error={error} action={opts.action} className="block" />,
+        className: 'bg-red-100 border-red-500 text-red-900',
     };
 }

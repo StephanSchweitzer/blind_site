@@ -11,8 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, X, ChevronDown } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DatePickerField } from '@/components/ui/admin/DatePickerField';
 import {
@@ -24,7 +23,7 @@ import {
     getPaymentClientFieldLabel,
     getPaymentClientSearchPlaceholder,
 } from '@/lib/payment-enums';
-import { useFormToast } from '@/hooks/useFormToast';
+import { markToasted, useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BillSearchCombobox, type BillSearchResult } from '@/admin/BillSearchCombobox';
@@ -119,8 +118,7 @@ export function PaymentFormBackendBase({
                                            preset = null,
                                        }: PaymentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { toastError } = useFormToast();
+    const { toastError, toastFailure } = useFormToast();
     const { registerField, focusFirstInvalid } = useInvalidField();
     const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -146,6 +144,12 @@ export function PaymentFormBackendBase({
     );
     const [paymentReference, setPaymentReference] = useState(initialData?.paymentReference ?? '');
     const [receiptNumber, setReceiptNumber] = useState(initialData?.receiptNumber ?? '');
+    // « N° de reçu » et « Date d'émission » ne se proposent plus à la saisie :
+    // relevé le 20/10/2026, aucun des 28 paiements des six derniers mois n'en
+    // portait — ce sont des colonnes de la reprise Gestconte. Ils restent
+    // visibles, et modifiables, sur un paiement qui en a. Pour les rendre à
+    // tous : `true` ici.
+    const showReceiptFields = Boolean(initialData?.receiptNumber || initialData?.issueDate);
 
     // Une modification n'écrit que ce que le permanent a TOUCHÉ.
     //
@@ -186,7 +190,6 @@ export function PaymentFormBackendBase({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
 
         const amt = parseFloat(amount.replace(',', '.'));
 
@@ -206,7 +209,6 @@ export function PaymentFormBackendBase({
             // First in FIELD_ORDER among the invalid set → topmost message.
             const firstName = FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
             const msg = messages[firstName];
-            setError(msg);
             toastError(msg);
             focusFirstInvalid(FIELD_ORDER, new Set(invalid));
             return;
@@ -242,8 +244,7 @@ export function PaymentFormBackendBase({
             });
             if (onSuccess) onSuccess(paymentId);
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Échec de l’enregistrement du paiement';
-            setError(msg);
+            toastFailure(err);
         } finally {
             setIsLoading(false);
         }
@@ -251,13 +252,6 @@ export function PaymentFormBackendBase({
 
     return (
         <div>
-                {error && (
-                    <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-red-700 dark:text-red-200">{error}</AlertDescription>
-                    </Alert>
-                )}
-
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Type */}
                     <div className="space-y-2">
@@ -446,6 +440,7 @@ export function PaymentFormBackendBase({
 
                         {showAdvanced && (
                             <div className="mt-3 space-y-4">
+                                {showReceiptFields && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-foreground">N° de reçu</label>
@@ -460,6 +455,7 @@ export function PaymentFormBackendBase({
                                         <DatePickerField value={issueDate} onChange={setIssueDate} />
                                     </div>
                                 </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-foreground">Comptable</label>
@@ -507,7 +503,9 @@ export function PaymentFormBackendBase({
                                     </label>
                                     {isAllocated && (
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-foreground">Date d&apos;attribution</label>
+                                            {/* « attribution » était le mot des attributions de
+                                                livres : c'est la date de la case « Affectée ». */}
+                                            <label className="text-sm font-medium text-foreground">Affectée le</label>
                                             <DatePickerField value={allocationDate} onChange={setAllocationDate} />
                                         </div>
                                     )}
@@ -569,15 +567,14 @@ export function AddPaymentFormBackend({ onSuccess, initialClient, preset }: { on
             const message = data?.message || 'Échec de la création du paiement';
             toast({
                 variant: 'destructive',
-                title: "Erreur",
+                title: "Création impossible",
                 description: message
             });
-            throw new Error(message);
+            throw markToasted(new Error(message));
         }
 
         toast({
-            title: "Succès",
-            description: "Le paiement a été créé avec succès",
+            title: "Paiement créé",
             className: 'bg-green-100 border-green-500 text-green-900',
         });
 

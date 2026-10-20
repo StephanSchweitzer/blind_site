@@ -18,7 +18,7 @@ Vous disposez également de filtres que vous pouvez appliquer.
 
 1. Vous pouvez filtrer la recherche par titre, auteur, ISBN, etc.
 
-2. Vous pouvez filtrer les résultats en fonction des livres pour lesquels un fichier audio est disponible, ainsi que des livres visibles ou non sur le site public.
+2. Le bouton sous « Filtres » ouvre trois choix : la disponibilité (disponibles ou en attente), l'audio (avec ou sans) et la visibilité sur le site public. Il affiche les filtres en cours — par exemple « En attente · Sans audio » —, ou « Tous les livres ».
 
 3. Vous pouvez filtrer les résultats en fonction d'un ou de plusieurs genres.
 
@@ -30,7 +30,7 @@ Vous pouvez créer un nouveau livre en cliquant sur le bouton « Ajouter un livr
 
 Vous pouvez modifier un livre existant en cliquant sur la ligne correspondante.
 
-Vous pouvez également cliquer sur le bouton audio, situé dans la colonne « Audio », pour ouvrir l'éditeur audio directement depuis le tableau.
+Dans la colonne « Audio », la pastille dit l'état de l'enregistrement : « 3 pistes », « Pas d'audio associé », « Dossier vide »… Cliquez dessus pour ouvrir l'éditeur audio directement depuis le tableau.
 
 ![Catalogue - capture 6](/admin/aide/images/catalogue-06.jpg)
 
@@ -70,7 +70,7 @@ Dès que je clique sur la ligne, la petite barre de recherche et la section des 
 
 Vérifiez toujours que les informations renseignées automatiquement par Google sont correctes et correspondent bien au titre, à l'éditeur, à l'année de publication et à l'ISBN de votre livre — ces champs se suivent, en haut du formulaire. Viennent ensuite les genres et la description.
 
-C'est à vous de cliquer sur la rubrique « Sélectionner les genres associés » et d'associer un ou plusieurs genres à ce livre.
+C'est à vous de cliquer sur la rubrique « Choisir les genres… » et d'associer un ou plusieurs genres à ce livre.
 
 ![Catalogue - capture 12](/admin/aide/images/catalogue-12.jpg)
 
@@ -104,7 +104,7 @@ Vous pouvez également ouvrir l'éditeur audio ici
 
 ![Catalogue - capture 18](/admin/aide/images/catalogue-18.jpg)
 
-Le reste du formulaire fonctionne de la même manière que le formulaire d'ajout d'un livre. Les deux formulaires ont la même mise en page, car ils proviennent du même modal de base.
+Le reste du formulaire fonctionne de la même manière que le formulaire d'ajout d'un livre. Les deux formulaires ont la même mise en page, car ils proviennent du même modal de base. Seule la « Durée de la lecture » n'apparaît qu'ici : elle se calcule sur les fichiers audio, qu'un livre en cours de création n'a pas encore.
 
 Pour enregistrer le livre, rendez-vous en bas de la page et cliquez sur « Mettre à jour le livre ». Pour le supprimer, rendez-vous en bas de la page et cliquez sur « Supprimer le livre ».
 
@@ -133,7 +133,7 @@ Si un autre livre porte aujourd'hui le même ISBN, la restauration est refusée 
 
 ## Éditeur audio
 
-Lorsque vous cliquez sur l'éditeur audio depuis la page d'accueil ou depuis le modal « Modifier le livre », le modal de « L'éditeur audio » s'ouvre. Pour cet exemple, j'utilise un livre qui est déjà disponible en version audio.
+Lorsque vous cliquez sur la pastille audio du catalogue ou sur « Ouvrir l'éditeur audio » dans le modal « Modifier le livre », le modal de « L'éditeur audio » s'ouvre. Pour cet exemple, j'utilise un livre qui est déjà disponible en version audio.
 
 ![Catalogue - capture 19](/admin/aide/images/catalogue-19.jpg)
 

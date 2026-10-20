@@ -18,7 +18,7 @@ Lorsque vous cliquez sur le bouton « Ajouter un genre », le modal d'ajout de g
 
 Saisissez le titre et la description du genre, puis cliquez sur « Créer le genre » pour l'enregistrer.
 
-Pour modifier un genre, cliquez sur le bouton « Modifier » situé sur la ligne du genre que vous souhaitez modifier, ou cliquez n'importe où sur cette ligne.
+Pour modifier un genre, cliquez n'importe où sur sa ligne (au clavier : sur son nom).
 
 ![Genres - capture 3](/admin/aide/images/genres-03.jpg)
 

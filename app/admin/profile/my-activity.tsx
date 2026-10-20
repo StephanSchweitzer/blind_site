@@ -205,7 +205,8 @@ export default function MyActivity() {
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
                 Ce que vous avez créé, modifié ou supprimé dans le back-office
-                {retentionDays !== null && ` — le journal remonte à ${retentionDays} jours`}.
+                {/* Sur une liste vide, « rien modifié ces 14 derniers jours » dit déjà la durée. */}
+                {retentionDays !== null && events.length > 0 && ` — le journal remonte à ${retentionDays} jours`}.
             </p>
 
             {error && (

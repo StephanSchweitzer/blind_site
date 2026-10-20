@@ -82,7 +82,7 @@ export default async function AdminReviewPage({ searchParams }: PageProps) {
     const searchWhere = buildSearchWhere(q);
     const where: Prisma.BookWhereInput = { needsReview: true, ...(searchWhere ?? {}) };
 
-    const [flagged, total, queueTotal] = await Promise.all([
+    const [flagged, total] = await Promise.all([
         prisma.book.findMany({
             where,
             orderBy: { createdAt: 'desc' },
@@ -91,9 +91,6 @@ export default async function AdminReviewPage({ searchParams }: PageProps) {
             select: BOOK_SELECT,
         }),
         prisma.book.count({ where }),
-        // The full queue size, so the header can still say how much is left
-        // to review while a search is narrowing the list.
-        searchWhere ? prisma.book.count({ where: { needsReview: true } }) : Promise.resolve(0),
     ]);
 
     // Batch-resolve matches: a flagged book's `id_arbre` points at the `source_access_id`
@@ -197,7 +194,6 @@ export default async function AdminReviewPage({ searchParams }: PageProps) {
             searchSuggestions={searchSuggestions}
             pairs={pairs}
             pagination={pagination}
-            queueTotal={searchWhere ? queueTotal : total}
             search={q}
         />
     );

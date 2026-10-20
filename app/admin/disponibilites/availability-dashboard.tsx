@@ -684,12 +684,16 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         C'est une action, pas une recherche : elle vivait dans la
                         barre de recherche, à côté du filtre par nom, et l'on ne
                         savait plus lequel des deux champs taper. */}
+                    {/* Un bouton, plus un champ : large de 16 rem et loupe à droite,
+                        il passait pour un second champ de nom à côté du filtre de la
+                        page. Il ouvre le même sélecteur, pour quelqu'un qui n'est pas
+                        listé (un permanent, un auditeur encore actif). */}
                     <UserSearchCombobox<UserSearchResult>
                         value={null}
                         onSelect={(user) => openPerson(user.id)}
-                        placeholder="Gérer la disponibilité de…"
+                        placeholder="Gérer un autre membre…"
                         searchPlaceholder="Nom, email, ou numéro de personne…"
-                        triggerClassName="h-9 w-64 shrink-0"
+                        triggerClassName="h-9 w-auto shrink-0 bg-card [&>span]:text-foreground"
                     />
                     <Button
                         variant="outline"

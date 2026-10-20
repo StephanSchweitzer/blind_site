@@ -62,7 +62,7 @@ Comme pour un enregistrement, le fichier n'est envoyé qu'au moment où vous enr
 
 Une nouvelle liste commence vide. Tous les livres présents dans le tableau sont ceux qui seront enregistrés dans la liste.
 
-Pour retrouver les livres ajoutés au catalogue depuis la dernière liste, utilisez le contrôle « **Nouveautés depuis le …** ». La date proposée est celle de la dernière liste créée.
+Pour retrouver les livres ajoutés au catalogue depuis la dernière liste, utilisez le contrôle « **Nouveautés depuis le …** ». La date proposée est celle de la dernière liste créée, que la ligne du dessous nomme — sauf si c'est la liste ouverte.
 
 (1) Vous pouvez changer cette date en cliquant dans le champ. (2) Cliquez ensuite sur « **Voir** » : une fenêtre s'ouvre avec les nouveautés depuis cette date. Cochez celles que vous voulez, puis cliquez sur « Ajouter à la liste ».
 
@@ -97,7 +97,7 @@ Dès qu'un ordre est choisi, le haut du bloc Livres indique « **Ordre choisi** 
 
 Une note donne une précision sur un livre pour cette liste seulement (« Prix Goncourt 2026 », « Lu par l'auteur »…). Le même livre dans une autre liste a sa propre note, ou aucune ; la fiche du livre, le catalogue et l'annonce vocale ne la montrent jamais.
 
-Sous le titre de chaque livre, cliquez sur « **+ Ajouter une note** ». Saisissez la note (500 caractères au plus) dans la fenêtre, puis cliquez sur « **Enregistrer la note** ». La note s'affiche en italique sous le titre du livre. Elle s'affiche aussi en italique après la présentation du livre, sur le site public et dans la liste imprimée.
+Passez la souris sur la ligne d'un livre : le lien « **+ Ajouter une note** » apparaît sous son titre (au clavier, en arrivant sur la ligne ; sur une tablette ou un téléphone, il est toujours affiché). Cliquez dessus. Saisissez la note (500 caractères au plus) dans la fenêtre, puis cliquez sur « **Enregistrer la note** ». La note s'affiche en italique sous le titre du livre. Elle s'affiche aussi en italique après la présentation du livre, sur le site public et dans la liste imprimée.
 
 Pour changer une note, cliquez sur « **Modifier la note** », sous la note. Le bouton « **Supprimer la note** » de la fenêtre la retire. Une note vidée est retirée elle aussi.
 

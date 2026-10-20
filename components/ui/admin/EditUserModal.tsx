@@ -74,6 +74,12 @@ interface EditUserModalProps {
     currentUserAccessLevel?: string;
     /** The tab the modal was opened from; defaults to the one the person's memberType sorts into. */
     userType?: UserType;
+    /**
+     * Opened from this person's own dossier: « Voir le dossier » would lead
+     * back to the page underneath, and its header already states the
+     * cotisation — the fiche shows neither.
+     */
+    fromDossier?: boolean;
 }
 
 export function EditUserModal({
@@ -85,6 +91,7 @@ export function EditUserModal({
                                   onUserDeleted,
                                   currentUserAccessLevel,
                                   userType,
+                                  fromDossier = false,
                               }: EditUserModalProps) {
     const handleSuccess = (userId: number, isDeleted?: boolean) => {
         if (isDeleted) onUserDeleted?.(userId);
@@ -100,7 +107,7 @@ export function EditUserModal({
                             Modifier la personne
                             {userId && <CopyableId id={userId} label="de la personne" />}
                         </DialogTitle>
-                        {userId && (
+                        {userId && !fromDossier && (
                             <Button
                                 asChild
                                 variant="outline"
@@ -129,6 +136,7 @@ export function EditUserModal({
                                     onSuccess={handleSuccess}
                                     currentUserAccessLevel={currentUserAccessLevel}
                                     userType={userType ?? user.userType}
+                                    showCotisation={!fromDossier}
                                 />
                             </>
                         )}

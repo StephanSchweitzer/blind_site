@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Plus, Trash2, Mail } from 'lucide-react';
+import { Plus, Trash2, Mail } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useFormToast } from "@/hooks/useFormToast";
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -50,6 +49,8 @@ interface UserFormBackendBaseProps {
     userId?: string;
     /** When true (create flow), warn if an existing user shares first+last name. */
     warnOnDuplicateName?: boolean;
+    /** False when the dossier behind the fiche already shows the cotisation. */
+    showCotisation?: boolean;
 }
 
 const emptyAddress: AddressFormData = {
@@ -131,9 +132,9 @@ export function UserFormBackendBase({
                                         userType,
                                         userId,
                                         warnOnDuplicateName = false,
+                                        showCotisation = true,
                                     }: UserFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const [duplicateMatches, setDuplicateMatches] = useState<
@@ -141,7 +142,7 @@ export function UserFormBackendBase({
     >([]);
     const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
     const { toast } = useToast();
-    const { toastError } = useFormToast();
+    const { toastError, toastFailure } = useFormToast();
     const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
 
@@ -227,15 +228,13 @@ export function UserFormBackendBase({
 
     const doSubmit = async () => {
         setIsLoading(true);
-        setError(null);
         try {
             const newUserId = await onSubmit(withoutHiddenFields(formData));
             if (onSuccess) {
                 onSuccess(newUserId);
             }
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Échec du traitement de la personne';
-            setError(msg);
+            toastFailure(err);
         } finally {
             setIsLoading(false);
         }
@@ -243,11 +242,9 @@ export function UserFormBackendBase({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
 
         if ((formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') && !formData.email) {
             const msg = 'L\'email est requis pour les membres permanents';
-            setError(msg);
             toastError(msg);
             focusFirstInvalid(['email'], new Set(['email']));
             return;
@@ -288,9 +285,7 @@ export function UserFormBackendBase({
             try {
                 await onDelete();
             } catch (err) {
-                const msg = err instanceof Error ? err.message : 'Échec de la suppression de la personne';
-                setError(msg);
-                toastError(msg);
+                toastFailure(err, 'Suppression impossible');
             } finally {
                 setIsLoading(false);
             }
@@ -301,8 +296,8 @@ export function UserFormBackendBase({
         if (!userId) {
             toast({
                 variant: "destructive",
-                title: "Erreur",
-                description: "Impossible de réinitialiser le mot de passe : ID de la personne manquant",
+                title: "Réinitialisation impossible",
+                description: "Identifiant de la personne manquant.",
             });
             return;
         }
@@ -318,7 +313,7 @@ export function UserFormBackendBase({
             if (!response.ok) {
                 toast({
                     variant: "destructive",
-                    title: "Erreur",
+                    title: "Réinitialisation impossible",
                     description: data?.message || 'Échec de la réinitialisation du mot de passe',
                 });
                 return;
@@ -336,8 +331,8 @@ export function UserFormBackendBase({
             }
 
             toast({
-                title: "Succès",
-                description: data?.message || 'Le mot de passe a été réinitialisé et envoyé par email',
+                title: "Mot de passe réinitialisé",
+                description: "Un email a été envoyé à la personne.",
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
@@ -346,8 +341,8 @@ export function UserFormBackendBase({
             console.error('Password reset error:', err);
             toast({
                 variant: "destructive",
-                title: "Erreur",
-                description: "Échec de la réinitialisation du mot de passe",
+                title: "Réinitialisation impossible",
+                description: "Le serveur n’a pas répondu. Réessayez dans un instant.",
             });
         } finally {
             setIsResettingPassword(false);
@@ -393,16 +388,10 @@ export function UserFormBackendBase({
 
     return (
         <div>
-                {userId && (
+                {userId && showCotisation && (
                     <CotisationStatusBanner userId={userId} memberType={formData.memberType} />
                 )}
 
-                {error && (
-                    <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-red-700 dark:text-red-200">{error}</AlertDescription>
-                    </Alert>
-                )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Basic Information */}
@@ -868,7 +857,6 @@ export function UserFormBackendBase({
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             className="bg-card border-border text-foreground min-h-[100px]"
-                            placeholder="Notes supplémentaires..."
                         />
                     </div>
 

@@ -285,26 +285,29 @@ export default function AvailabilityTimeline({
                     ceux qui sont sous leur plafond, ce qui est un autre nombre.
                     Deux chiffres différents sous le même mot, et on ne croit
                     plus ni l'un ni l'autre.
-                    Ni le nombre d'absents du jour : la ligne juste dessous le
-                    donne déjà (« Aujourd'hui — 34 personnes indisponibles »), et
-                    la tuile du haut aussi. */}
+                    Ni le nombre d'absents du jour : la tuile du haut le donne. */}
                 <p className="text-[11px] text-muted-foreground">
                     Effectif de {snapshot.roster} lecteurs
                     {snapshot.notTaking > 0 &&
                         ` · ${snapshot.notTaking} ne ${snapshot.notTaking > 1 ? 'prennent' : 'prend'} pas d'attribution`}
                 </p>
             </div>
+            {/* La lecture du jour survolé. Pour aujourd'hui, le nombre est déjà
+                sur la tuile « Indisponibles aujourd'hui » en haut de la page : la
+                ligne ne garde alors que le maximum, s'il dit autre chose. */}
             <p aria-live="polite" className="-mt-3 text-xs text-foreground min-h-[1.25rem]">
-                <span className="font-medium">
-                    {shownDay === today ? "Aujourd'hui" : formatDayKey(shownDay)}
-                </span>{' '}
-                — {shownCount} personne{plural(shownCount)} indisponible{plural(shownCount)}
+                {shownDay !== today && (
+                    <>
+                        <span className="font-medium">{formatDayKey(shownDay)}</span>{' '}
+                        — {shownCount} personne{plural(shownCount)} indisponible{plural(shownCount)}
+                    </>
+                )}
                 {/* Le maximum seulement s'il dit autre chose que le jour lu :
                     « 34 · maximum de 34 » répétait le même chiffre. */}
                 {peak > shownCount && (
                     <span className="text-muted-foreground">
-                        {' '}
-                        · maximum de {peak} le {formatDayKey(addDays(start, peakDayIndex))}
+                        {shownDay !== today && ' · '}
+                        {shownDay === today ? 'Maximum' : 'maximum'} de {peak} le {formatDayKey(addDays(start, peakDayIndex))}
                     </span>
                 )}
             </p>
@@ -410,6 +413,9 @@ export default function AvailabilityTimeline({
                         <div
                             className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-1 ${GUTTER_OFFSET}`}
                         >
+                            {/* Un choix à une seule option n'en est pas un : avec un
+                                seul groupe (« En cours »), rien à afficher ici. */}
+                            {groups.length > 1 ? (
                             <div className="flex flex-wrap items-center gap-2">
                                 <span id="timeline-view-label" className="text-xs font-medium text-muted-foreground">
                                     Afficher :
@@ -451,6 +457,9 @@ export default function AvailabilityTimeline({
                                     })}
                                 </div>
                             </div>
+                            ) : (
+                                <span />
+                            )}
                             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <span className="w-0.5 h-3 bg-red-500" /> Aujourd&apos;hui
                             </span>

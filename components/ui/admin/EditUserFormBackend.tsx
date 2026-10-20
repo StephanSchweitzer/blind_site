@@ -1,5 +1,6 @@
 import React from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { markToasted } from "@/hooks/useFormToast";
 import { UserFormData, UserType } from '@/types';
 import { UserFormBackendBase } from '@/admin/UserFormBackendBase';
 
@@ -9,12 +10,14 @@ export function EditUserFormBackend({
                                         onSuccess,
                                         currentUserAccessLevel,
                                         userType,
+                                        showCotisation = true,
                                     }: {
     userId: string;
     initialData: UserFormData;
     onSuccess?: (userId: number, isDeleted?: boolean) => void;
     currentUserAccessLevel?: string;
     userType: UserType;
+    showCotisation?: boolean;
 }) {
     const { toast } = useToast();
 
@@ -36,12 +39,11 @@ export function EditUserFormBackend({
                     description: msg,
                     className: "bg-red-100 border-red-500 text-red-900",
                 });
-                throw new Error(msg);
+                throw markToasted(new Error(msg));
             }
 
             toast({
-                title: "Succès",
-                description: data.message || 'La personne a été supprimée avec succès',
+                title: "Personne supprimée",
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
@@ -65,12 +67,13 @@ export function EditUserFormBackend({
             const data = await response.json().catch(() => null);
 
             if (!response.ok) {
+                const msg = data?.message || 'Échec de la mise à jour de la personne';
                 toast({
                     variant: "destructive",
-                    title: "Erreur",
-                    description: data?.message || 'Échec de la mise à jour de la personne',
+                    title: "Enregistrement impossible",
+                    description: msg,
                 });
-                return Promise.reject();
+                throw markToasted(new Error(msg));
             }
 
             // 207 = updated (e.g. promoted to a login account) but the credentials
@@ -86,15 +89,14 @@ export function EditUserFormBackend({
             }
 
             toast({
-                title: "Succès",
-                description: 'La personne a été mise à jour avec succès',
+                title: "Fiche enregistrée",
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
             return parseInt(userId);
         } catch (error) {
             console.error('Submit error:', error);
-            return Promise.reject();
+            throw error;
         }
     };
 
@@ -110,6 +112,7 @@ export function EditUserFormBackend({
             currentUserAccessLevel={currentUserAccessLevel}
             userType={userType}
             userId={userId}
+            showCotisation={showCotisation}
         />
     );
 }

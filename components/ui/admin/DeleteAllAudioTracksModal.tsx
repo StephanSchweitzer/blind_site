@@ -85,17 +85,12 @@ export function DeleteAllAudioTracksModal({
                     ? // Une suppression partielle reste à l'écran : elle dit quoi relancer.
                       { variant: 'destructive' as const, duration: Infinity }
                     : {}),
-                // @ts-expect-error jsx in toast
-                title: (
-                    <span className="text-2xl font-bold">
-                        {failed.length > 0 ? 'Suppression partielle' : 'Déplacées dans la corbeille'}
-                    </span>
-                ),
+                title: failed.length > 0 ? 'Suppression partielle' : 'Déplacées dans la corbeille',
                 description: (
-                    <span className="text-xl mt-2">
+                    <span>
                         {data.message ?? 'Les pistes ont été déplacées dans la corbeille.'}
                         {failed.length > 0 && (
-                            <span className="block mt-2 text-base">
+                            <span className="block mt-2">
                                 En échec : {failed.map((f) => `« ${f.name} » (${f.message})`).join(', ')}.
                                 Relancez la suppression : les fichiers déjà déplacés ne le seront pas
                                 deux fois.
@@ -105,8 +100,8 @@ export function DeleteAllAudioTracksModal({
                 ),
                 className:
                     failed.length > 0
-                        ? 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6'
-                        : 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+                        ? 'bg-red-100 border-red-500 text-red-900'
+                        : 'bg-green-100 border-green-500 text-green-900',
             });
 
             onDeleted?.();

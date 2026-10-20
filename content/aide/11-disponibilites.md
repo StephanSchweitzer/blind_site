@@ -20,11 +20,11 @@ Voici un exemple de recherche sur un prénom
 
 ![Disponibilités - capture 3](/admin/aide/images/disponibilites-03.jpg)
 
-Enfin, depuis cette page, nous pouvons (1) filtrer les résultats en fonction des locuteurs des langues que nous avons définies précédemment dans la fenêtre contextuelle « Membres » pour les conférenciers, et nous pouvons (2) rechercher une personne afin de modifier directement ses disponibilités. Ce second champ, « Gérer la disponibilité de… », se trouve en haut à droite de la page, à côté du bouton « Actualiser » : il ne filtre pas la page, il ouvre la fenêtre de n'importe quelle personne, même absente des listes (un permanent ou un auditeur à déclarer absent, par exemple).
+Enfin, depuis cette page, nous pouvons (1) filtrer les résultats en fonction des locuteurs des langues que nous avons définies précédemment dans la fenêtre contextuelle « Membres » pour les conférenciers, et nous pouvons (2) rechercher une personne afin de modifier directement ses disponibilités. Ce second outil est le bouton « **Gérer un autre membre…** », en haut à droite de la page, à côté du bouton « Actualiser » : il ne filtre pas la page, il ouvre la fenêtre de n'importe quelle personne, même absente des listes (un permanent ou un auditeur à déclarer absent, par exemple).
 
 ![Disponibilités - capture 4](/admin/aide/images/disponibilites-04.jpg)
 
-Si l'on clique sur le champ « Gérer la disponibilité de... », que l'on recherche un nom, puis que l'on clique sur cette ligne (comme pour bon nombre des autres recherches décrites et détaillées dans les sections précédentes), le modal de disponibilité s'ouvre.
+Si l'on clique sur « Gérer un autre membre… », que l'on recherche un nom, puis que l'on clique sur cette ligne (comme pour bon nombre des autres recherches décrites et détaillées dans les sections précédentes), le modal de disponibilité s'ouvre.
 
 ![Disponibilités - capture 5](/admin/aide/images/disponibilites-05.jpg)
 
@@ -50,7 +50,7 @@ En haut de la page, trois compteurs : les lecteurs attribuables, les personnes i
 
 Sous les compteurs, « Points à surveiller » rassemble, pour les semaines à venir, qui revient bientôt, qui s'absente bientôt, qui garde un livre pendant son absence, les absences sans date de retour, et les personnes en pause pour les attributions. La section est repliée ; « Afficher » l'ouvre — la page s'en souvient à la visite suivante, sur le même navigateur. Chaque groupe montre quelques noms ; « + N autres » affiche le reste. Un clic sur un nom ouvre sa disponibilité.
 
-En faisant défiler la page vers le bas, on arrive à la section « Calendrier des indisponibilités ». On peut filtrer la période et le type de membre en haut à droite de cette section. Sous la courbe, les boutons « Afficher : » choisissent les indisponibilités listées — « En cours », « À venir » ou « Sans date de fin » —, chacun de la couleur de ses barres et suivi du nombre de personnes ; la courbe, elle, compte toujours tout le monde.
+En faisant défiler la page vers le bas, on arrive à la section « Calendrier des indisponibilités ». On peut filtrer la période et le type de membre en haut à droite de cette section. Sous la courbe, quand il y a plusieurs sortes d'indisponibilités, les boutons « Afficher : » choisissent celles qui sont listées — « En cours », « À venir » ou « Sans date de fin » —, chacun de la couleur de ses barres et suivi du nombre de personnes ; la courbe, elle, compte toujours tout le monde. Survolez la courbe pour lire le nombre de personnes absentes un jour donné ; celui d'aujourd'hui est sur le compteur du haut.
 
 ![Disponibilités - capture 8](/admin/aide/images/disponibilites-08.jpg)
 

@@ -344,7 +344,7 @@ export async function dismissOrphan(orphanId: number, reason: string): Promise<A
             });
 
             refresh();
-            return { ok: true, message: 'Dossier écarté. Rien n’a été supprimé du stockage.' };
+            return { ok: true, message: 'Dossier écarté' };
         } catch (error) {
             console.error('dismissOrphan error:', error);
             return { ok: false, message: "Échec de la mise à l'écart" };

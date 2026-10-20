@@ -92,14 +92,9 @@ export function RenameAudioTrackModal({
             if (!res.ok) throw userErrorFromResponse(res, data);
 
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Renommé</span>,
-                description: (
-                    <span className="text-xl mt-2">
-                        {data?.message ?? `« ${track.name} » a été renommé en « ${newName} ».`}
-                    </span>
-                ),
-                className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+                title: 'Piste renommée',
+                description: data?.message ?? `« ${track.name} » a été renommé en « ${newName} ».`,
+                className: 'bg-green-100 border-green-500 text-green-900',
             });
 
             onRenamed?.();

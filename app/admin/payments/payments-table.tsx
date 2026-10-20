@@ -313,29 +313,48 @@ export default function PaymentsTable({
     const formatCurrency = (amount: string) =>
         new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(parseFloat(amount));
 
+    // « Montant total » : la somme de CE que la liste montre. Sans recherche ni
+    // filtre, c'était celle de tous les paiements jamais saisis — un chiffre
+    // que personne ne lit, comme les totaux « depuis toujours » retirés du
+    // tableau de bord. Dans un dossier, il répond à « qu'a payé cette
+    // personne ? », dès qu'elle a payé quelque chose.
+    const narrowed = activeFilters.length > 0 || !!initialParams.search;
+    const showTotal = presetClient ? pagination.total > 0 : narrowed;
+    // Dans un dossier, une personne a rarement plus d'une page de paiements :
+    // « Filtres » ne revient qu'à partir de deux pages, ou si un filtre est
+    // posé (pour pouvoir l'enlever) — même règle que les demandes du dossier.
+    const canFilter = !presetClient || pagination.totalPages > 1 || activeFilters.length > 0;
+
     return (
         <Card className="bg-card border-border">
             <CardHeader className="border-b border-border pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="text-2xl font-bold text-foreground">Paiements</CardTitle>
+                            {/* Dans un dossier, l'onglet « Paiements » juste au-dessus
+                                porte déjà le titre : il ne reste que pour le lecteur d'écran. */}
+                            <CardTitle className={presetClient ? 'sr-only' : 'text-2xl font-bold text-foreground'}>Paiements</CardTitle>
                             <AideLink section="paiements" />
                         </div>
-                        <CardDescription className="text-muted-foreground mt-1">
-                            Montant total :{' '}
-                            <span className="font-semibold text-foreground">{formatCurrency(initialTotalAmount)}</span>
-                        </CardDescription>
+                        {showTotal && (
+                            <CardDescription className="text-muted-foreground mt-1">
+                                Montant total :{' '}
+                                <span className="font-semibold text-foreground">{formatCurrency(initialTotalAmount)}</span>
+                            </CardDescription>
+                        )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <a
-                            href={exportHref}
-                            title={`Exporter ${pagination.total} paiement${pagination.total > 1 ? 's' : ''} au format CSV`}
-                            className="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium bg-card text-foreground border border-border hover:bg-muted transition-colors"
-                        >
-                            <Download className="h-4 w-4" />
-                            Exporter (CSV)
-                        </a>
+                        {/* Rien à exporter dans une liste vide. */}
+                        {pagination.total > 0 && (
+                            <a
+                                href={exportHref}
+                                title={`Exporter ${pagination.total} paiement${pagination.total > 1 ? 's' : ''} au format CSV`}
+                                className="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium bg-card text-foreground border border-border hover:bg-muted transition-colors"
+                            >
+                                <Download className="h-4 w-4" />
+                                Exporter (CSV)
+                            </a>
+                        )}
                         <Button
                             onClick={() => setIsAddModalOpen(true)}
                             className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
@@ -384,6 +403,7 @@ export default function PaymentsTable({
                         </div>
                     )}
 
+                    {canFilter && (
                     <Button
                         variant="outline"
                         onClick={() => setShowFilters((open) => !open)}
@@ -399,6 +419,7 @@ export default function PaymentsTable({
                             </span>
                         )}
                     </Button>
+                    )}
                 </div>
 
                 {/* Les filtres posés, lisibles panneau fermé. */}

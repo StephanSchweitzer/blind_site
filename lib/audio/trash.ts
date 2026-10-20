@@ -396,8 +396,8 @@ export interface BulkRestoreResult {
 
 /**
  * Ramène un lot explicite de lignes de corbeille à leur emplacement d'origine,
- * quel que soit leur `bookId` — y compris `null` (le cas « sans-fiche » de
- * /admin/audio-corbeille, où il n'y a justement plus de livre pour filtrer
+ * quel que soit leur `bookId` — y compris `null` (une ligne « fiche supprimée »
+ * de /admin/audio-corbeille, où il n'y a justement plus de livre pour filtrer
  * dessus). Le pendant, côté restauration, de softDeleteTracks.
  *
  * Un lot explicite, jamais « tout ce que la corbeille tient pour ce livre » :
@@ -584,7 +584,7 @@ export async function markTrashOrigin(bookId: number, title: string): Promise<nu
  * de lecture, son tarif), ou dans un dossier que plus aucune fiche ne lit, alors
  * que l'écran annonçait une restauration réussie.
  *
- * Une ligne sans livre (`bookId` null, cas « sans-fiche » de
+ * Une ligne sans livre (`bookId` null, « fiche supprimée » sur
  * /admin/audio-corbeille) n'a pas de dossier auquel se comparer : elle revient à
  * sa clé, comme avant. `findUnique`, pour voir aussi une fiche supprimée — la
  * restauration de la fiche relance justement ses pistes.

@@ -50,15 +50,14 @@ export function DeletePaymentModal({
             if (!res.ok) throw new Error(data?.message || 'Échec de la suppression');
 
             toast({
-                title: "Succès",
-                description: "Le paiement a été supprimé",
+                title: "Paiement supprimé",
                 className: 'bg-green-100 border-green-500 text-green-900',
             });
             onPaymentDeleted?.();
         } catch (err) {
             toast({
                 variant: 'destructive',
-                title: "Erreur",
+                title: "Suppression impossible",
                 description: err instanceof Error ? err.message : 'Erreur inattendue'
             });
         } finally {

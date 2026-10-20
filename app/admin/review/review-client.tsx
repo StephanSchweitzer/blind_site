@@ -50,8 +50,6 @@ import { UserFacingError } from '@/lib/user-error';
 import { BookAudioModal } from '@/admin/BookAudioModal';
 import {
     AudioLinkStatus,
-    audioLinkStatusIsMissing,
-    getAudioLinkStatusButtonColor,
     getAudioLinkStatusHint,
     getAudioLinkStatusLabel,
     bookHoldsTracks,
@@ -104,8 +102,6 @@ interface Props {
     pairs: ReviewPair[];
     /** Page courante, taille, et le total : les résultats de la recherche, ou toute la file. */
     pagination: PageInfo;
-    /** Size of the whole queue, regardless of the search. */
-    queueTotal: number;
     search: string;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
     searchSuggestions?: RescueSuggestion[];
@@ -173,7 +169,7 @@ interface EscalationTarget {
     audioConflict: boolean;
 }
 
-export default function ReviewClient({ pairs, pagination, queueTotal, search, searchSuggestions }: Props) {
+export default function ReviewClient({ pairs, pagination, search, searchSuggestions }: Props) {
     const total = pagination.total;
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState(search);
@@ -201,7 +197,7 @@ export default function ReviewClient({ pairs, pagination, queueTotal, search, se
                 return;
             }
             if (res.ok) {
-                toast({ title: 'Succès', description: res.message });
+                toast({ title: res.message });
             } else {
                 toast(
                     apiErrorToast(
@@ -282,13 +278,11 @@ export default function ReviewClient({ pairs, pagination, queueTotal, search, se
                             <CardTitle>Doublons</CardTitle>
                             <AideLink section="doublons" />
                         </div>
-                        <CardDescription>
-                            {search
-                                ? `${total} résultat${total > 1 ? 's' : ''} pour « ${search} » — ${queueTotal} livre${queueTotal > 1 ? 's' : ''} dans la file.`
-                                : total === 0
-                                  ? 'Aucun livre en attente de révision.'
-                                  : `${total} livre${total > 1 ? 's' : ''} signalé${total > 1 ? 's' : ''} comme doublon potentiel.`}
-                        </CardDescription>
+                        {/* Le nombre se lit dans « 1–10 sur N livres » sous la recherche :
+                            l'en-tête ne parle que de la file vide. */}
+                        {!search && total === 0 && (
+                            <CardDescription>Aucun livre en attente de révision.</CardDescription>
+                        )}
                     </div>
 
                     <div className="flex gap-2">
@@ -577,7 +571,7 @@ function PairCard({
                         </CardTitle>
                         <CardDescription>{flagged.author}</CardDescription>
                     </div>
-                    <Badge variant="secondary">Aucun correspondant trouvé</Badge>
+                    {candidates.length === 0 && <Badge variant="secondary">Aucun correspondant trouvé</Badge>}
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <div className="flex justify-end gap-2">
@@ -645,7 +639,6 @@ function PairCard({
     };
 
     const diffFields = FIELDS.filter((f) => differs(f, flagged, matched));
-    const sameFields = FIELDS.filter((f) => !differs(f, flagged, matched));
 
     // The card's secondary ways out, in one menu next to its main button rather
     // than three buttons scattered over it. Escalation is in there on every
@@ -766,7 +759,6 @@ function PairCard({
                     <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
                             Pour chaque champ différent, cochez la valeur à garder dans la fiche fusionnée.
-                            Rien n’est fusionné avant la confirmation.
                         </p>
 
                         {diffFields.length === 0 ? (
@@ -936,12 +928,6 @@ function PairCard({
                             </Button>
                             {moreActions}
                         </div>
-                        {sameFields.length > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                                {sameFields.length} champ{sameFields.length > 1 ? 's' : ''} identique
-                                {sameFields.length > 1 ? 's' : ''}.
-                            </p>
-                        )}
                     </div>
                 )}
 
@@ -1114,14 +1100,6 @@ function BookHead({
             <div
                 className={`mt-1 flex flex-wrap items-center gap-2 ${align === 'right' ? 'sm:justify-end' : ''}`}
             >
-                {/* Real tracks, not merely a path: this badge is what tells the
-                    permanent the pair holds two recordings, and it sat next to a
-                    ListenButton already reporting « dossier introuvable ». */}
-                {bookHoldsTracks(book) && (
-                    <Badge variant="secondary" className="gap-1">
-                        <FileAudio className="h-3 w-3" /> Audio
-                    </Badge>
-                )}
                 <ListenButton book={book} onListen={onListen} />
             </div>
         </div>
@@ -1228,33 +1206,46 @@ function MatchPicker({
 }
 
 /**
- * Opens the audio editor for one side of the pair. The saved path alone does
- * not say what is actually in the folder — and when two fiches both claim a
- * recording, hearing them is the only way to decide which one to keep.
+ * One side's audio, in one control. The saved path alone does not say what is
+ * actually in the folder — and when two fiches both claim a recording, hearing
+ * them is the only way to decide which one to keep.
+ *
+ * Real tracks (bookHoldsTracks), not merely a path: « Écouter (12) » is what
+ * tells the permanent the pair holds two recordings. It used to be an « Audio »
+ * badge beside an « Écouter » button that was offered — in red — on books with
+ * nothing to hear. A book without tracks now just says so.
  */
 function ListenButton({ book, onListen }: { book: ReviewBook; onListen: (book: ReviewBook) => void }) {
     const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
-    const missing = audioLinkStatusIsMissing(status);
+
+    if (!bookHoldsTracks(book)) {
+        return (
+            <Badge
+                variant="secondary"
+                className="gap-1 font-normal text-muted-foreground"
+                title={getAudioLinkStatusHint(status)}
+            >
+                <FileX2 className="h-3 w-3" aria-hidden="true" />
+                {status === AudioLinkStatus.OK ? 'Pas d’audio' : getAudioLinkStatusLabel(status)}
+            </Badge>
+        );
+    }
 
     return (
         <Button
             variant="outline"
             size="sm"
-            className={`h-7 gap-1 px-2 text-xs ${getAudioLinkStatusButtonColor(status)}`}
+            className="h-7 gap-1 px-2 text-xs"
             // The card behind this button opens the comparison on click.
             onClick={(e) => {
                 e.stopPropagation();
                 onListen(book);
             }}
             aria-label={`Écouter l’audio de « ${book.title} » (#${book.id})`}
-            title={
-                missing
-                    ? `${getAudioLinkStatusLabel(status)} — ${getAudioLinkStatusHint(status)}`
-                    : 'Écouter le contenu du dossier audio'
-            }
+            title="Écouter le contenu du dossier audio"
         >
-            {missing ? <FileX2 className="h-3.5 w-3.5" /> : <FileAudio className="h-3.5 w-3.5" />}
-            Écouter
+            <FileAudio className="h-3.5 w-3.5" />
+            Écouter{book.audioTrackCount ? ` (${book.audioTrackCount})` : ''}
         </Button>
     );
 }

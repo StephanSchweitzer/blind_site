@@ -642,7 +642,7 @@ export default function PersonAvailabilityPanel({
 
             toast({
                 title: 'Disponibilité enregistrée',
-                description: `${person.name} a été mis à jour.`,
+                description: person.name,
             });
             // Re-read rather than patch locally: the activity route can clear
             // isAvailable on its own, and the panel must show what was stored.

@@ -88,7 +88,7 @@ Cela ouvrira le modal de modification des attributions.
 
 ![Attributions - capture 13](/admin/aide/images/attributions-13.jpg)
 
-Il peut arriver qu'un lecteur ne parvienne pas à terminer son attribution ; dans ce cas, depuis cette fenêtre modale de modification d'attribution, nous pouvons réattribuer un lecteur en cliquant sur le champ « Lecteur ».
+Il peut arriver qu'un lecteur ne parvienne pas à terminer son attribution ; dans ce cas, depuis cette fenêtre modale de modification d'attribution, nous pouvons réattribuer un lecteur en cliquant sur le bouton « **Changer de lecteur** », à droite du lecteur actuel. Un cadre « Réattribuer à un autre lecteur » s'ouvre ; les lecteurs précédents, s'il y en a, s'y affichent aussi.
 
 ![Attributions - capture 14](/admin/aide/images/attributions-14.jpg)
 

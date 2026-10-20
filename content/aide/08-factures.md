@@ -108,6 +108,8 @@ C'est le **passage** à « Terminé » qui fait entrer une demande sur un brouil
 
 (3) « **Supprimer la facture** » supprime définitivement la facture
 
+Un brouillon n'a pas de bloc « Paiements » : il n'a pas encore été envoyé, et un règlement ne s'enregistre qu'une fois la facture émise. Son montant se lit en bas, sous « Montant total ».
+
 ![Factures - capture 9](/admin/aide/images/factures-09.jpg)
 
 ### Une facture émise

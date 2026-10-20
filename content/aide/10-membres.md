@@ -96,7 +96,7 @@ Cela ouvrira le modal « Modifier un membre ».
 
 ![Membres - capture 11](/admin/aide/images/membres-11.jpg)
 
-Tout ici est identique à le modal « Ajouter un membre », à l'exception de trois éléments en haut : (1) la bannière qui affiche le statut de la cotisation, (2) le bouton « Voir le dossier », et (3) la section « Statut ».
+Tout ici est identique à le modal « Ajouter un membre », à l'exception de trois éléments en haut : (1) la bannière qui affiche le statut de la cotisation, (2) le bouton « Voir le dossier », et (3) la section « Statut ». Ouverte depuis le dossier lui-même (en cliquant sur le nom), la fiche n'affiche ni la bannière ni « Voir le dossier » : l'en-tête du dossier indique déjà la cotisation, et le dossier est la page ouverte derrière.
 
 ![Membres - capture 12](/admin/aide/images/membres-12.jpg)
 
@@ -152,7 +152,7 @@ Les onglets situés au milieu de la page dépendent du type de membre. Un audite
 
 ![Membres - capture 21](/admin/aide/images/membres-21.jpg)
 
-Tous ces onglets fonctionnent presque exactement de la même manière que les sections correspondantes. Si vous avez besoin d'explications, veuillez vous reporter à ces sections. Dans les onglets « Demandes » et « Factures », la colonne « Auditeur » n'apparaît pas, ni la colonne « Client » dans l'onglet « Paiements », puisque c'est toujours la personne du dossier, et les filtres ne s'affichent que lorsque ses demandes tiennent sur plusieurs pages.
+Tous ces onglets fonctionnent presque exactement de la même manière que les sections correspondantes. Si vous avez besoin d'explications, veuillez vous reporter à ces sections. Dans les onglets « Demandes » et « Factures », la colonne « Auditeur » n'apparaît pas, ni la colonne « Client » dans l'onglet « Paiements », puisque c'est toujours la personne du dossier. Dans chaque onglet, les filtres ne s'affichent que lorsque la liste tient sur plusieurs pages (ou qu'un filtre est déjà posé), et l'onglet sert de titre.
 
 Vous pouvez aussi ouvrir un dossier en cliquant sur le nom d'une personne dans la liste des [Demandes](/admin/aide/demandes) ou des [Attributions](/admin/aide/attributions).
 
@@ -160,7 +160,7 @@ Vous pouvez aussi ouvrir un dossier en cliquant sur le nom d'une personne dans l
 
 ![Membres - capture 22](/admin/aide/images/membres-22.jpg)
 
-La section « Statut » vous permet de modifier la disponibilité et le statut d'une personne au sein de l'ECA. Quatre statuts peuvent être attribués à une personne.
+La section « Statut » vous permet de modifier la disponibilité et le statut d'une personne au sein de l'ECA. Elle affiche le statut actuel ; cliquez sur « **Changer le statut** » pour ouvrir le formulaire (« Annuler » le referme sans rien changer). Quatre statuts peuvent être attribués à une personne.
 
 (1) Actif : la personne est en situation normale et disponible
 
@@ -170,7 +170,7 @@ La section « Statut » vous permet de modifier la disponibilité et le statut d
 
 (4) Décédé : la personne est malheureusement décédée
 
-Les statuts « Radie », « décédé » et « actif » sont simples dans la mesure où ils ne sont soumis à aucune contrainte de délai. Il suffit simplement (1) de mettre à jour le statut, (2) d'ajouter un commentaire si vous le souhaitez, puis (3) d'enregistrer lorsque vous êtes prêt.
+Les statuts « Radie », « décédé » et « actif » sont simples dans la mesure où ils ne sont soumis à aucune contrainte de délai. Il suffit simplement (1) de mettre à jour le statut, (2) d'ajouter un commentaire si vous le souhaitez, puis (3) de cliquer sur « Enregistrer le statut » lorsque vous êtes prêt.
 
 ![Membres - capture 23](/admin/aide/images/membres-23.jpg)
 
@@ -182,6 +182,6 @@ Une personne qui n'est pas active ne peut pas être marquée « disponible » : 
 
 ![Membres - capture 24](/admin/aide/images/membres-24.jpg)
 
-La modification du statut d'un utilisateur est un événement enregistré, et l'historique de cet utilisateur peut être consulté en haut de leur modal de modification, sous « Changer le statut ».
+La modification du statut d'un utilisateur est un événement enregistré, et l'historique de cet utilisateur peut être consulté en haut de leur modal de modification, sous la section « Statut ».
 
 ![Membres - capture 25](/admin/aide/images/membres-25.jpg)

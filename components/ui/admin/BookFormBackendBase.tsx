@@ -5,14 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Check, X, AlertCircle } from "lucide-react";
+import { Check, X } from "lucide-react";
 import BookSearch from "@/app/admin/books/components/book-search";
 import { BookAudioButton } from '@/admin/BookAudioButton';
 import { DeleteBookModal } from '@/admin/DeleteBookModal';
 import BookDeletedNotice from '@/admin/BookDeletedNotice';
 import DurationInputs from "@/components/ui/duration-inputs";
 import { useToast } from "@/hooks/use-toast";
+import { markToasted, useFormToast } from '@/hooks/useFormToast';
 import { apiErrorToast } from '@/admin/ApiErrorMessage';
 import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
 
@@ -144,7 +144,7 @@ export function BookFormBackendBase({
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const { toastFailure } = useFormToast();
     /** La fenêtre de suppression, qui porte refus, décision audio et appel. */
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -232,7 +232,6 @@ export function BookFormBackendBase({
         e.preventDefault();
         e.stopPropagation();
         setIsLoading(true);
-        setError(null);
 
         try {
             const newBookId = await onSubmit(formData);
@@ -243,9 +242,9 @@ export function BookFormBackendBase({
             }
         } catch (err) {
             // Wrapper (Add/Edit) already toasts the detailed error — with the
-            // contact line when the cause is unknown; inline only here.
-            const msg = err instanceof Error ? err.message : 'Échec du traitement du livre';
-            setError(msg);
+            // contact line when the cause is unknown. The red box that repeated
+            // it at the top of the form is gone.
+            toastFailure(err);
             return;
         } finally {
             setIsLoading(false);
@@ -278,16 +277,6 @@ export function BookFormBackendBase({
                         </div>
                     )}
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {error && (
-                        <Alert variant="destructive" className="border-red-300 bg-red-50 dark:border-red-500 dark:bg-red-900/20">
-                            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                            <AlertTitle className="text-red-600 dark:text-red-400">Erreur</AlertTitle>
-                            <AlertDescription className="text-foreground mt-1">
-                                {error}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-
                     {!initialData && <BookSearch onBookSelect={handleBookSelect}/>}
 
                     {/* min-w-0 : voir OrderFormBackendBase — sans lui, un fieldset
@@ -306,7 +295,6 @@ export function BookFormBackendBase({
                                 value={formData.title}
                                 onChange={handleChange}
                                 className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
-                                placeholder="Indiquer le titre du livre"
                             />
                         </div>
 
@@ -321,7 +309,6 @@ export function BookFormBackendBase({
                                 value={formData.subtitle || ''}
                                 onChange={handleChange}
                                 className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
-                                placeholder="Indiquer le sous-titre du livre"
                             />
                         </div>
 
@@ -337,7 +324,6 @@ export function BookFormBackendBase({
                                 value={formData.author}
                                 onChange={handleChange}
                                 className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
-                                placeholder="Indiquer l'auteur du livre"
                             />
                         </div>
 
@@ -352,7 +338,6 @@ export function BookFormBackendBase({
                                 value={formData.publisher || ''}
                                 onChange={handleChange}
                                 className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
-                                placeholder="Indiquer l'éditeur du livre"
                             />
                         </div>
 
@@ -371,7 +356,6 @@ export function BookFormBackendBase({
                                     value={formData.publishedYear || ''}
                                     onChange={handleChange}
                                     className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
-                                    placeholder="Année de publication"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -386,7 +370,6 @@ export function BookFormBackendBase({
                                     value={formData.pageCount || ''}
                                     onChange={handleChange}
                                     className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
-                                    placeholder="Nombre de pages"
                                 />
                             </div>
 
@@ -401,7 +384,6 @@ export function BookFormBackendBase({
                                     value={formData.isbn || ''}
                                     onChange={handleChange}
                                     className="bg-field border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
-                                    placeholder="Numéro ISBN (facultatif)"
                                 />
                             </div>
                         </div>
@@ -440,8 +422,8 @@ export function BookFormBackendBase({
                                     >
                                         <span className="truncate min-w-0">
                                             {formData.genres.length > 0
-                                                ? 'Sélectionner plus des genres associés...'
-                                                : 'Sélectionner les genres associés...'}
+                                                ? 'Ajouter un genre…'
+                                                : 'Choisir les genres…'}
                                         </span>
                                     </Button>
                                 </PopoverTrigger>
@@ -512,11 +494,15 @@ export function BookFormBackendBase({
                             />
                         </div>
 
-                        <DurationInputs
-                            formData={formData}
-                            bookId={audioBookId}
-                            onMeasured={handleMeasuredDuration}
-                        />
+                        {/* Pas sur un livre qu'on crée : il n'a encore aucun fichier
+                            audio, la durée ne pourrait qu'y lire « Non calculée ». */}
+                        {audioBookId != null && (
+                            <DurationInputs
+                                formData={formData}
+                                bookId={audioBookId}
+                                onMeasured={handleMeasuredDuration}
+                            />
+                        )}
 
                         <div className="flex items-center space-x-2">
                             <Checkbox
@@ -555,7 +541,7 @@ export function BookFormBackendBase({
                                 </label>
                             </div>
                             <p className="text-xs text-muted-foreground pl-6">
-                                Le livre n&apos;apparait plus dans le Catalogue, ni dans les &quot;Listes de livres&quot; adressées régulièrement aux adhérents  (ex. un livre au sujet sensible ou extrême (religion, politique, moeurs….). Le livre reste cependant accessible aux permanentes.
+                                N&apos;apparaît ni dans le catalogue ni dans les listes de livres envoyées aux adhérents (ex. sujet sensible : religion, politique, mœurs…). Reste visible ici.
                             </p>
                         </div>
                     </div>
@@ -635,8 +621,7 @@ export function AddBookFormBackend({ onSuccess, dirtyRef }: {
             if (!response.ok) throw userErrorFromResponse(response, data);
 
             toast({
-                title: "Succès",
-                description: "Le livre a été créé avec succès",
+                title: "Livre créé",
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
@@ -646,7 +631,7 @@ export function AddBookFormBackend({ onSuccess, dirtyRef }: {
             // « Échec du traitement du livre » s'affichait en bas du formulaire.
             const e = toUserFacingError(error);
             toast(apiErrorToast(e, { title: 'Création impossible', action: `Créer le livre « ${formData.title} »` }));
-            throw e;
+            throw markToasted(e);
         }
     };
 
@@ -654,7 +639,7 @@ export function AddBookFormBackend({ onSuccess, dirtyRef }: {
         <BookFormBackendBase
             onSubmit={handleSubmit}
             submitButtonText="Ajouter le livre"
-            loadingText="En ajoutant..."
+            loadingText="Ajout en cours…"
             onSuccess={onSuccess}
             dirtyRef={dirtyRef}
         />
@@ -725,8 +710,7 @@ export function EditBookFormBackend({ bookId, initialData, deletedAt, onSuccess,
             }
 
             toast({
-                title: "Succès",
-                description: "Le livre a été mis à jour avec succès",
+                title: "Livre enregistré",
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
@@ -734,7 +718,7 @@ export function EditBookFormBackend({ bookId, initialData, deletedAt, onSuccess,
         } catch (error) {
             const e = toUserFacingError(error);
             toast(apiErrorToast(e, { title: 'Enregistrement impossible', action: `Modifier le livre #${bookId}` }));
-            throw e;
+            throw markToasted(e);
         }
     };
 
@@ -759,7 +743,7 @@ export function EditBookFormBackend({ bookId, initialData, deletedAt, onSuccess,
                 onDeleted={handleDeleted}
                 showDelete={true}
                 submitButtonText="Mettre à jour le livre"
-                loadingText="En cours de mise à jour..."
+                loadingText="Enregistrement…"
                 onSuccess={onSuccess}
                 audioBookId={Number.isInteger(Number(bookId)) ? Number(bookId) : undefined}
                 dirtyRef={dirtyRef}

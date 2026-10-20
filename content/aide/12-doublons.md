@@ -13,7 +13,7 @@ L'URL de cette page est https://eca-aveugles.fr/admin/review
 Chaque carte montre un livre signalé et, en dessous, les « **Livres au titre proche** ». Depuis cette carte, vous pouvez :
 
 - « **Comparer** » les deux fiches côte à côte ;
-- « **Écouter** » l'enregistrement, s'il y en a un ;
+- « **Écouter** » l'enregistrement — le bouton indique le nombre de pistes, « Écouter (12) ». Une fiche sans enregistrement l'indique à la place (« Pas d'audio associé », « Dossier vide »…) ;
 - « **Pas un doublon** » pour retirer la carte de la liste. Les deux fiches restent au catalogue ;
 - ouvrir le menu « **Autres actions** », qui regroupe « Pas le bon livre ? » (mettre un autre livre en face), « Livres distincts » (garder les deux fiches, ou en supprimer une) et « Signaler à Stéphan », quand le bon livre n'existe pas dans le catalogue. Une fois le signalement parti, la carte l'indique : « Signalé le … — traitement manuel en attente. »
 

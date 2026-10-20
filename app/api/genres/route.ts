@@ -24,7 +24,7 @@ function handlePrismaError(error: Prisma.PrismaClientKnownRequestError) {
         case 'P2002':
             return NextResponse.json({
                 success: false,
-                error: 'A genre with this name already exists',
+                error: 'Un genre porte déjà ce nom.',
                 field: error.meta?.target
             }, { status: 409 });
 

@@ -12,7 +12,7 @@ export const PUT = withAdmin(async (request, { params }) => {
 
         if (!body?.name) {
             return NextResponse.json(
-                { error: 'Name is required' },
+                { error: 'Le nom du genre est obligatoire.' },
                 { status: 400 }
             );
         }

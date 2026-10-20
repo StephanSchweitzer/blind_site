@@ -4,9 +4,8 @@ import React, { useState } from 'react';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
-import { useFormToast } from '@/hooks/useFormToast';
+import { Loader2, Trash2 } from 'lucide-react';
+import { markToasted, useFormToast } from '@/hooks/useFormToast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 
 export interface GenreFormData {
@@ -49,15 +48,13 @@ export function GenreFormBackendBase({
     const [formData, setFormData] = useState<GenreFormData>(initialData ?? EMPTY_FORM);
     const [isLoading, setIsLoading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { toastError } = useFormToast();
+    const { toastFailure } = useFormToast();
     const confirm = useConfirm();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         e.stopPropagation();
         setIsLoading(true);
-        setError(null);
 
         try {
             const genreId = await onSubmit({
@@ -66,8 +63,7 @@ export function GenreFormBackendBase({
             });
             onSuccess?.(genreId);
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Échec de l’enregistrement du genre';
-            setError(msg);
+            toastFailure(err);
         } finally {
             setIsLoading(false);
         }
@@ -86,9 +82,7 @@ export function GenreFormBackendBase({
         try {
             await onDelete();
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Échec de la suppression du genre';
-            setError(msg);
-            toastError(msg);
+            toastFailure(err, 'Suppression impossible');
         } finally {
             setIsDeleting(false);
         }
@@ -99,14 +93,6 @@ export function GenreFormBackendBase({
     return (
         <div>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {error && (
-                        <Alert variant="destructive" className="border-red-300 bg-red-50 dark:border-red-500 dark:bg-red-900/20">
-                            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                            <AlertTitle className="text-red-600 dark:text-red-400">Erreur</AlertTitle>
-                            <AlertDescription className="text-foreground mt-1">{error}</AlertDescription>
-                        </Alert>
-                    )}
-
                     <div className="space-y-2">
                         <label htmlFor="name" className="text-sm font-medium text-foreground">
                             Nom *
@@ -116,7 +102,6 @@ export function GenreFormBackendBase({
                             value={formData.name}
                             onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                             required
-                            placeholder="Nom du genre"
                             className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                         />
                     </div>
@@ -129,7 +114,6 @@ export function GenreFormBackendBase({
                             id="description"
                             value={formData.description}
                             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                            placeholder="Description du genre (optionnel)"
                             className="bg-card border-border text-foreground focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                         />
                     </div>
@@ -190,7 +174,9 @@ export function GenreFormBackendBase({
 
 const apiError = (data: unknown, fallback: string): string => {
     const body = data as { error?: string; message?: string } | null;
-    return body?.error || body?.message || fallback;
+    // `message` d'abord : c'est la phrase française pour le permanent, `error`
+    // n'étant souvent qu'un code anglais (« Genre in use »).
+    return body?.message || body?.error || fallback;
 };
 
 export function AddGenreFormBackend({
@@ -212,11 +198,11 @@ export function AddGenreFormBackend({
 
         if (!res.ok) {
             const message = apiError(data, 'Échec de la création du genre');
-            toastError(message);
-            throw new Error(message);
+            toastError(message, 'Création impossible');
+            throw markToasted(new Error(message));
         }
 
-        toastSuccess('Le genre a été créé.');
+        toastSuccess('Genre créé');
         return data?.data?.id ?? 0;
     };
 
@@ -257,10 +243,10 @@ export function EditGenreFormBackend({
         if (!res.ok) {
             const message = apiError(data, 'Échec de la mise à jour du genre');
             toastError(message);
-            throw new Error(message);
+            throw markToasted(new Error(message));
         }
 
-        toastSuccess('Le genre a été mis à jour.');
+        toastSuccess('Genre enregistré');
         return genreId;
     };
 
@@ -272,7 +258,7 @@ export function EditGenreFormBackend({
             throw new Error(apiError(data, 'Échec de la suppression du genre'));
         }
 
-        toastSuccess('Le genre a été supprimé.');
+        toastSuccess('Genre supprimé');
         onSuccess?.(genreId, true);
     };
 

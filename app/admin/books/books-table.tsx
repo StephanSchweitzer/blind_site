@@ -36,7 +36,6 @@ import {
     AudioLinkStatus,
     audioLinkStatusHasAudio,
     audioLinkStatusIsMissing,
-    getAudioLinkStatusButtonColor,
     getAudioLinkStatusColor,
     getAudioLinkStatusHint,
     getAudioLinkStatusLabel,
@@ -116,8 +115,6 @@ interface SearchResult {
     total: number;
     totalPages: number;
     page: number;
-    availableCount: number;
-    unavailableCount: number;
     /** « Vouliez-vous dire … ? » — present only when the search found nothing. */
     searchSuggestions?: BookSearchSuggestion<Book>[];
 }
@@ -128,8 +125,6 @@ interface BooksTableProps {
     pagination: PageInfo;
     initialSearch: string;
     availableGenres?: { id: number; name: string; }[];
-    initialAvailableCount: number;
-    initialUnavailableCount: number;
 }
 
 /**
@@ -165,66 +160,35 @@ function bookHasAudio(book: Book): boolean {
 }
 
 /**
- * The audio state of a row, in words.
+ * The audio state of a row, in words — and the way into the audio editor.
  *
- * The editor button beside it is colour-coded for the same thing, but colour
- * and a crossed-out icon are a hint you have to already know how to read — and
- * the only way to be *sure* was to open the dialogue. This column says it
- * outright, which is the whole point: "no recording" is a fact about the book,
- * as much as its author, not a detail of the audio tool.
+ * It used to be a badge (« 3 pistes », « Pas d'audio associé ») next to a
+ * colour-coded editor button that said the same thing in colour. The words are
+ * what lets a missing recording be spotted while scrolling — "no recording" is
+ * a fact about the book, as much as its author — so the words became the
+ * button. It stops the click: the rest of the row opens the fiche.
  */
-function AudioStatusCell({ book }: { book: Book }) {
+function AudioStatusButton({ book, onOpen }: { book: Book; onOpen: () => void }) {
     const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
     const count = book.audioTrackCount ?? 0;
     const hasAudio = bookHasAudio(book);
-
-    return (
-        <span
-            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 text-xs ${getAudioLinkStatusColor(status)}`}
-            title={getAudioLinkStatusHint(status)}
-        >
-            {hasAudio ? <FileAudio className="h-3 w-3" /> : <FileX2 className="h-3 w-3" />}
-            {hasAudio ? `${count} piste${count > 1 ? 's' : ''}` : getAudioLinkStatusLabel(status)}
-        </span>
-    );
-}
-
-/**
- * Entry point to the audio editor for one row — and the status light for its
- * recording. A book with nothing to listen to has to be spottable while
- * scrolling the table, so the button itself carries the state: soft red outline
- * and a crossed-out file icon. Deliberately not a filled destructive button —
- * a missing recording is a to-do, not a failure.
- */
-function AudioEditorButton({ book, onOpen }: { book: Book; onOpen: () => void }) {
-    const status = book.audioLinkStatus ?? AudioLinkStatus.UNVERIFIED;
     const missing = audioLinkStatusIsMissing(status);
+    const label = hasAudio ? `${count} piste${count > 1 ? 's' : ''}` : getAudioLinkStatusLabel(status);
 
     return (
-        <Button
-            variant="outline"
-            size="sm"
-            className={getAudioLinkStatusButtonColor(status)}
-            // Shares its cell with the status badge, which itself falls through
-            // to the row's onClick (opens the fiche) — this button needs the
-            // opposite, so it stops the click here rather than the whole cell.
+        <button
+            type="button"
             onClick={(e) => {
                 e.stopPropagation();
                 onOpen();
             }}
-            aria-label={
-                missing
-                    ? `Ouvrir l’éditeur audio de ${book.title} — ${getAudioLinkStatusLabel(status).toLowerCase()}`
-                    : `Ouvrir l’éditeur audio de ${book.title}`
-            }
-            title={
-                missing
-                    ? `${getAudioLinkStatusLabel(status)} — ${getAudioLinkStatusHint(status)}`
-                    : 'Ouvrir l’éditeur audio'
-            }
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 text-xs transition-shadow hover:ring-2 hover:ring-ring/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${getAudioLinkStatusColor(status)}`}
+            aria-label={`Ouvrir l’éditeur audio de ${book.title} — ${label}`}
+            title={missing ? getAudioLinkStatusHint(status) : 'Ouvrir l’éditeur audio'}
         >
-            {missing ? <FileX2 className="h-4 w-4" /> : <FileAudio className="h-4 w-4" />}
-        </Button>
+            {hasAudio ? <FileAudio className="h-3 w-3" /> : <FileX2 className="h-3 w-3" />}
+            {label}
+        </button>
     );
 }
 
@@ -233,8 +197,6 @@ export default function BooksTable({
                                        pagination,
                                        initialSearch = '',
                                        availableGenres = [],
-                                       initialAvailableCount = 0,
-                                       initialUnavailableCount = 0
                                    }: BooksTableProps) {
     const searchParams = useSearchParams();
 
@@ -276,8 +238,6 @@ export default function BooksTable({
         total: pagination.total,
         page: pagination.page,
         totalPages: pagination.totalPages,
-        availableCount: initialAvailableCount,
-        unavailableCount: initialUnavailableCount
     }));
 
     // Refs for debouncing, request cancellation, and caching
@@ -288,8 +248,6 @@ export default function BooksTable({
         books: initialBooks,
         total: pagination.total,
         totalPages: pagination.totalPages,
-        availableCount: initialAvailableCount,
-        unavailableCount: initialUnavailableCount
     });
 
     // Track if we need to invalidate cache after mutations
@@ -369,8 +327,6 @@ export default function BooksTable({
                 total: initialDataRef.current.total,
                 page: 1,
                 totalPages: initialDataRef.current.totalPages,
-                availableCount: initialDataRef.current.availableCount,
-                unavailableCount: initialDataRef.current.unavailableCount
             });
             setIsSearching(false);
             return;
@@ -429,8 +385,6 @@ export default function BooksTable({
                     books: data.books,
                     total: data.total,
                     totalPages: data.totalPages,
-                    availableCount: data.availableCount,
-                    unavailableCount: data.unavailableCount
                 };
                 cacheInvalidatedRef.current = false;
             }
@@ -501,12 +455,6 @@ export default function BooksTable({
         setSelectedAvailable(available);
         setCurrentPage(1);
     }, []);
-
-    // The disponible/en attente counters double as toggle chips: clicking the
-    // one already selected clears the filter instead of doing nothing.
-    const handleAvailablePillClick = useCallback((value: 'true' | 'false') => {
-        handleAvailableChange(selectedAvailable === value ? 'all' : value);
-    }, [selectedAvailable, handleAvailableChange]);
 
     const handleHiddenChange = useCallback((hidden: string) => {
         setSelectedHidden(hidden);
@@ -735,12 +683,15 @@ export default function BooksTable({
         return availableGenres?.find(g => g.id === genreId)?.name || '';
     };
 
-    // Which availability segment (if any) the current filter is showing — the
-    // disponible/en attente figures double as toggle chips, mirroring the
-    // actif/inactif chips on the users page.
-    const availableSelected = selectedAvailable === 'true';
-    const unavailableSelected = selectedAvailable === 'false';
-    const activeFilterCount = (selectedAudio !== 'all' ? 1 : 0) + (selectedHidden !== 'all' ? 1 : 0);
+    // What the « Filtres » button reads: the filters in force, or « Tous les
+    // livres ». The availability filter lives in the same menu now — it was
+    // the pair of counters « 15 065 disponibles · 370 en attente » under the
+    // title, a filter disguised as figures (removed from Membres on 51b3ce9).
+    const filterSummary = [
+        selectedAvailable === 'true' ? 'Disponibles' : selectedAvailable === 'false' ? 'En attente' : null,
+        selectedAudio === 'present' ? 'Avec audio' : selectedAudio === 'missing' ? 'Sans audio' : null,
+        selectedHidden === 'false' ? 'Visibles' : selectedHidden === 'true' ? 'Masqués' : null,
+    ].filter(Boolean).join(' · ');
 
     // The « Essayez plutôt » block names a filter it would lift in the words
     // the filter itself shows, and says of each book what set it apart —
@@ -789,36 +740,6 @@ export default function BooksTable({
                         <CardTitle className="text-foreground">Catalogue</CardTitle>
                         <AideLink section="catalogue" />
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
-                        <button
-                            type="button"
-                            aria-pressed={availableSelected}
-                            onClick={() => handleAvailablePillClick('true')}
-                            title={availableSelected ? 'Retirer le filtre' : 'Afficher uniquement les disponibles'}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
-                                availableSelected
-                                    ? 'bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-800'
-                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                            }`}
-                        >
-                            <span className={`h-1.5 w-1.5 rounded-full ${availableSelected ? 'bg-emerald-400' : 'bg-emerald-500/50'}`} />
-                            {searchResults.availableCount} disponible{searchResults.availableCount > 1 ? 's' : ''}
-                        </button>
-                        <button
-                            type="button"
-                            aria-pressed={unavailableSelected}
-                            onClick={() => handleAvailablePillClick('false')}
-                            title={unavailableSelected ? 'Retirer le filtre' : 'Afficher uniquement les livres en attente'}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
-                                unavailableSelected
-                                    ? 'bg-amber-100 text-amber-900 ring-1 ring-inset ring-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:ring-amber-800'
-                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                            }`}
-                        >
-                            <span className={`h-1.5 w-1.5 rounded-full ${unavailableSelected ? 'bg-amber-400' : 'bg-amber-500/50'}`} />
-                            {searchResults.unavailableCount} en attente
-                        </button>
-                    </div>
                 </div>
                 <Button
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90"
@@ -864,16 +785,35 @@ export default function BooksTable({
                                     >
                                         <span className="flex items-center gap-2">
                                             <SlidersHorizontal className="h-4 w-4" />
-                                            Audio &amp; catalogue
+                                            {filterSummary || 'Tous les livres'}
                                         </span>
-                                        {activeFilterCount > 0 && (
-                                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                                                {activeFilterCount}
-                                            </span>
-                                        )}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent align="start" collisionPadding={16} className="w-72 space-y-4 bg-card border-border">
+                                    <div className="space-y-1.5">
+                                        <span className="text-xs font-medium text-muted-foreground">Disponibilité</span>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            {[
+                                                { value: 'all', label: 'Tous' },
+                                                { value: 'true', label: 'Disponible' },
+                                                { value: 'false', label: 'En attente' },
+                                            ].map((opt) => (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    aria-pressed={selectedAvailable === opt.value}
+                                                    onClick={() => handleAvailableChange(opt.value)}
+                                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                                                        selectedAvailable === opt.value
+                                                            ? 'bg-primary text-primary-foreground border-primary'
+                                                            : 'bg-card text-foreground border-border hover:bg-muted'
+                                                    }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                     <div className="space-y-1.5">
                                         <span className="text-xs font-medium text-muted-foreground">Audio</span>
                                         <div className="grid grid-cols-3 gap-1">
@@ -1098,18 +1038,15 @@ export default function BooksTable({
                                                             </span>
                                                         ))}
                                                         {book.genres?.length > 2 && (
-                                                            <span className="text-xs text-muted-foreground whitespace-nowrap">+{book.genres.length - 2} plus</span>
+                                                            <span className="text-xs text-muted-foreground whitespace-nowrap">+{book.genres.length - 2}</span>
                                                         )}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
-                                                    <div className="flex items-center gap-2">
-                                                        <AudioStatusCell book={book} />
-                                                        <AudioEditorButton
-                                                            book={book}
-                                                            onOpen={() => setAudioBook({ id: book.id, title: book.title })}
-                                                        />
-                                                    </div>
+                                                    <AudioStatusButton
+                                                        book={book}
+                                                        onOpen={() => setAudioBook({ id: book.id, title: book.title })}
+                                                    />
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
                                                     <div className="flex flex-wrap gap-1">

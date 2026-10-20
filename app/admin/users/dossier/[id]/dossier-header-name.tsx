@@ -45,6 +45,7 @@ export default function DossierHeaderName({ userId, fullName, currentUserAccessL
                         router.push('/admin/users');
                     }}
                     currentUserAccessLevel={currentUserAccessLevel}
+                    fromDossier
                 />
             )}
         </>

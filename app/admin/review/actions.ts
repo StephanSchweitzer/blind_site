@@ -315,7 +315,7 @@ export async function fuseBooks(
 
             refresh();
             await revalidateChangedBooks(publicBefore);
-            return { ok: true, message: 'Livres fusionnés avec succès' };
+            return { ok: true, message: 'Livres fusionnés' };
         } catch (error) {
             const msg = error instanceof Error ? error.message : '';
             const map: Record<string, string> = {
@@ -401,7 +401,7 @@ export async function deleteBook(bookId: number): Promise<ActionResult> {
                     : orphanedPrefix
                       ? `Livre supprimé. Son dossier audio (${pistes}) est resté dans le stockage, ` +
                         `attaché à la fiche supprimée : il revient avec elle si on la restaure.`
-                      : 'Livre supprimé avec succès',
+                      : 'Livre supprimé',
             };
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {

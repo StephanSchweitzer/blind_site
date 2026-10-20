@@ -340,7 +340,7 @@ export function EditBillModal({
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Erreur inattendue';
             if (forceReason) return message;
-            toastError(message);
+            toastError(message, 'Ajout impossible');
             return null;
         } finally {
             setAddingOrderId(null);
@@ -362,7 +362,7 @@ export function EditBillModal({
             if (bill) loadUnbilledOrders(orderSearch, bill.client.id, bill.id);
             onBillUpdated?.();
         } catch (err) {
-            toastError(err instanceof Error ? err.message : 'Erreur inattendue');
+            toastError(err instanceof Error ? err.message : 'Erreur inattendue', 'Retrait impossible');
         } finally {
             setRemovingOrderId(null);
         }
@@ -390,7 +390,7 @@ export function EditBillModal({
             await loadBill(billId);
             onBillUpdated?.();
         } catch (err) {
-            toastError(err instanceof Error ? err.message : 'Erreur inattendue');
+            toastError(err instanceof Error ? err.message : 'Erreur inattendue', 'Réouverture impossible');
         } finally {
             setIsReopening(false);
         }
@@ -555,7 +555,14 @@ export function EditBillModal({
                             la facture les reflète (syncBillPaymentInfo). Le crayon qui
                             permettait de corriger la référence ici a disparu : il aurait
                             réécrit une colonne dérivée, et fait diverger la facture du
-                            règlement qu'elle décrit. */}
+                            règlement qu'elle décrit.
+
+                            Absents d'un brouillon : il n'a pas été envoyé, ne peut rien
+                            encaisser (les routes de paiement refusent de s'y rattacher),
+                            et « Encaissé 0,00 € sur 18,00 € » suivi d'un « Reste à payer »
+                            ambré réclamait une facture que personne n'a encore reçue. Le
+                            montant se lit une fois, en bas. */}
+                        {!isDraft && (
                         <div className="space-y-2">
                             <div className="flex items-center justify-between gap-3">
                                 <div className="text-xs text-muted-foreground uppercase tracking-wide">
@@ -570,23 +577,18 @@ export function EditBillModal({
                                     lignes dont une cotisation d'un autre auditeur, sous un
                                     total de 92 € qui ne décrivait rien. Rien à réparer : la
                                     liste ci-dessous montre déjà les paiements de CETTE
-                                    facture, chacun ouvrant le sien.
-
-                                    Absente d'un brouillon : il n'a pas été envoyé, il n'a
-                                    rien à encaisser, et les routes de paiement refusent de
-                                    s'y rattacher (voir POST /api/payments). */}
-                                {!isDraft && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setIsAddingPayment(true)}
-                                        className="h-7 px-2.5 gap-1.5 text-xs [&_svg]:size-3.5"
-                                    >
-                                        <Plus />
-                                        Enregistrer un paiement
-                                    </Button>
-                                )}
+                                    facture, chacun ouvrant le sien. (Tout le bloc est
+                                    absent d'un brouillon — voir plus haut.) */}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsAddingPayment(true)}
+                                    className="h-7 px-2.5 gap-1.5 text-xs [&_svg]:size-3.5"
+                                >
+                                    <Plus />
+                                    Enregistrer un paiement
+                                </Button>
                             </div>
 
                             {/* Le compte et ses pièces, dans un seul encadré.
@@ -682,9 +684,7 @@ export function EditBillModal({
                                                 irait contre le geste qu'on vient de poser. */}
                                             {writtenOff
                                                 ? 'Aucun paiement rattaché — la créance a été abandonnée.'
-                                                : isDraft
-                                                    ? "Aucun paiement rattaché — un brouillon n'a pas encore été envoyé. Le règlement s'enregistre une fois la facture émise."
-                                                    : 'Aucun paiement rattaché — « Enregistrer un paiement » en saisit un pour cette facture.'}
+                                                : 'Aucun paiement rattaché.'}
                                         </div>
                                     ) : (
                                         // La ligne ENTIÈRE ouvre le paiement : la flèche seule
@@ -730,6 +730,7 @@ export function EditBillModal({
                                 )}
                             </div>
                         </div>
+                        )}
 
                         {/* Status change
 

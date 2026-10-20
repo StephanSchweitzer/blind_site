@@ -1,5 +1,6 @@
 import React from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { markToasted } from "@/hooks/useFormToast";
 import { ReaderSummary, UserSummary, AssignmentFormData } from '@/types';
 import { AssignmentFormBackendBase, type AssignmentSubmitOptions } from '@/admin/AssignmentFormBackendBase';
 import { getFieldErrorLines, ErrorToastBody, AudioConfirmationRequiredError } from '@/admin/AssignmentFormErrors';
@@ -51,7 +52,7 @@ export function AddAssignmentFormBackend({
 
                 toast({
                     variant: "destructive",
-                    title: "Erreur",
+                    title: "Création impossible",
                     description: (
                         <ErrorToastBody
                             message={errorMessage}
@@ -61,19 +62,18 @@ export function AddAssignmentFormBackend({
                     )
                 });
 
-                return Promise.reject();
+                throw markToasted(new Error(errorMessage));
             }
 
             toast({
-                title: "Succès",
-                description: "L'attribution a été créée avec succès",
+                title: "Attribution créée",
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
             return data.assignment.id;
         } catch (error) {
             console.error('Submit error:', error);
-            return Promise.reject();
+            throw error;
         }
     };
 

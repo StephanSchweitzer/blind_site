@@ -27,6 +27,7 @@ interface DefaultWindow {
     since: string | null;
     label: string | null;
     active: boolean | null;
+    id: number | null;
 }
 
 export interface RecentWindowState {
@@ -72,6 +73,7 @@ export function useRecentWindow(): RecentWindowState {
                     since: recentWindow.defaultSince,
                     label: recentWindow.defaultLabel,
                     active: recentWindow.defaultActive ?? null,
+                    id: recentWindow.defaultId ?? null,
                 });
                 if (recentWindow.defaultSince) {
                     setSinceState((current) => current || parisDayKey(new Date(recentWindow.defaultSince)));
@@ -110,6 +112,8 @@ export function useRecentWindow(): RecentWindowState {
 interface RecentBooksControlProps {
     win: RecentWindowState;
     onOpen: () => void;
+    /** La liste ouverte — qui, si c'est la dernière, ne se cite pas elle-même. */
+    listId?: number;
     /** `hero` : l'état vide d'une liste, où c'est la première chose à faire. */
     size?: 'toolbar' | 'hero';
 }
@@ -122,9 +126,13 @@ interface RecentBooksControlProps {
  * saisi au clavier émet un changement par segment (jour, mois, année), et
  * chacun ouvrirait la fenêtre sur une date à moitié tapée.
  */
-export function RecentBooksControl({ win, onOpen, size = 'toolbar' }: RecentBooksControlProps) {
+export function RecentBooksControl({ win, onOpen, listId, size = 'toolbar' }: RecentBooksControlProps) {
     const { since, setSince, sinceTouched, resetSince, defaultWindow } = win;
     const hero = size === 'hero';
+    // Dans l'éditeur de la dernière liste, « Dernière liste « X » créée le … »
+    // nommait la liste ouverte, et sa date déjà lue deux fois au-dessus (le
+    // sous-titre, le champ). Seul « Revenir à cette date » garde alors un sens.
+    const namesItself = listId != null && defaultWindow?.id === listId;
 
     return (
         <div className={cn('space-y-1.5', hero && 'flex flex-col items-center text-center')}>
@@ -159,6 +167,17 @@ export function RecentBooksControl({ win, onOpen, size = 'toolbar' }: RecentBook
                     Voir
                 </Button>
             </div>
+            {namesItself && !sinceTouched ? null : namesItself ? (
+                <p className="text-xs text-muted-foreground">
+                    <button
+                        type="button"
+                        className="underline underline-offset-2 hover:text-foreground"
+                        onClick={resetSince}
+                    >
+                        Revenir à la date de cette liste
+                    </button>
+                </p>
+            ) : (
             <p className="text-xs text-muted-foreground">
                 {defaultWindow === null ? (
                     <span className="invisible">…</span>
@@ -190,6 +209,7 @@ export function RecentBooksControl({ win, onOpen, size = 'toolbar' }: RecentBook
                     "Aucune liste de livres n'a encore été créée."
                 )}
             </p>
+            )}
         </div>
     );
 }

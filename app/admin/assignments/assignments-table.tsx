@@ -27,7 +27,6 @@ import { Search, X, Plus, FilterX } from 'lucide-react';
 import { AddAssignmentModal } from '@/admin/AddAssignmentModal';
 import { EditAssignmentModal, loadAssignmentForEdit } from '@/admin/EditAssignmentModal';
 import { useRecordLoader } from '@/hooks/useRecordLoader';
-import { useToast } from '@/hooks/use-toast';
 import {
     StatusSummary,
     ReaderSummary,
@@ -86,7 +85,6 @@ export default function AssignmentsTable({
     const [isPending, startTransition] = useTransition();
     // Pagination : un clic simple navigue dans une transition, pour griser la liste.
     const navigate = (href: string) => startTransition(() => router.push(href, { scroll: false }));
-    const { toast } = useToast();
 
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -103,6 +101,12 @@ export default function AssignmentsTable({
         currentRetard !== 'all',
         currentAudio !== 'all',
     ].filter(Boolean).length;
+    // Dans un dossier, une personne a le plus souvent une page d'attributions
+    // ou moins : quatre filtres au-dessus d'une liste vide pesaient plus lourd
+    // qu'elle. Ils reviennent à partir de deux pages, ou si l'un d'eux est posé
+    // — même règle que les demandes du dossier.
+    const inDossier = presetReader != null || presetClient != null || presetClientId != null;
+    const showFilters = !inDossier || pagination.totalPages > 1 || activeFilterCount > 0;
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -175,14 +179,6 @@ export default function AssignmentsTable({
         router.refresh();
     };
 
-    const handleAssignmentDeleted = () => {
-        toast({
-            title: "Succès",
-            description: "L'attribution a été supprimée",
-            className: "bg-green-100 border-green-500 text-green-900"
-        });
-    };
-
     const handleRowClick = (assignment: AssignmentWithCurrentReader) =>
         openAssignmentById(assignment.id);
 
@@ -242,7 +238,8 @@ export default function AssignmentsTable({
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="text-3xl font-bold text-foreground">
+                            {/* Dans un dossier, l'onglet porte déjà le titre. */}
+                            <CardTitle className={inDossier ? 'sr-only' : 'text-3xl font-bold text-foreground'}>
                                 Attributions
                             </CardTitle>
                             <AideLink section="attributions" />
@@ -293,6 +290,7 @@ export default function AssignmentsTable({
                                 </Button>
                             </div>
                         )}
+                        {showFilters && (
                         <MobileFilters
                             activeCount={activeFilterCount}
                             className="flex flex-col md:flex-row md:flex-wrap md:items-end gap-4"
@@ -369,6 +367,7 @@ export default function AssignmentsTable({
                             Audio déposé
                         </label>
                         </MobileFilters>
+                        )}
                     </div>
 
                     {filterBook && <BookFilterBadge book={filterBook} noun="attributions" />}
@@ -593,7 +592,6 @@ export default function AssignmentsTable({
                     assignmentId={assignmentLoader.openId}
                     assignment={assignmentLoader.data}
                     error={assignmentLoader.error}
-                    onAssignmentDeleted={handleAssignmentDeleted}
                 />
             )}
         </Card>

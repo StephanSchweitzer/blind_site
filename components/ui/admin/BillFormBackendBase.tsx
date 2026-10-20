@@ -11,15 +11,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Search, Loader2, ExternalLink } from 'lucide-react';
+import { Search, Loader2, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DatePickerField } from '@/components/ui/admin/DatePickerField';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { BillingStatus, getBillingStatusLabel } from '@/lib/billing-enums';
 import { PaymentMethod, getPaymentMethodLabel } from '@/lib/payment-enums';
-import { useFormToast } from '@/hooks/useFormToast';
+import { markToasted, useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { parisDate } from '@/lib/paris-day';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
@@ -122,8 +121,7 @@ export function BillFormBackendBase({
                                         initialClient,
                                     }: BillFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { toastError } = useFormToast();
+    const { toastError, toastFailure } = useFormToast();
     const { registerField, focusFirstInvalid } = useInvalidField();
 
     const [selectedClient, setSelectedClient] = useState<User | null>(initialClient ?? null);
@@ -313,7 +311,6 @@ export function BillFormBackendBase({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
 
         // N3 — collect failing fields in visual order, then toast + focus the first.
         const invalid: string[] = [];
@@ -336,7 +333,6 @@ export function BillFormBackendBase({
                 issueDate: 'Une facture déjà réglée doit porter sa date d\'émission',
             };
             const msg = messages[invalid[0]];
-            setError(msg);
             toastError(msg);
             focusFirstInvalid(FIELD_ORDER, new Set(invalid));
             return;
@@ -363,8 +359,7 @@ export function BillFormBackendBase({
             });
             if (onSuccess) onSuccess(billId);
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Échec de la création de la facture';
-            setError(msg);
+            toastFailure(err, 'Création impossible');
         } finally {
             setIsLoading(false);
         }
@@ -372,13 +367,6 @@ export function BillFormBackendBase({
 
     return (
         <div>
-                {error && (
-                    <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-red-700 dark:text-red-200">{error}</AlertDescription>
-                    </Alert>
-                )}
-
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Client */}
                     <div className="space-y-2">
@@ -681,15 +669,14 @@ export function AddBillFormBackend({ onSuccess, initialClient }: { onSuccess?: (
             const message = data?.message || 'Échec de la création de la facture';
             toast({
                 variant: 'destructive',
-                title: "Erreur",
+                title: "Création impossible",
                 description: message
             });
-            throw new Error(message);
+            throw markToasted(new Error(message));
         }
 
         toast({
-            title: "Succès",
-            description: "La facture a été créée avec succès",
+            title: "Facture créée",
             className: 'bg-green-100 border-green-500 text-green-900',
         });
 

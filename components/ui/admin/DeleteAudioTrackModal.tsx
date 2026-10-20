@@ -76,14 +76,9 @@ export function DeleteAudioTrackModal({
             if (!res.ok) throw userErrorFromResponse(res, data);
 
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Déplacé dans la corbeille</span>,
-                description: (
-                    <span className="text-xl mt-2">
-                        « {track.name} » est récupérable depuis l’onglet Corbeille.
-                    </span>
-                ),
-                className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+                title: 'Déplacé dans la corbeille',
+                description: `« ${track.name} » est récupérable depuis l’onglet Corbeille.`,
+                className: 'bg-green-100 border-green-500 text-green-900',
             });
 
             onDeleted?.();

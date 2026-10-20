@@ -43,7 +43,7 @@ import {
     getAudioLinkStatusColor,
     getAudioLinkStatusHint,
     getAudioLinkStatusLabel,
-    type AudioLinkStatus,
+    AudioLinkStatus,
 } from '@/lib/audio-enums';
 import { DeleteAudioTrackModal, type AudioTrackTarget } from '@/admin/DeleteAudioTrackModal';
 import { DeleteAllAudioTracksModal } from '@/admin/DeleteAllAudioTracksModal';
@@ -358,7 +358,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         (message: string) => {
             toast({
                 variant: 'destructive',
-                title: "Erreur",
+                title: "Action impossible",
                 description: message
             });
         },
@@ -718,14 +718,21 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                 >
                                     {getAudioLinkStatusLabel(data.status)}
                                 </span>
-                                <span className="text-sm text-muted-foreground">
-                                    {data.trackCount} piste{data.trackCount > 1 ? 's' : ''}
-                                    {data.trackCount > 0 && ` · ${formatSize(data.totalBytes)}`}
-                                </span>
+                                {/* Le nombre de pistes est sur l'onglet « Pistes (6) », la taille
+                                    une seule fois, ici. */}
+                                {data.trackCount > 0 && (
+                                    <span className="text-sm text-muted-foreground">
+                                        {formatSize(data.totalBytes)}
+                                    </span>
+                                )}
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                {getAudioLinkStatusHint(data.status)}
-                            </p>
+                            {/* « Audio disponible » se suffit ; les autres états gardent
+                                leur explication (dossier vide, introuvable…). */}
+                            {data.status !== AudioLinkStatus.OK && (
+                                <p className="text-xs text-muted-foreground">
+                                    {getAudioLinkStatusHint(data.status)}
+                                </p>
+                            )}
                             {data.prefix && (
                                 <p className="font-mono text-xs text-muted-foreground break-all">
                                     {data.prefix}
@@ -814,11 +821,6 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                     <span className="flex items-center gap-2">
                                         <FolderArchive className="h-4 w-4" />
                                         Tout télécharger (ZIP)
-                                        {data && (
-                                            <span className="text-muted-foreground">
-                                                · {formatSize(data.totalBytes)}
-                                            </span>
-                                        )}
                                     </span>
                                 )}
                             </Button>

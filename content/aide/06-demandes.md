@@ -112,7 +112,7 @@ Vous pouvez saisir ici le nom de l'auditeur à l'origine de la demande, ainsi qu
 
 Vous devrez également ajouter un ouvrage. Vous pouvez soit (1) rechercher un ouvrage déjà présent dans la base de données, soit (2) en créer un nouveau, qui sera lui aussi ajouté à la base de données.
 
-Si vous souhaitez gagner du temps et envoyer plusieurs demandes pour le même auditeur en même temps, vous pouvez (3) cliquer sur le bouton « Ajouter un ouvrage » et saisir le titre d'un autre livre. Vous pouvez répéter cette opération autant de fois que vous le souhaitez ; une nouvelle demande sera créée pour chaque livre. Le bouton de validation n'annonce que les lignes où un livre a été choisi ; une ligne restée vide est signalée « sans livre » et doit être complétée ou retirée avant de valider.
+Si vous souhaitez gagner du temps et envoyer plusieurs demandes pour le même auditeur en même temps, vous pouvez (3) cliquer sur le bouton « Ajouter un ouvrage » et saisir le titre d'un autre livre. Vous pouvez répéter cette opération autant de fois que vous le souhaitez ; une nouvelle demande sera créée pour chaque livre. Le bouton de validation n'annonce que les lignes où un livre a été choisi (« Créer 3 demandes ») ; parmi plusieurs lignes, une ligne restée vide est signalée « sans livre » et doit être complétée ou retirée avant de valider.
 
 Vous pouvez également saisir un coût spécifique pour la demande. Par défaut, le coût est de **3 € par CD** d'enregistrement, et de 3 € tant que le livre n'est pas encore enregistré.
 
@@ -186,6 +186,8 @@ Nous pouvons mettre à jour la demande avec les informations que nous avons modi
 La case « Tarifer à la page (pour les revues) » se retrouve aussi dans ce modal, juste au-dessus du coût, avec les mêmes champs : voir [Une demande tarifée à la page](#une-demande-tarifee-a-la-page-pour-les-revues). Elle est grisée quand la demande est déjà rattachée à une facture ou qu'il s'agit d'une duplication, et les champs se figent quand la facture est payée ou soldée. Sur une facture émise, c'est le bandeau en haut du modal qui explique ce qui reste modifiable : les notes sous l'auditeur et sous le statut n'y sont pas répétées.
 
 Si vous corrigez le livre d'une demande, l'attribution liée prend automatiquement le même livre.
+
+Sous le livre, la ligne « Ce livre : 2 demandes · 1 attribution » n'apparaît que si ce livre a d'autres demandes ou attributions que celle-ci et son attribution : chaque nombre ouvre la liste correspondante, pour démêler un doublon de saisie (voir [Modification des livres](/admin/aide/catalogue#modification-des-livres)).
 
 ### Rouvrir une demande terminée
 

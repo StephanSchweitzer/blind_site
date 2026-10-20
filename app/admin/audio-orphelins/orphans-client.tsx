@@ -252,18 +252,14 @@ function OrphanCard({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                         <CardTitle className="text-base">{orphan.title}</CardTitle>
+                        {/* Le n° de dossier et l'année se lisent dans le chemin juste
+                            dessous ; la date du dernier passage du scan ne regarde que lui. */}
                         <CardDescription className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                            {orphan.folderNum != null && (
-                                <span className="rounded bg-muted px-2 py-0.5">n° {orphan.folderNum}</span>
-                            )}
-                            {orphan.year != null && (
-                                <span className="rounded bg-muted px-2 py-0.5">{orphan.year}</span>
-                            )}
                             <span>
                                 {orphan.trackCount} fichier{orphan.trackCount > 1 ? 's' : ''}
                             </span>
+                            <span aria-hidden="true">·</span>
                             <span>{formatBytes(orphan.bytes)}</span>
-                            <span>vu le {formatDate(orphan.lastSeenAt)}</span>
                         </CardDescription>
                     </div>
                     <Button
@@ -320,8 +316,7 @@ function OrphanCard({
                 {tab === 'ecartes' && (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-field p-3">
                         <p className="text-sm text-muted-foreground">
-                            Écarté le {formatDate(orphan.dismissedAt)}. Rien n’a été supprimé du
-                            stockage.
+                            Écarté le {formatDate(orphan.dismissedAt)}.
                         </p>
                         <Button
                             variant="outline"
@@ -456,9 +451,9 @@ export default function OrphansClient({
             // a question, not a failure, so it opens a dialogue instead of a
             // red toast.
             if (!res.ok && res.message.startsWith('CONFIRM_REPLACE:')) return;
+            // Le message de l'action dit déjà ce qui s'est passé : il fait le titre.
             toast({
-                title: res.ok ? 'Succès' : 'Erreur',
-                description: res.message,
+                title: res.message,
                 variant: res.ok ? undefined : 'destructive',
             });
             if (res.ok) {
@@ -481,8 +476,7 @@ export default function OrphansClient({
                 return;
             }
             toast({
-                title: res.ok ? 'Succès' : 'Erreur',
-                description: res.message,
+                title: res.message,
                 variant: res.ok ? undefined : 'destructive',
             });
             if (res.ok) router.refresh();
@@ -535,14 +529,15 @@ export default function OrphansClient({
                 <CardHeader className="space-y-4">
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle>Dossiers audio orphelins</CardTitle>
+                            <CardTitle>Audio orphelin</CardTitle>
                             <AideLink section="audio-orphelin" />
                         </div>
+                        {/* Le titre du menu, et une phrase : les trois gestes sont les
+                            boutons de chaque carte, et « rien n'est supprimé » se dit
+                            une fois, dans la fenêtre « Écarter ». */}
                         <CardDescription>
                             Dossiers présents dans le stockage qu’aucun livre du catalogue ne
-                            revendique. Rattachez-les à un livre existant, créez le livre manquant,
-                            ou écartez-les. Rien n’est jamais déplacé ni supprimé du stockage :
-                            seul le chemin enregistré sur le livre change.
+                            revendique.
                         </CardDescription>
                     </div>
 

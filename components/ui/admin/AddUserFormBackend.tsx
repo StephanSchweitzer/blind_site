@@ -1,5 +1,6 @@
 import React from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { markToasted } from "@/hooks/useFormToast";
 import { UserFormData, UserType } from '@/types';
 import { UserFormBackendBase } from '@/admin/UserFormBackendBase';
 
@@ -25,12 +26,13 @@ export function AddUserFormBackend({
             const data = await response.json();
 
             if (!response.ok) {
+                const msg = data?.message || 'Échec de la création de la personne';
                 toast({
                     variant: "destructive",
-                    title: "Erreur",
-                    description: data?.message || 'Échec de la création de la personne',
+                    title: "Création impossible",
+                    description: msg,
                 });
-                return Promise.reject();
+                throw markToasted(new Error(msg));
             }
 
             // 207 = the account was created but the credentials email could not be
@@ -47,15 +49,14 @@ export function AddUserFormBackend({
             }
 
             toast({
-                title: "Succès",
-                description: 'La personne a été créée avec succès',
+                title: "Personne créée",
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
             return data.user.id;
         } catch (error) {
             console.error('Submit error:', error);
-            return Promise.reject();
+            throw error;
         }
     };
 

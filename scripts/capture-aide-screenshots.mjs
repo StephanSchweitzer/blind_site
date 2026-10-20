@@ -189,11 +189,14 @@ const SPECS = [
     {
         name: 'factures-09.jpg',
         viewport: { width: 1440, height: 1400 },
-        url: '/admin/bills?bill=2791',
+        // Le brouillon EN COURS du compte de test : #2791, l'ancien, a été émis
+        // le 19/08/2026, et la capture montrait depuis une facture émise sous le
+        // paragraphe « Un brouillon ». À repointer quand celui-ci sera émis.
+        url: '/admin/bills?bill=2836',
         waitFor: '[role="dialog"]',
         sleep: 2200,
         clip: '[role="dialog"]',
-        // « Enregistrer un paiement » n'existe plus sur un brouillon.
+        // Ni « Enregistrer un paiement » ni bloc « Paiements » sur un brouillon.
         annotations: [
             { n: 1, label: 'Émettre la facture', self: true },
             { n: 2, label: 'Ajouter une demande', self: true },
@@ -393,8 +396,12 @@ const SPECS = [
         annotations: [
             { n: 1, label: 'Attribution', within: '[role="dialog"]' },
             { n: 2, label: "Date de clôture (envoi à l'auditeur)", within: '[role="dialog"]' },
-            { n: 3, selector: '[role="dialog"] [aria-readonly="true"][title^="Le statut"]' },
-            { n: 4, label: 'Facture associée', within: '[role="dialog"]' },
+            // Le statut n'a plus d'infobulle (la ligne dessous le dit) : seul
+            // champ en lecture seule du formulaire de demande.
+            { n: 3, selector: '[role="dialog"] div[aria-readonly="true"]' },
+            // « Facture associée » et « État de facturation » sont devenus un
+            // seul champ « Facturation » (décisions D, 96190fd).
+            { n: 4, label: 'Facturation', within: '[role="dialog"]' },
         ],
         why: "l'attribution, la date de clôture et le statut qui s'en déduit",
     },
@@ -760,8 +767,13 @@ const SPECS = [
     },
     {
         name: 'liste-de-livres-08.jpg',
-        viewport: { width: 1440, height: 1600 },
-        url: '/admin/listes-de-livres/18',
+        // Assez haut pour que la barre d'enregistrement collante passe sous la
+        // carte au lieu de recouvrir ses dernières lignes.
+        viewport: { width: 1440, height: 2400 },
+        // #18 a été supprimée de la base de dev ; #19 (« juin 2026 », onze livres)
+        // tient dans la fenêtre. La première ligne du tableau est désormais le
+        // bandeau d'un genre : les repères 4 et 5 visent la première ligne de LIVRE.
+        url: '/admin/listes-de-livres/19',
         waitFor: 'form table tbody tr',
         steps: [{ sleep: 1500 }],
         clip: 'form > .rounded-lg.border:not(.sticky)',
@@ -769,8 +781,8 @@ const SPECS = [
             { n: 1, label: 'Voir', self: true, coin: 'hd' },
             { n: 2, label: 'Rechercher un livre', self: true },
             { n: 3, label: 'Créer une fiche', self: true },
-            { n: 4, selector: 'form table tbody tr:first-child button[role="checkbox"]', self: true },
-            { n: 5, selector: 'form table tbody tr:first-child button[aria-label^="Retirer"]', self: true },
+            { n: 4, selector: 'form table tbody button[role="checkbox"][aria-label^="Sélectionner « "]', self: true },
+            { n: 5, selector: 'form table tbody button[aria-label^="Retirer « "]', self: true },
         ],
         why: 'les trois façons d’ajouter un livre, la sélection et le retrait',
     },
@@ -933,7 +945,9 @@ const SPECS = [
     },
     {
         name: 'corbeille-audio-01.jpg',
-        viewport: { width: 1440, height: 1000 },
+        // Assez haut pour tout l'onglet : plus court, la capture défile et la
+        // barre de navigation fixe recouvre l'en-tête de la carte.
+        viewport: { width: 1440, height: 1600 },
         url: '/admin/audio-corbeille',
         waitFor: '.rounded-lg.border',
         sleep: 1200,
@@ -942,7 +956,7 @@ const SPECS = [
         // app/admin/layout.tsx plutot que sur '.rounded-lg.border', qui ne
         // choisirait qu'une seule carte au hasard.
         clip: '.relative',
-        why: 'les quatre onglets, la recherche, et un groupe replie sur son resume',
+        why: 'les trois onglets, la recherche, et un groupe replie sur son resume',
     },
     {
         name: 'corbeille-audio-02.jpg',
@@ -1107,9 +1121,9 @@ const SPECS = [
         // Les numeros reprennent ceux du paragraphe de 11-disponibilites.md.
         annotations: [
             { n: 1, label: 'Langue', self: true, coin: 'hd' },
-            { n: 2, label: 'Gérer la disponibilité de…', self: true, coin: 'hd' },
+            { n: 2, label: 'Gérer un autre membre…', self: true, coin: 'hd' },
         ],
-        why: 'le filtre par langue et la recherche « Gérer la disponibilité de… »',
+        why: 'le filtre par langue et le bouton « Gérer un autre membre… »',
     },
     {
         name: 'disponibilites-05.jpg',

@@ -10,7 +10,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,7 +20,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertCircle, History, User as UserIcon, ChevronRight, Package, ExternalLink } from 'lucide-react';
+import { History, User as UserIcon, ChevronRight, Package, ExternalLink } from 'lucide-react';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { useToast } from "@/hooks/use-toast";
 import { DatePickerField, fromDayString, toDayString } from '@/components/ui/admin/DatePickerField';
@@ -156,7 +155,7 @@ function DatePicker({
     value: string | null;
     onChange: (date: string | null) => void;
     label: string;
-    placeholder: string;
+    placeholder?: string;
     triggerRef?: (el: HTMLElement | null) => void;
     warning?: string;
 }) {
@@ -194,7 +193,6 @@ export function AssignmentFormBackendBase({
                                               presetClient,
                                           }: AssignmentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     // An assignmentId means we're editing an existing attribution.
     const isEditMode = !!assignmentId;
@@ -292,7 +290,7 @@ export function AssignmentFormBackendBase({
     const [showReassignSection, setShowReassignSection] = useState(false);
 
     const { toast } = useToast();
-    const { toastError } = useFormToast();
+    const { toastError, toastFailure } = useFormToast();
     const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
     const {
@@ -441,19 +439,14 @@ export function AssignmentFormBackendBase({
         if (!assignmentId || !selectedReaderId) {
             toast({
                 variant: "destructive",
-                title: "Erreur",
-                description: "Veuillez sélectionner un lecteur",
+                title: "Aucun lecteur choisi",
             });
             return;
         }
 
         // Don't reassign if it's the same reader as current
         if (currentReader && selectedReaderId === currentReader.id) {
-            toast({
-                variant: "destructive",
-                title: "Information",
-                description: "Ce lecteur est déjà assigné à cette attribution",
-            });
+            toast({ title: "Ce lecteur est déjà celui de l’attribution" });
             return;
         }
 
@@ -479,11 +472,8 @@ export function AssignmentFormBackendBase({
             }
 
             toast({
-                title: "Succès",
-                description: currentReader
-                    ? "Le lecteur a été réaffecté avec succès"
-                    : "Le lecteur a été attribué avec succès",
-                className: "bg-green-100 border-2 border-green-500 text-green-900",
+                title: currentReader ? "Lecteur réattribué" : "Lecteur attribué",
+                className: "bg-green-100 border-green-500 text-green-900",
             });
 
             // Refresh reader history
@@ -494,7 +484,7 @@ export function AssignmentFormBackendBase({
             console.error('Error reassigning reader:', error);
             toast({
                 variant: "destructive",
-                title: "Erreur",
+                title: currentReader ? "Réattribution impossible" : "Attribution impossible",
                 description: error instanceof Error
                     ? error.message
                     : (currentReader ? "Échec de la réattribution du lecteur" : "Échec de l’attribution du lecteur"),
@@ -506,7 +496,6 @@ export function AssignmentFormBackendBase({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
 
         // N3 — collect failing required fields in visual order.
         const invalid: string[] = [];
@@ -524,7 +513,6 @@ export function AssignmentFormBackendBase({
             };
             const firstName = ASSIGN_FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
             const msg = messages[firstName];
-            setError(msg);
             toastError(msg);
             focusFirstInvalid(ASSIGN_FIELD_ORDER, new Set(invalid));
             return;
@@ -543,7 +531,6 @@ export function AssignmentFormBackendBase({
             const msg =
                 "« Terminé » nécessite un enregistrement pour ce livre, et aucun n'est associé pour l'instant. " +
                 "Ouvrez « l'éditeur audio » ci-dessus pour le déposer avant de renseigner la date de retour aux ECA.";
-            setError(msg);
             toastError(msg);
             return;
         }
@@ -554,7 +541,6 @@ export function AssignmentFormBackendBase({
         if (readerBlocksAdvance) {
             const statusName = statuses.find((s) => s.id === derivedStatusId)?.name ?? 'Ce statut';
             const msg = `« ${statusName} » nécessite un lecteur assigné. Sélectionnez un lecteur avant de sauvegarder.`;
-            setError(msg);
             toastError(msg);
             return;
         }
@@ -602,13 +588,8 @@ export function AssignmentFormBackendBase({
             }
             console.error('Submit error:', err);
             // The onSubmit wrapper already shows a detailed error toast (server
-            // message + per-field lines). Keep only a quiet inline fallback here so
-            // we never mask that toast (the toaster shows one at a time).
-            setError(
-                err instanceof Error && err.message
-                    ? err.message
-                    : 'Une erreur est survenue lors de la soumission du formulaire'
-            );
+            // message + per-field lines); only what it could not see is reported.
+            toastFailure(err);
         } finally {
             setIsLoading(false);
         }
@@ -659,15 +640,12 @@ export function AssignmentFormBackendBase({
         if (!confirmed) return;
 
         setIsLoading(true);
-        setError(null);
 
         try {
             await onDelete();
         } catch (err) {
             console.error('Delete error:', err);
-            const msg = 'Échec de la suppression de l\'attribution';
-            setError(msg);
-            toastError(msg);
+            toastFailure(err, 'Suppression impossible');
             setIsLoading(false);
         }
     };
@@ -771,13 +749,6 @@ export function AssignmentFormBackendBase({
     return (
         <>
         <div>
-                {error && (
-                    <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-900 dark:text-red-400">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
-
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Reader Selection/Display */}
                     <div className="space-y-2">
@@ -790,29 +761,35 @@ export function AssignmentFormBackendBase({
                             <div className="space-y-2">
                                 {/* Current reader compact bar */}
                                 {currentReader ? (
-                                    <div
-                                        className="flex items-center justify-between p-3 bg-card border border-border rounded-md hover:bg-muted cursor-pointer transition-colors"
-                                        onClick={() => setShowReassignSection(!showReassignSection)}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <UserIcon className="h-5 w-5 text-blue-400" />
-                                            <div>
+                                    <div className="flex items-center justify-between gap-3 p-3 bg-card border border-border rounded-md">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <UserIcon className="h-5 w-5 shrink-0 text-blue-400" />
+                                            <div className="min-w-0">
                                                 <div className="font-medium text-foreground">
                                                     {getReaderDisplayName(currentReader)}
                                                 </div>
                                                 {currentReader.email && (
-                                                    <div className="text-sm text-muted-foreground">{currentReader.email}</div>
+                                                    <div className="text-sm text-muted-foreground break-words">{currentReader.email}</div>
                                                 )}
-                                                <div className="text-xs text-muted-foreground italic mt-0.5">
-                                                    {readerHistory.length > 1
-                                                        ? 'Cliquez pour réattribuer cette attribution ou voir les lecteurs précédents.'
-                                                        : 'Cliquez pour réattribuer cette attribution.'}
-                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <ChevronRight className={`h-5 w-5 text-muted-foreground transition-transform ${showReassignSection ? 'rotate-90' : ''}`} />
-                                        </div>
+                                        {/* Un vrai bouton plutôt qu'une carte cliquable que
+                                            seule une phrase en italique annonçait — et que le
+                                            clavier n'atteignait pas. Les lecteurs précédents
+                                            s'ouvrent avec lui. */}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            aria-expanded={showReassignSection}
+                                            onClick={() => setShowReassignSection(!showReassignSection)}
+                                            className="shrink-0"
+                                        >
+                                            {/* Pas « Réattribuer » : c'est le bouton du cadre
+                                                qu'il ouvre, celui qui fait le geste. */}
+                                            {showReassignSection ? 'Annuler' : 'Changer de lecteur'}
+                                            <ChevronRight className={`h-4 w-4 transition-transform ${showReassignSection ? 'rotate-90' : ''}`} />
+                                        </Button>
                                     </div>
                                 ) : (
                                     /* No reader assigned yet in edit mode - show simple selection like create mode */
@@ -845,7 +822,7 @@ export function AssignmentFormBackendBase({
                                 {/* Reassignment section - collapsible (only when currentReader exists) */}
                                 {showReassignSection && currentReader && (
                                     <div className="p-4 bg-card border border-border rounded-md space-y-3">
-                                        <h4 className="font-medium text-foreground">Réaffecter à un autre lecteur</h4>
+                                        <h4 className="font-medium text-foreground">Réattribuer à un autre lecteur</h4>
 
                                         <div className="flex gap-2">
                                             <div className="flex-1 min-w-0">
@@ -952,11 +929,6 @@ export function AssignmentFormBackendBase({
                                     triggerRef={registerField('readerId')}
                                     viewHref={(reader) => `/admin/users/dossier/${reader.id}`}
                                 />
-                                {!selectedReaderId && (
-                                    <p className="text-sm text-amber-700 dark:text-amber-400">
-                                        Une attribution ne peut pas être créée sans lecteur.
-                                    </p>
-                                )}
                             </>
                         )}
                     </div>
@@ -1074,7 +1046,6 @@ export function AssignmentFormBackendBase({
                                 tabIndex={-1}
                                 className="flex min-w-0 flex-1 items-center rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
                                 aria-readonly="true"
-                                title="Le livre provient de la demande sélectionnée. Pour le changer, sélectionnez une autre demande ci-dessus."
                             >
                                 {selectedBook ? (
                                     <span>{selectedBook.title} - {selectedBook.author}</span>
@@ -1112,7 +1083,12 @@ export function AssignmentFormBackendBase({
                         )}
                         {/* En modification : les autres demandes et attributions de ce
                             livre, un clic vers chaque liste filtrée. */}
-                        {isEditMode && selectedBook && <BookUsageLinks bookId={selectedBook.id} />}
+                        {isEditMode && selectedBook && (
+                            <BookUsageLinks
+                                bookId={selectedBook.id}
+                                beyond={{ orders: selectedOrder ? 1 : 0, assignments: 1 }}
+                            />
+                        )}
                     </div>
 
                     {/* Date Fields — reception, then envoi, then retour: each later date
@@ -1123,7 +1099,6 @@ export function AssignmentFormBackendBase({
                         (lib/statusSync.ts) for the server-side twin of this rule. */}
                     <DatePicker
                         label="Date de réception"
-                        placeholder="Sélectionner une date..."
                         value={formData.receptionDate}
                         onChange={(date) => setFormData({ ...formData, receptionDate: date })}
                     />
@@ -1133,7 +1108,6 @@ export function AssignmentFormBackendBase({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                         <DatePicker
                             label="Date d'envoi au lecteur"
-                            placeholder="Sélectionner une date..."
                             value={formData.sentToReaderDate}
                             onChange={(date) => setFormData({ ...formData, sentToReaderDate: date })}
                             triggerRef={registerField('sentToReaderDate')}
@@ -1165,7 +1139,6 @@ export function AssignmentFormBackendBase({
 
                     <DatePicker
                         label="Date de retour aux ECA"
-                        placeholder="Sélectionner une date..."
                         value={formData.returnedToECADate}
                         onChange={(date) => setFormData({ ...formData, returnedToECADate: date })}
                         triggerRef={registerField('returnedToECADate')}
@@ -1185,7 +1158,6 @@ export function AssignmentFormBackendBase({
                             tabIndex={-1}
                             className="flex items-center w-full rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
                             aria-readonly="true"
-                            title="Le statut est déterminé automatiquement par les dates de réception, d'envoi au lecteur et de retour aux ECA."
                         >
                             {statuses.find((s) => s.id === derivedStatusId)?.name ?? '—'}
                         </div>
@@ -1278,7 +1250,6 @@ export function AssignmentFormBackendBase({
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             className="bg-card border-border text-foreground min-h-[100px]"
-                            placeholder="Ajouter des notes supplémentaires..."
                         />
                     </div>
 

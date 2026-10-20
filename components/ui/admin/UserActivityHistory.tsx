@@ -52,6 +52,10 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
     const [saveError, setSaveError] = useState<string | null>(null);
     // Non-null while a status needing a confirmation waits for it.
     const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+    // The change form stays folded behind « Changer le statut »: always open at
+    // the top of the fiche, its select, comment box and second « Enregistrer »
+    // were the first thing anyone read about the person.
+    const [changing, setChanging] = useState(false);
     const showBadgePlaceholder = useDelayedFlag(loading);
 
     useEffect(() => {
@@ -116,6 +120,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
             });
             draft.reset();
             setComment('');
+            setChanging(false);
         } catch (err: unknown) {
             setSaveError(err instanceof Error ? err.message : 'Erreur');
         } finally {
@@ -145,8 +150,8 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
 
     return (
         <div className="mb-6 border-b border-border pb-4">
-            <div className="flex items-center justify-between gap-2 mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Historique de statut</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h3 className="text-sm font-semibold text-foreground">Statut</h3>
                 {/* Until the route answers there is no status to show: the
                     fallback would read « Actif » for everyone. A pill-sized
                     placeholder keeps the header from shifting. */}
@@ -163,13 +168,30 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
                         <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-1 text-xs font-medium ${getUserActivityStatusColor(effectiveStatus)}`}>
                             {getUserActivityStatusLabel(effectiveStatus)}
                         </span>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2.5 text-xs"
+                            aria-expanded={changing}
+                            onClick={() => {
+                                if (changing) {
+                                    draft.reset();
+                                    setComment('');
+                                    setSaveError(null);
+                                }
+                                setChanging(!changing);
+                            }}
+                        >
+                            {changing ? 'Annuler' : 'Changer le statut'}
+                        </Button>
                     </div>
                 )}
             </div>
 
             {/* Change status */}
+            {changing && (
             <div className="rounded-lg border border-border bg-card/60 p-3 mb-4 space-y-2">
-                <div className="text-xs font-medium text-foreground">Changer le statut</div>
                 <ActivityStatusFields
                     draft={draft}
                     currentStatus={currentStatus}
@@ -192,10 +214,11 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
                         className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         size="sm"
                     >
-                        {saving ? 'Enregistrement\u2026' : 'Enregistrer'}
+                        {saving ? 'Enregistrement\u2026' : 'Enregistrer le statut'}
                     </Button>
                 </div>
             </div>
+            )}
 
             <ActivityStatusConfirmDialog
                 status={pendingStatus}
@@ -206,9 +229,6 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
             {/* History */}
             {loading && <p className="flex"><InlineLoading label="Chargement…" /></p>}
             {error && <p className="text-sm text-red-400">{error}</p>}
-            {!loading && !error && events.length === 0 && (
-                <p className="text-sm text-muted-foreground">Aucun changement de statut enregistr&#233;.</p>
-            )}
 
             {!loading && !error && events.length > 0 && (
                 <ol className="space-y-3">

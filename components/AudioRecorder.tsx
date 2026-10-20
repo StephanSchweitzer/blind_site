@@ -328,9 +328,9 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
                     </div>
                     <div>
                         <p className="text-sm font-medium text-foreground">{idleTitle}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            Enregistrez-la au micro, ou importez un fichier déjà prêt (25 Mo maximum).
-                        </p>
+                        {/* Les deux boutons disent déjà les deux façons de faire ;
+                            reste la limite, qui ne se voit nulle part ailleurs. */}
+                        <p className="mt-1 text-xs text-muted-foreground">Fichier importé : 25 Mo maximum.</p>
                     </div>
                     <div className="flex flex-wrap justify-center gap-2">
                         <Button type="button" onClick={startRecording} className="bg-red-600 text-white hover:bg-red-700">

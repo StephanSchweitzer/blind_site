@@ -299,15 +299,19 @@ export default function OrdersTable({
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                         {/* La couleur de la section, celle de sa carte sur le tableau de bord. */}
-                        <span
-                            aria-hidden="true"
-                            className={cn('hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg border sm:flex', accent.bg, accent.border, accent.text)}
-                        >
-                            <SectionIcon className="h-5 w-5" />
-                        </span>
+                        {/* Dans un dossier, l'onglet « Demandes » porte déjà le titre :
+                            ni pastille ni titre visible (il reste au lecteur d'écran). */}
+                        {!presetClient && (
+                            <span
+                                aria-hidden="true"
+                                className={cn('hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg border sm:flex', accent.bg, accent.border, accent.text)}
+                            >
+                                <SectionIcon className="h-5 w-5" />
+                            </span>
+                        )}
                         <div>
                             <div className="flex flex-wrap items-center gap-2">
-                                <CardTitle className="text-2xl text-foreground">Demandes</CardTitle>
+                                <CardTitle className={presetClient ? 'sr-only' : 'text-2xl text-foreground'}>Demandes</CardTitle>
                                 <AideLink section="demandes" />
                             </div>
                         </div>

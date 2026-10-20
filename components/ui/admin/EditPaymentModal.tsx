@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { markToasted } from '@/hooks/useFormToast';
 import { getPaymentTypeColor, getPaymentTypeLabel } from '@/lib/payment-enums';
 import { CopyableId } from './CopyableId';
 import type { SerializedPayment } from '@/types/api/payment.api';
@@ -106,15 +107,14 @@ export function EditPaymentModal({
             const message = data?.message || 'Échec de la mise à jour du paiement';
             toast({
                 variant: 'destructive',
-                title: "Erreur",
+                title: "Enregistrement impossible",
                 description: message
             });
-            throw new Error(message);
+            throw markToasted(new Error(message));
         }
 
         toast({
-            title: "Succès",
-            description: "Le paiement a été mis à jour",
+            title: "Paiement enregistré",
             className: 'bg-green-100 border-green-500 text-green-900',
         });
 

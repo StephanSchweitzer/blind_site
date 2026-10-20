@@ -100,7 +100,7 @@ export default function OrderDeletedNotice({ orderId, deletedAt, onRestored }: O
             onRestored();
         } catch (error) {
             toast({
-                title: 'Erreur',
+                title: 'Restauration impossible',
                 description: error instanceof Error ? error.message : 'Échec de la restauration.',
                 variant: 'destructive',
             });

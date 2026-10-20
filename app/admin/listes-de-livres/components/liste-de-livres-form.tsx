@@ -369,16 +369,10 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                 <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
                     {/* ── visibilité ──────────────────────────────────── */}
                     <Card className="bg-card border-border">
-                        <label htmlFor="active" className="flex cursor-pointer items-start justify-between gap-4 p-5">
-                            <div>
-                                <div className="text-base font-semibold text-foreground">Visible sur le site public</div>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                    {active
-                                        ? 'La liste apparaît dans la partie publique du site.'
-                                        : "La liste n'apparaît que dans l'administration."}
-                                </p>
-                            </div>
-                            <Switch id="active" checked={active} onCheckedChange={setActive} className="mt-0.5" />
+                        <label htmlFor="active" className="flex cursor-pointer items-center justify-between gap-4 p-5">
+                            {/* L'interrupteur dit l'état ; la phrase dessous le répétait. */}
+                            <div className="text-base font-semibold text-foreground">Visible sur le site public</div>
+                            <Switch id="active" checked={active} onCheckedChange={setActive} />
                         </label>
                     </Card>
 

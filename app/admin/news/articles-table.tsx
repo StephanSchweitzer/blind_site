@@ -11,6 +11,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -185,9 +186,13 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
         setCurrentPage(1);
     }, []);
 
-    /** A type pill toggles: clicking the selected one clears the filter. */
-    const handleTypeClick = useCallback((value: NewsType | null) => {
-        setType((current) => (current === value ? null : value));
+    /**
+     * The « Type » select. It used to be a row of pills carrying counts under
+     * the title (« 7 infos au total · Annonce 5 … ») — a filter dressed as
+     * figures, the total said again by « 1–7 sur 7 infos » below.
+     */
+    const handleTypeChange = useCallback((value: string) => {
+        setType(value === 'all' ? null : (value as NewsType));
         setCurrentPage(1);
     }, []);
 
@@ -225,8 +230,8 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
             });
         } catch {
             toast({
-                title: 'Erreur',
-                description: 'Échec du chargement de l’information. Veuillez réessayer.',
+                title: 'Chargement impossible',
+                description: 'L’information n’a pas pu être ouverte. Réessayez.',
                 variant: 'destructive',
             });
         } finally {
@@ -274,9 +279,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
 
     const items = results.items;
     const hasFilters = !!searchTerm.trim() || type !== null;
-    // Types worth a pill: those the current search finds, plus the selected one
-    // even at zero — otherwise the only way to clear it would vanish.
-    const typePills = NEWS_TYPES.filter((t) => results.typeCounts[t] > 0 || t === type);
 
     return (
         <Card className="bg-card border-border">
@@ -285,41 +287,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                     <div className="flex flex-wrap items-center gap-2">
                         <CardTitle className="text-foreground">Dernières infos</CardTitle>
                         <AideLink section="pages-publiques" />
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-2 flex flex-wrap items-center gap-x-1 gap-y-1">
-                        <button
-                            type="button"
-                            aria-pressed={type === null}
-                            onClick={() => handleTypeClick(null)}
-                            title="Tous les types"
-                            className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 font-medium transition-colors ${
-                                type === null
-                                    ? 'bg-muted text-foreground ring-1 ring-inset ring-border'
-                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                            }`}
-                        >
-                            {results.allCount} info{results.allCount !== 1 ? 's' : ''}
-                            {searchTerm.trim() ? ' trouvée' + (results.allCount !== 1 ? 's' : '') : ' au total'}
-                        </button>
-                        {typePills.map((t) => (
-                            <span key={t} className="contents">
-                                <span aria-hidden className="text-muted-foreground/50">&#8226;</span>
-                                <button
-                                    type="button"
-                                    aria-pressed={type === t}
-                                    onClick={() => handleTypeClick(t)}
-                                    title={type === t ? 'Retirer le filtre' : `Afficher uniquement : ${newsTypeLabels[t]}`}
-                                    className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium transition-colors ${
-                                        type === t
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                                    }`}
-                                >
-                                    {newsTypeLabels[t]}
-                                    <span className="tabular-nums">{results.typeCounts[t]}</span>
-                                </button>
-                            </span>
-                        ))}
                     </div>
                 </div>
                 <Button
@@ -354,6 +321,22 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                                 <CircleX aria-hidden="true" size={20} />
                             </button>
                         )}
+                    </div>
+                    <div className="w-full sm:w-56">
+                        <label htmlFor="news-type" className="text-sm text-muted-foreground mb-1.5 block">Type</label>
+                        <Select value={type ?? 'all'} onValueChange={handleTypeChange}>
+                            <SelectTrigger id="news-type" className="bg-field border-border text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="all" className="text-foreground">Tous les types</SelectItem>
+                                {NEWS_TYPES.map((t) => (
+                                    <SelectItem key={t} value={t} className="text-foreground">
+                                        {newsTypeLabels[t]}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
@@ -403,7 +386,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                                     <TableHead className="text-foreground font-medium">Type</TableHead>
                                     <TableHead className="text-foreground font-medium">Auteur</TableHead>
                                     <TableHead className="text-foreground font-medium">Date de publication</TableHead>
-                                    <TableHead className="text-foreground font-medium">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -417,7 +399,15 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                                             <CopyIdButton id={article.id} label="de l'information" />
                                         </TableCell>
                                         <TableCell className="text-foreground">
-                                            <div className="font-medium">{article.title}</div>
+                                            {/* La ligne entière ouvre l'information ; le titre est
+                                                le bouton qui le fait au clavier. */}
+                                            <button
+                                                type="button"
+                                                className="text-left font-medium hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                                                onClick={(e) => handleEditClick(e, article.id)}
+                                            >
+                                                {article.title}
+                                            </button>
                                             {article.excerpt && (
                                                 <div className="mt-0.5 max-w-xl text-sm text-muted-foreground line-clamp-2">
                                                     {article.excerpt}
@@ -436,16 +426,6 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                                                 month: 'short',
                                                 day: 'numeric'
                                             })}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="bg-muted text-foreground border-border hover:bg-muted transition-colors"
-                                                onClick={(e) => handleEditClick(e, article.id)}
-                                            >
-                                                Modifier
-                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}

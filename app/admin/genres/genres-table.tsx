@@ -116,13 +116,12 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                                 <TableHead className="text-foreground font-medium">Nom</TableHead>
                                 <TableHead className="text-foreground font-medium">Description</TableHead>
                                 <TableHead className="text-foreground font-medium">Livres</TableHead>
-                                <TableHead className="text-foreground font-medium">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {initialGenres.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                                    <TableCell colSpan={3} className="py-10 text-center text-muted-foreground">
                                         Aucun genre trouvé
                                     </TableCell>
                                 </TableRow>
@@ -133,22 +132,23 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                                     className="border-b border-border hover:bg-muted cursor-pointer"
                                     onClick={() => setEditing(genre)}
                                 >
-                                    <TableCell className="text-foreground">{genre.name}</TableCell>
-                                    <TableCell className="text-foreground">{genre.description || 'N/A'}</TableCell>
-                                    <TableCell className="text-muted-foreground">{genre.booksCount ?? '—'}</TableCell>
-                                    <TableCell>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="bg-muted text-foreground border-border hover:bg-accent"
+                                    <TableCell className="text-foreground">
+                                        {/* La ligne entière ouvre le genre ; le nom est le
+                                            bouton qui le fait au clavier — plus de colonne
+                                            « Actions » qui répétait le clic sur la ligne. */}
+                                        <button
+                                            type="button"
+                                            className="text-left font-medium hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
                                             onClick={(e) => {
-                                                e.stopPropagation(); // Prevent row click when clicking the button
+                                                e.stopPropagation();
                                                 setEditing(genre);
                                             }}
                                         >
-                                            Modifier
-                                        </Button>
+                                            {genre.name}
+                                        </button>
                                     </TableCell>
+                                    <TableCell className="text-foreground">{genre.description || '—'}</TableCell>
+                                    <TableCell className="text-muted-foreground">{genre.booksCount ?? '—'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

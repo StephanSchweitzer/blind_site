@@ -73,7 +73,7 @@ export function ContactForm({ initial }: ContactFormProps) {
                             <AideLink section="pages-publiques" />
                         </div>
                         <CardDescription className="text-muted-foreground">
-                            Contenu affiché sur la page Contact. Une ligne par élément (adresse, téléphones, horaires…).
+                            Contenu affiché sur la page Contact.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">

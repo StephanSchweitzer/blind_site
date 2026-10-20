@@ -671,13 +671,15 @@ async function fallbackSearch(
  *
  * `defaultActive` dit si cette liste est encore publiée : la coupure se prend
  * sur la dernière liste créée, dépubliée comprise, et le permanent doit
- * pouvoir constater qu'elle ne figure plus sur le site.
+ * pouvoir constater qu'elle ne figure plus sur le site. `defaultId` permet à
+ * l'éditeur de cette même liste de ne pas se citer lui-même.
  */
 export interface RecentWindow {
     since: string | null;
     defaultSince: string | null;
     defaultLabel: string | null;
     defaultActive: boolean | null;
+    defaultId: number | null;
 }
 
 /** Les critères qu'un visiteur du catalogue public peut formuler — rien d'autre. */
@@ -795,7 +797,7 @@ async function listBooks(
         // quand celle-ci décrit ce qui existe.
         const lastCoupDeCoeur = await prisma.coupsDeCoeur.findFirst({
             orderBy: { createdAt: 'desc' },
-            select: { createdAt: true, title: true, active: true }
+            select: { id: true, createdAt: true, title: true, active: true }
         });
 
         // La coupure par défaut, que `since` peut déplacer.
@@ -822,6 +824,7 @@ async function listBooks(
             defaultSince: lastCoupDeCoeur?.createdAt.toISOString() ?? null,
             defaultLabel: lastCoupDeCoeur?.title ?? null,
             defaultActive: lastCoupDeCoeur?.active ?? null,
+            defaultId: lastCoupDeCoeur?.id ?? null,
         };
 
         // Une liste de livres annonce ce qu'on peut écouter MAINTENANT.

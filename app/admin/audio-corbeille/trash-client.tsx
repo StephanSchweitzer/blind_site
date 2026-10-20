@@ -27,7 +27,7 @@ import type { PageInfo } from '@/lib/pagination';
 import { AdminPaginatedList } from '@/admin/AdminPagination';
 import { getUserNameOnly, type UserNameParts } from '@/lib/users/displayName';
 
-export type TrashTab = 'a-purger' | 'sans-fiche' | 'restaurees' | 'purgees';
+export type TrashTab = 'a-purger' | 'restaurees' | 'purgees';
 
 export interface TrashRow {
     id: number;
@@ -72,7 +72,6 @@ interface Props {
     tab: TrashTab;
     /** Page courante, taille, total de livres — lib/pagination.ts `pageInfo`. */
     pagination: PageInfo;
-    totalFiles: number;
     tabCounts: Record<TrashTab, number>;
     retentionDays: number;
     /** Fichiers de l'onglet que la purge prendra d'ici `urgentDays` jours. */
@@ -85,7 +84,6 @@ interface Props {
 
 const TAB_LABELS: Record<TrashTab, string> = {
     'a-purger': 'Dans la corbeille',
-    'sans-fiche': 'Sans fiche',
     restaurees: 'Restaurées',
     purgees: 'Purgées',
 };
@@ -179,7 +177,6 @@ export default function TrashClient({
     groups,
     tab,
     pagination,
-    totalFiles,
     tabCounts,
     retentionDays,
     urgentCount,
@@ -204,9 +201,9 @@ export default function TrashClient({
         setRestoringId(id);
         startTransition(async () => {
             const res = await fn();
+            // Le message de l'action dit déjà ce qui s'est passé : il fait le titre.
             toast({
-                title: res.ok ? 'Succès' : 'Erreur',
-                description: res.message,
+                title: res.message,
                 variant: res.ok ? undefined : 'destructive',
             });
             setRestoringId(null);
@@ -219,8 +216,7 @@ export default function TrashClient({
         startTransition(async () => {
             const res = await restoreTrashedGroup(trashIds);
             toast({
-                title: res.ok ? 'Succès' : 'Erreur',
-                description: res.message,
+                title: res.message,
                 variant: res.ok ? undefined : 'destructive',
             });
             setRestoringGroupKey(null);
@@ -258,8 +254,7 @@ export default function TrashClient({
         startTransition(async () => {
             const res = await purgeTrashedTracks(trashIds);
             toast({
-                title: res.ok ? 'Succès' : 'Erreur',
-                description: res.message,
+                title: res.message,
                 variant: res.ok ? undefined : 'destructive',
             });
             setPurgingId(null);
@@ -327,8 +322,7 @@ export default function TrashClient({
                         </div>
                         <CardDescription>
                             Les fichiers audio supprimés restent restaurables {retentionDays} jours, puis
-                            sont effacés définitivement. L’onglet « Sans fiche » réunit ceux dont le
-                            livre a été supprimé depuis.
+                            sont effacés définitivement.
                         </CardDescription>
                     </div>
 
@@ -394,8 +388,7 @@ export default function TrashClient({
                         {urgentCount === 1
                             ? '1 fichier de cet onglet sera supprimé'
                             : `${urgentCount} fichiers de cet onglet seront supprimés`}{' '}
-                        définitivement dans les {urgentDays} prochains jours. Ce sont les plus
-                        anciens, en fin de liste, signalés en ambre.
+                        définitivement dans les {urgentDays} prochains jours.
                     </p>
                 </div>
             )}
@@ -406,11 +399,6 @@ export default function TrashClient({
                 label="Pages de la corbeille"
                 onNavigate={goHref}
                 pending={isNavPending}
-                aside={
-                    <span className="text-sm text-muted-foreground tabular-nums">
-                        {totalFiles} fichier{totalFiles > 1 ? 's' : ''}
-                    </span>
-                }
             >
             <div className="space-y-4">
             {groups.length === 0 && (

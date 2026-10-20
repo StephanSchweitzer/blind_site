@@ -20,8 +20,21 @@ type Usage = { orderCount: number; assignmentCount: number };
  * Pendant le chargement, la ligne garde sa place et ne dit que « Vérification… »
  * (au-delà de 200 ms) ; si la requête échoue, elle disparaît : afficher
  * « 0 demande » sur une erreur dirait une chose fausse.
+ *
+ * `beyond` : ce que le formulaire ouvert est déjà lui-même. Dans une demande,
+ * « 1 demande · 1 attribution » ne nommait qu'elle et son attribution — un lien
+ * vers soi. La ligne ne s'affiche alors que s'il existe AUTRE chose, et rien
+ * pendant le chargement (elle apparaîtrait pour disparaître aussitôt).
  */
-export function BookUsageLinks({ bookId, className }: { bookId: number; className?: string }) {
+export function BookUsageLinks({
+    bookId,
+    className,
+    beyond,
+}: {
+    bookId: number;
+    className?: string;
+    beyond?: { orders: number; assignments: number };
+}) {
     const [usage, setUsage] = useState<{ bookId: number; data: Usage } | null>(null);
     const [failedFor, setFailedFor] = useState<number | null>(null);
 
@@ -42,6 +55,7 @@ export function BookUsageLinks({ bookId, className }: { bookId: number; classNam
     if (failedFor === bookId) return null;
     // Premier chargement, ou le livre a changé et ses comptes ne sont pas encore là.
     if (!usage || usage.bookId !== bookId) {
+        if (beyond) return null;
         return (
             <p className={cn('flex items-center text-sm', className)}>
                 <InlineLoading />
@@ -49,6 +63,7 @@ export function BookUsageLinks({ bookId, className }: { bookId: number; classNam
         );
     }
     const { orderCount, assignmentCount } = usage.data;
+    if (beyond && orderCount <= beyond.orders && assignmentCount <= beyond.assignments) return null;
 
     const part = (count: number, singular: string, plural: string, href: string) =>
         count === 0 ? (

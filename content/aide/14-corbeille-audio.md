@@ -10,12 +10,11 @@ Un fichier audio supprimé n'est pas effacé tout de suite : il passe d'abord pa
 
 L'URL de cette page est https://eca-aveugles.fr/admin/audio-corbeille
 
-![Corbeille audio - les quatre onglets et un groupe replié](/admin/aide/images/corbeille-audio-01.jpg)
+![Corbeille audio - les onglets et un groupe replié](/admin/aide/images/corbeille-audio-01.jpg)
 
-## Les quatre onglets
+## Les trois onglets
 
-- **Dans la corbeille** — les fichiers que l'on peut encore restaurer.
-- **Sans fiche** — les fichiers dont le livre a été supprimé.
+- **Dans la corbeille** — les fichiers que l'on peut encore restaurer, y compris ceux dont le livre a été supprimé : leur carte indique « fiche supprimée ».
 - **Restaurées** — les fichiers remis en place.
 - **Purgées** — les fichiers supprimés définitivement, par la purge automatique ou avec « Supprimer définitivement ». Chacun indique qui l'a supprimé, ou « par la purge automatique ».
 

@@ -205,7 +205,7 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
             addBooks(await fetchBooksByIds([newBookId]));
         } catch (error) {
             console.error('Error loading the created book:', error);
-            toast({ title: "Erreur", description: "Le livre a été créé, mais n'a pas pu être ajouté à la liste.", variant: "destructive" });
+            toast({ title: "Ajout à la liste impossible", description: "Le livre a été créé, mais n'a pas pu être ajouté à la liste.", variant: "destructive" });
         }
     };
 
@@ -324,7 +324,7 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                     plus bas et les deux boutons restent seuls en haut. */}
                 {!isEmpty && (
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                        <RecentBooksControl win={win} onOpen={() => setIsRecentOpen(true)} />
+                        <RecentBooksControl win={win} onOpen={() => setIsRecentOpen(true)} listId={listId} />
                         {addButtons}
                     </div>
                 )}
@@ -339,7 +339,7 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                                 Commencez par les nouveautés parues depuis la dernière liste, ou recherchez un livre du catalogue.
                             </p>
                         </div>
-                        <RecentBooksControl win={win} onOpen={() => setIsRecentOpen(true)} size="hero" />
+                        <RecentBooksControl win={win} onOpen={() => setIsRecentOpen(true)} listId={listId} size="hero" />
                     </div>
                 ) : (
                     <>
@@ -487,7 +487,11 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                                                     {/* La note et son action sous le titre, en mots : une icône
                                                         de plus à côté du crayon de la fiche se confondait avec
                                                         lui, et une note de liste écrite dans la fiche part au
-                                                        catalogue et dans toutes les listes. */}
+                                                        catalogue et dans toutes les listes.
+                                                        « Ajouter une note », écrit sur chaque ligne, se lisait
+                                                        cinquante fois par liste : il n'apparaît plus qu'au
+                                                        survol ou au clavier (toujours sur un écran tactile,
+                                                        qui n'a pas de survol). « Modifier la note » reste. */}
                                                     {notes[book.id] && (
                                                         <p className="mt-1 whitespace-pre-wrap text-sm italic text-muted-foreground">
                                                             {notes[book.id]}
@@ -495,7 +499,11 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                                                     )}
                                                     <button
                                                         type="button"
-                                                        className="mt-1 inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                                        className={cn(
+                                                            'mt-1 inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline',
+                                                            !notes[book.id] &&
+                                                                '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100'
+                                                        )}
                                                         onClick={() => setNoteBook(book)}
                                                         aria-label={`${notes[book.id] ? 'Modifier la note' : 'Ajouter une note'} pour « ${book.title} »`}
                                                     >

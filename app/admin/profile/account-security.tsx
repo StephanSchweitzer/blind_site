@@ -72,14 +72,11 @@ export default function AccountSecurity({ email }: AccountSecurityProps) {
                 return;
             }
 
-            toast({
-                title: 'Profil mis à jour',
-                description: 'Vos informations ont été enregistrées.',
-            });
+            toast({ title: 'Profil enregistré' });
             router.refresh();
         } catch (error) {
             toast({
-                title: 'Erreur',
+                title: 'Enregistrement impossible',
                 description:
                     error instanceof Error ? error.message : 'Échec de la mise à jour du profil',
                 variant: 'destructive',
@@ -102,8 +99,7 @@ export default function AccountSecurity({ email }: AccountSecurityProps) {
         <AdminCard className="p-6">
             <h2 className="text-lg font-semibold text-foreground">Identifiants et sécurité</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-                L’adresse avec laquelle vous vous connectez. Votre nom et le reste de votre
-                fiche sont tenus par le secrétariat.
+                Votre nom et le reste de votre fiche sont tenus par le secrétariat.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-4">

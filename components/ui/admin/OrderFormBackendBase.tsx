@@ -196,8 +196,7 @@ export function OrderFormBackendBase({
                                          readOnly = false,
                                      }: OrderFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { toastError } = useFormToast();
+    const { toastError, toastFailure } = useFormToast();
     const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
     const {
@@ -476,7 +475,6 @@ export function OrderFormBackendBase({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        setError(null);
 
         // N3 — collect failing required fields in visual order.
         const invalid: string[] = [];
@@ -494,7 +492,6 @@ export function OrderFormBackendBase({
             };
             const firstName = EDIT_FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
             const msg = messages[firstName];
-            setError(msg);
             toastError(msg);
             focusFirstInvalid(EDIT_FIELD_ORDER, new Set(invalid));
             setIsLoading(false);
@@ -505,7 +502,6 @@ export function OrderFormBackendBase({
         // « Terminé » alors que l'enregistrement n'est pas revenu. Dit ici plutôt
         // qu'en 409 générique — même principe que readerBlocksAdvance côté attribution.
         if (closureBlocksSave) {
-            setError(closureBlockedMessage);
             toastError(closureBlockedMessage);
             setIsLoading(false);
             return;
@@ -529,7 +525,6 @@ export function OrderFormBackendBase({
         // ne la concerne pas et ne doit ni la bloquer ni partir au serveur.
         const pageError = formData.isDuplication ? null : pagePricingError(formData.pagePricing);
         if (pageError) {
-            setError(pageError);
             toastError(pageError);
             setIsLoading(false);
             return;
@@ -556,10 +551,9 @@ export function OrderFormBackendBase({
                 onSuccess(newOrderId);
             }
         } catch (err) {
-            // The onSubmit wrapper already shows a detailed error toast; keep only a
-            // quiet inline fallback here so we never mask it (one toast at a time).
-            const msg = err instanceof Error && err.message ? err.message : 'Échec du traitement de la demande';
-            setError(msg);
+            // The onSubmit wrapper already shows a detailed error toast; only
+            // what it could not see (a lost connection) is reported here.
+            toastFailure(err);
             return;
         } finally {
             setIsLoading(false);
@@ -588,11 +582,7 @@ export function OrderFormBackendBase({
             try {
                 await onDelete();
             } catch (err) {
-                if (err instanceof Error) {
-                    setError(err.message);
-                } else {
-                    setError('Échec de la suppression de la demande');
-                }
+                toastFailure(err, 'Suppression impossible');
             } finally {
                 setIsLoading(false);
             }
@@ -677,13 +667,6 @@ export function OrderFormBackendBase({
     return (
         <>
         <div>
-                {error && (
-                    <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-red-800 dark:text-red-200">{error}</AlertDescription>
-                    </Alert>
-                )}
-
                 {/* Un seul bandeau pour dire pourquoi le formulaire n'est pas tout à fait
                     le même aujourd'hui ; le détail de chaque verrou reste sous le champ
                     concerné. Rien pour un brouillon : il n'est jamais sorti d'ECA, et
@@ -818,7 +801,18 @@ export function OrderFormBackendBase({
                             Pas en création — ce n'est pas une mise en garde
                             d'enregistrement, et celles-là passent par RecordingAdvice
                             (.claude/rules/order-recording-warnings.md). */}
-                        {currentOrderId && selectedBook && <BookUsageLinks bookId={selectedBook.id} />}
+                        {/* Seulement s'il y a autre chose que cette demande et son
+                            attribution : « 1 demande · 1 attribution » ne nommait qu'elles. */}
+                        {currentOrderId && selectedBook && (
+                            <BookUsageLinks
+                                bookId={selectedBook.id}
+                                beyond={
+                                    bookChanged
+                                        ? { orders: 0, assignments: 0 }
+                                        : { orders: 1, assignments: initialAssignment ? 1 : 0 }
+                                }
+                            />
+                        )}
                         {bookChanged && (initialAssignment || billIssued) && (
                             <div className="bg-amber-50 border border-amber-300 text-amber-900 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200 p-3 rounded-lg text-sm space-y-2">
                                 {initialAssignment && (
@@ -1050,7 +1044,6 @@ export function OrderFormBackendBase({
                             tabIndex={-1}
                             className="flex items-center w-full rounded-md bg-card/60 border border-border px-3 py-2 text-foreground cursor-not-allowed outline-none"
                             aria-readonly="true"
-                            title="Le statut est déterminé automatiquement par l'attribution et la date de clôture."
                         >
                             {statusName(derivedStatusId)}
                         </div>
@@ -1263,25 +1256,15 @@ export function OrderFormBackendBase({
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             className="bg-card border-border text-foreground min-h-[100px]"
-                            placeholder="Ajouter des notes supplémentaires..."
                         />
                     </div>
 
-                    {/* System Information - Read Only */}
+                    {/* Une ligne, pas une section « Informations système » pour un
+                        seul champ en lecture seule. */}
                     {selectedStaff && (
-                        <div className="space-y-2 pt-4 border-t border-border">
-                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                                Informations système
-                            </h3>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-muted-foreground">
-                                    Traité par
-                                </label>
-                                <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground cursor-not-allowed opacity-75">
-                                    {getUserDisplayName(selectedStaff)}
-                                </div>
-                            </div>
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            Traité par {getUserDisplayName(selectedStaff)}
+                        </p>
                     )}
 
                     {/* Submit Button */}

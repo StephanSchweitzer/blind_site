@@ -101,6 +101,10 @@ export default function BillsTable({
     // Every filter the URL carries except the free-text search — the « Filtres »
     // button's badge on a phone, and whether « Effacer les filtres » shows.
     const activeFilterCount = [currentStatus, currentKind, showLateOnly].filter(Boolean).length;
+    // Dans un dossier, une personne a le plus souvent une page de factures ou
+    // moins : les filtres n'y reviennent qu'à partir de deux pages, ou si l'un
+    // d'eux est posé — même règle que les demandes du dossier.
+    const showFilters = !presetClient || pagination.totalPages > 1 || activeFilterCount > 0;
 
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -191,7 +195,8 @@ export default function BillsTable({
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="text-2xl font-bold text-foreground">
+                            {/* Dans un dossier, l'onglet porte déjà le titre. */}
+                            <CardTitle className={presetClient ? 'sr-only' : 'text-2xl font-bold text-foreground'}>
                                 Factures
                             </CardTitle>
                             <AideLink section="factures" />
@@ -240,6 +245,7 @@ export default function BillsTable({
                         </div>
                     )}
 
+                    {showFilters && (
                     <MobileFilters
                         activeCount={activeFilterCount}
                         className="flex flex-wrap items-end gap-3"
@@ -289,6 +295,7 @@ export default function BillsTable({
                             Factures à relancer
                         </label>
                     </MobileFilters>
+                    )}
                 </div>
 
                 <AdminPaginatedList

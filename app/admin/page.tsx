@@ -239,7 +239,7 @@ export default async function Dashboard() {
                     <ul className={GRID}>
                         <li><AdminDashboardCard emphasis title="Doublons" count={reviewCount} countLabel="à réviser" href="/admin/review" /></li>
                         <li><AdminDashboardCard emphasis title="Audio orphelin" count={orphanAudioCount} countLabel={orphanAudioCount > 1 ? 'dossiers sans livre' : 'dossier sans livre'} href="/admin/audio-orphelins" /></li>
-                        <li><AdminDashboardCard emphasis title="Corbeille audio" count={audioTrashCount} countLabel="restaurables 14 jours" href="/admin/audio-corbeille" /></li>
+                        <li><AdminDashboardCard emphasis title="Corbeille audio" count={audioTrashCount} countLabel="restaurables" href="/admin/audio-corbeille" /></li>
                     </ul>
                 </div>
             </section>

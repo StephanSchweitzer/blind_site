@@ -40,7 +40,7 @@ Un clic sur un champ de date ouvre un calendrier : choisissez le jour, le calend
 
 ## Un toast
 
-Un toast est une petite vignette d'information qui apparaît en bas à droite de votre écran. Il vous informe qu'une opération a réussi ou qu'une erreur s'est produite, et propose parfois un lien qui facilite l'accès à la page que vous cherchez.
+Un toast est une petite vignette d'information qui apparaît en bas à droite de votre écran. Il vous informe qu'une opération a réussi (« Livre enregistré », « Demande supprimée ») ou qu'une erreur s'est produite, et propose parfois un lien qui facilite l'accès à la page que vous cherchez. Une erreur ne s'affiche que dans le toast : le formulaire reste ouvert, tel que vous l'avez rempli.
 
 ![Un toast en bas à droite de l'écran](/admin/aide/images/toast-01.png)
 
@@ -48,6 +48,6 @@ Un toast est une petite vignette d'information qui apparaît en bas à droite de
 
 Quand une action échoue, un message rouge s'affiche. Il en existe trois sortes :
 
-- **« Erreur » ou « … impossible »** : le portail a refusé l'action pour une raison qu'il explique, par exemple un livre encore lié à des demandes. Le message dit quoi faire ; rien n'a été modifié, sauf s'il indique le contraire.
+- **« … impossible »** (« Enregistrement impossible », « Suppression impossible »…) : le portail a refusé l'action pour une raison qu'il explique, par exemple un livre encore lié à des demandes. Le message dit quoi faire ; rien n'a été modifié, sauf s'il indique le contraire.
 - **« Connexion interrompue »** : la demande n'est pas parvenue au serveur, ou sa réponse ne vous est pas parvenue. L'action a donc pu être faite quand même : rechargez la page pour vérifier avant de recommencer.
 - **« Erreur inattendue »** : personne ne sait encore pourquoi l'action a échoué. Le message dit ce qui a pu être fait ou non, et reste affiché jusqu'à ce que vous le fermiez. Cliquez sur l'adresse e-mail qu'il contient : le courriel se prépare avec la **référence** (« ERR-… »), la page et l'heure. Ajoutez ce que vous faisiez et envoyez-le. La référence permet de retrouver l'erreur exacte.

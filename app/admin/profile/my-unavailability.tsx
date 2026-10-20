@@ -97,7 +97,7 @@ export default function MyUnavailability({
             router.refresh();
         } catch (error) {
             toast({
-                title: 'Erreur',
+                title: 'Enregistrement impossible',
                 description: error instanceof Error ? error.message : 'Échec de l’enregistrement',
                 variant: 'destructive',
             });

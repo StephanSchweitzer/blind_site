@@ -85,7 +85,7 @@ export function UserActivityGuardDialog({
                 const data = await res.json().catch(() => null);
                 toast({
                     variant: 'destructive',
-                    title: 'Erreur',
+                    title: 'Changement de statut impossible',
                     description: data?.message || 'Échec de la mise à jour du statut',
                 });
                 setIsSubmitting(false);
@@ -112,8 +112,8 @@ export function UserActivityGuardDialog({
             console.error('Reactivation error:', err);
             toast({
                 variant: 'destructive',
-                title: 'Erreur',
-                description: 'Échec de la mise à jour du statut',
+                title: 'Changement de statut impossible',
+                description: 'Le serveur n’a pas répondu. Réessayez dans un instant.',
             });
             setIsSubmitting(false);
         }

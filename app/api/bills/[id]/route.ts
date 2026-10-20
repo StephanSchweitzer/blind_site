@@ -727,10 +727,14 @@ export const DELETE = withAdmin(async (_request, { me, params }) => {
 
         const n = detachedPayments.length;
         const detached = n
-            ? ` ${n > 1 ? `${n} paiements ont été détachés` : 'Un paiement a été détaché'} (n° ${detachedPayments.map((p) => p.id).join(', ')}) : ` +
+            ? `${n > 1 ? `${n} paiements ont été détachés` : 'Un paiement a été détaché'} (n° ${detachedPayments.map((p) => p.id).join(', ')}) : ` +
               `${n > 1 ? 'ils restent' : 'il reste'} dans les paiements, sous le filtre « Sans facture liée ».`
-            : '';
-        return NextResponse.json({ message: `Facture supprimée avec succès.${detached}` });
+            : null;
+        // `detachedNotice` à part : le toast titre déjà « Facture supprimée ».
+        return NextResponse.json({
+            message: detached ? `Facture supprimée. ${detached}` : 'Facture supprimée.',
+            detachedNotice: detached,
+        });
     } catch (error) {
         console.error('Error deleting bill:', error);
 

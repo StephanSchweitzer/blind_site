@@ -18,7 +18,9 @@ L'URL de cette page est https://eca-aveugles.fr/admin/payments
 
 Vous pouvez rechercher un paiement par le nom de la personne, le numéro du paiement, le numéro de la facture ou la référence de règlement (un numéro de chèque, par exemple).
 
-(1) « **Exporter (CSV)** » enregistre la liste telle qu'elle est affichée. (2) Le bouton « **Filtres** » ouvre les filtres : type, méthode de paiement et (3) période.
+(1) « **Exporter (CSV)** » enregistre la liste telle qu'elle est affichée (il n'apparaît pas sur une liste vide). (2) Le bouton « **Filtres** » ouvre les filtres : type, méthode de paiement et (3) période.
+
+Dès qu'une recherche ou un filtre est posé, « **Montant total** », sous le titre, donne la somme des paiements trouvés. Dans le dossier d'une personne, il donne ce qu'elle a payé ; les filtres n'y apparaissent qu'à partir de deux pages de paiements.
 
 ![Paiements - capture 1](/admin/aide/images/paiements-01.jpg)
 
@@ -52,7 +54,7 @@ Les types « Don » et « Divers » ne nécessitent qu'un montant. Un don doit t
 
 Quel que soit le type, vous pouvez préciser le mode de règlement dans le champ « Méthode de paiement » : chèque, espèce, carte bancaire, virement ou compte Auxi.
 
-Au bas de la page, vous pouvez, si vous le souhaitez, saisir des informations comptables. Pour ce faire, il suffit de cliquer sur la rubrique « Détails comptables ».
+Au bas de la page, vous pouvez, si vous le souhaitez, saisir des informations comptables. Pour ce faire, il suffit de cliquer sur la rubrique « Détails comptables » : comptable, fiscalité, et la case « Affectée » avec sa date, « Affectée le ». Le « N° de reçu » et la « Date d'émission », repris de l'ancienne base, n'apparaissent que sur un paiement qui en porte déjà.
 
 À long terme, cela peut faciliter la clôture comptable de fin d'année grâce à la quantité accrue de données pouvant être filtrées. Sinon, il n'est pas nécessaire de les saisir.
 

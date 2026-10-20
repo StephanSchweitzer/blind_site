@@ -69,8 +69,6 @@ async function getBooks(
             books: result.books,
             pagination: pageInfo(page, pageSize, result.total),
             availableGenres: genres,
-            availableCount: result.availableCount,
-            unavailableCount: result.unavailableCount,
         };
     } catch (error) {
         console.error('Error fetching books:', error);
@@ -107,7 +105,7 @@ export default async function AdminBooksPage({ searchParams }: PageProps) {
         notFound();
     }
 
-    const { books, pagination, availableGenres, availableCount, unavailableCount } = data;
+    const { books, pagination, availableGenres } = data;
     redirectPastLastPage('/admin/books', params, pagination, books.length);
 
     return (
@@ -117,8 +115,6 @@ export default async function AdminBooksPage({ searchParams }: PageProps) {
                 pagination={pagination}
                 initialSearch={searchTerm}
                 availableGenres={availableGenres}
-                initialAvailableCount={availableCount}
-                initialUnavailableCount={unavailableCount}
             />
         </div>
     );

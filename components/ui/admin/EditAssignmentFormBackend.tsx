@@ -1,6 +1,7 @@
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { markToasted } from "@/hooks/useFormToast";
 import { ToastAction } from "@/components/ui/toast";
 import { ReaderSummary, BookSummary, OrderSummary, AssignmentFormData, AssignmentReaderHistory } from '@/types';
 import { AssignmentFormBackendBase, type AssignmentSubmitOptions } from '@/admin/AssignmentFormBackendBase';
@@ -46,12 +47,12 @@ export function EditAssignmentFormBackend({
             });
 
             if (!response.ok) {
-                throw new Error('Échec de la suppression de l\'attribution');
+                const data = await response.json().catch(() => null);
+                throw new Error(data?.message || 'Échec de la suppression de l\'attribution');
             }
 
             toast({
-                title: "Succès",
-                description: "L'attribution a été supprimée avec succès",
+                title: "Attribution supprimée",
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
@@ -89,11 +90,11 @@ export function EditAssignmentFormBackend({
 
                 toast({
                     variant: "destructive",
-                    title: "Erreur",
+                    title: "Enregistrement impossible",
                     description: <ErrorToastBody message={errorMessage} lines={fieldLines} />
                 });
 
-                return Promise.reject();
+                throw markToasted(new Error(errorMessage));
             }
 
             // Finishing an attribution no longer closes its demande — it leaves it
@@ -113,9 +114,11 @@ export function EditAssignmentFormBackend({
             // Quand l'attribution vient de passer la demande à « Attente envoi vers
             // auditeur », c'est CE toast qui le dit, avec le bouton qui mène à la demande.
             const awaitingOrderId = orderTransition?.awaitingShipment ? orderTransition.orderId : null;
+            // Un simple enregistrement n'a rien d'autre à dire que son titre.
+            const hasDetails = awaitingOrderId != null || billDetached != null || openDuplicationIds.length > 0;
 
             toast({
-                title: awaitingOrderId != null ? `Attribution n° ${assignmentId} clôturée` : "Succès",
+                title: awaitingOrderId != null ? `Attribution n° ${assignmentId} clôturée` : "Attribution enregistrée",
                 action: awaitingOrderId != null ? (
                     <ToastAction
                         altText="Consulter la demande"
@@ -132,9 +135,8 @@ export function EditAssignmentFormBackend({
                         </a>
                     </ToastAction>
                 ) : undefined,
-                description: (
+                description: hasDetails ? (
                     <span className="block">
-                        {awaitingOrderId == null && <>L&apos;attribution a été mise à jour avec succès</>}
                         {awaitingOrderId != null && (
                             <span className="block text-base">
                                 La demande n°{' '}
@@ -191,14 +193,14 @@ export function EditAssignmentFormBackend({
                             </span>
                         )}
                     </span>
-                ),
+                ) : undefined,
                 className: "bg-green-100 border-green-500 text-green-900"
             });
 
             return parseInt(assignmentId);
         } catch (error) {
             console.error('Submit error:', error);
-            return Promise.reject();
+            throw error;
         }
     };
 

@@ -35,9 +35,9 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
             }
 
             toast({
-                title: "Succès",
-                // Le message de la route, qui nomme les paiements détachés s'il y en a.
-                description: data?.message || 'La facture a été supprimée avec succès',
+                title: "Facture supprimée",
+                // La route nomme les paiements détachés, s'il y en a.
+                description: data?.detachedNotice || undefined,
                 className: 'bg-green-100 border-green-500 text-green-900',
             });
 
@@ -46,7 +46,7 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
         } catch (err) {
             toast({
                 variant: 'destructive',
-                title: "Erreur",
+                title: "Suppression impossible",
                 description: err instanceof Error ? err.message : 'Erreur inattendue'
             });
         } finally {

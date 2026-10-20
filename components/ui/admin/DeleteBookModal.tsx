@@ -236,10 +236,9 @@ export function DeleteBookModal({
                 targetStateStale?: boolean;
             };
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Fiche supprimée</span>,
-                description: <span className="text-xl mt-2">{describeOutcome(outcome)}</span>,
-                className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+                title: 'Fiche supprimée',
+                description: describeOutcome(outcome),
+                className: 'bg-green-100 border-green-500 text-green-900',
             });
             onOpenChange(false);
             reset();
