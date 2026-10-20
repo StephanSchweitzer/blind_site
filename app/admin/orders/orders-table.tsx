@@ -46,7 +46,7 @@ import { AideLink } from '@/components/ui/admin/AideLink';
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import { MobileFilters } from '@/admin/MobileFilters';
-import { AdminPaginationBottom, AdminPaginationTop } from '@/admin/AdminPagination';
+import { AdminPaginatedList } from '@/admin/AdminPagination';
 import type { BookFilter } from '@/lib/books/bookFilter';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
@@ -82,7 +82,6 @@ type OrdersTableProps = {
 };
 
 const NOUN = { one: 'demande', many: 'demandes', feminine: true };
-const LIST_TOP = 'demandes-haut';
 const SectionIcon = SECTION_ICONS['Demandes'];
 const accent = sectionAccent('Demandes');
 
@@ -468,35 +467,27 @@ export default function OrdersTable({
                 {filterBook && <BookFilterBadge book={filterBook} noun="demandes" />}
                 </div>
 
-                {/* The list — aria-busy while a filter, sort or page change loads. */}
-                <div aria-busy={isPending} className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        {/* flex-auto, comme dans AdminPaginatedList : sur téléphone
-                            le bouton passe à la ligne plutôt que d'écraser la barre. */}
-                        <div className="min-w-0 flex-auto">
-                            <AdminPaginationTop
-                                info={pagination}
-                                noun={NOUN}
-                                label="Pages des demandes"
-                                onNavigate={navigate}
-                                pending={isPending}
-                                anchorId={LIST_TOP}
-                            />
-                        </div>
-                        {activeFilterCount > 0 && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleClearFilters}
-                                className="text-muted-foreground hover:text-foreground hover:bg-muted"
-                            >
-                                <FilterX className="h-4 w-4" aria-hidden="true" />
-                                Effacer les filtres
-                            </Button>
-                        )}
-                    </div>
-
+                {/* The list — aria-busy and greyed by AdminPaginatedList while a
+                    filter, sort or page change loads. */}
+                <AdminPaginatedList
+                    info={pagination}
+                    noun={NOUN}
+                    label="Pages des demandes"
+                    onNavigate={navigate}
+                    pending={isPending}
+                    aside={activeFilterCount > 0 && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearFilters}
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                        >
+                            <FilterX className="h-4 w-4" aria-hidden="true" />
+                            Effacer les filtres
+                        </Button>
+                    )}
+                >
                     <div className="relative">
                         {/* Fine barre de chargement : la liste reste lisible, grisée,
                             plutôt que masquée par un voile. */}
@@ -533,7 +524,7 @@ export default function OrdersTable({
                                 />
                             </div>
                         ) : (
-                            <div className={cn('border border-border rounded-lg overflow-clip transition-opacity', isPending && 'opacity-60')}>
+                            <div className="border border-border rounded-lg overflow-clip">
                                 <Table stickyHeader mobileCards>
                                     <TableHeader className="bg-card">
                                         <TableRow className="border-b border-border hover:bg-transparent">
@@ -791,16 +782,7 @@ export default function OrdersTable({
                             </div>
                         )}
                     </div>
-
-                    <AdminPaginationBottom
-                        info={pagination}
-                        noun={NOUN}
-                        label="Pages des demandes"
-                        onNavigate={navigate}
-                        pending={isPending}
-                        anchorId={LIST_TOP}
-                    />
-                </div>
+                </AdminPaginatedList>
 
             </CardContent>
 
