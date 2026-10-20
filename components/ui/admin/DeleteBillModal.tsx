@@ -35,11 +35,10 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
             }
 
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
+                title: "Succès",
                 // Le message de la route, qui nomme les paiements détachés s'il y en a.
-                description: <span className="text-xl mt-2">{data?.message || 'La facture a été supprimée avec succès'}</span>,
-                className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+                description: data?.message || 'La facture a été supprimée avec succès',
+                className: 'bg-green-100 border-green-500 text-green-900',
             });
 
             if (onBillDeleted) onBillDeleted(billId);
@@ -47,10 +46,8 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
         } catch (err) {
             toast({
                 variant: 'destructive',
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">{err instanceof Error ? err.message : 'Erreur inattendue'}</span>,
-                className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
+                title: "Erreur",
+                description: err instanceof Error ? err.message : 'Erreur inattendue'
             });
         } finally {
             setIsDeleting(false);

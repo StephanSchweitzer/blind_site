@@ -106,19 +106,16 @@ export function EditPaymentModal({
             const message = data?.message || 'Échec de la mise à jour du paiement';
             toast({
                 variant: 'destructive',
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">{message}</span>,
-                className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
+                title: "Erreur",
+                description: message
             });
             throw new Error(message);
         }
 
         toast({
-            // @ts-expect-error jsx in toast
-            title: <span className="text-2xl font-bold">Succès</span>,
-            description: <span className="text-xl mt-2">Le paiement a été mis à jour</span>,
-            className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+            title: "Succès",
+            description: "Le paiement a été mis à jour",
+            className: 'bg-green-100 border-green-500 text-green-900',
         });
 
         return data.payment.id;
@@ -159,7 +156,6 @@ export function EditPaymentModal({
                             onSubmit={handleSubmit}
                             submitButtonText="Enregistrer les modifications"
                             loadingText="Enregistrement..."
-                            title="Modifier le paiement"
                             onSuccess={() => {
                                 onPaymentUpdated?.();
                                 onOpenChange(false);

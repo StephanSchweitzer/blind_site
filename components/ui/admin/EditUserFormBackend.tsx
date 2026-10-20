@@ -106,7 +106,6 @@ export function EditUserFormBackend({
             showDelete={true}
             submitButtonText="Mettre à jour la personne"
             loadingText="Mise à jour en cours..."
-            title="Modifier la personne"
             onSuccess={onSuccess}
             currentUserAccessLevel={currentUserAccessLevel}
             userType={userType}

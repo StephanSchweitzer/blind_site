@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
     Select,
@@ -105,8 +104,7 @@ export function NewsFormBackendBase({
     const busy = isLoading || isDeleting;
 
     return (
-        <Card className="bg-card border-border">
-            <CardContent className="pt-6">
+        <div>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
                         <Alert variant="destructive" className="border-red-300 bg-red-50 dark:border-red-500 dark:bg-red-900/20">
@@ -209,8 +207,7 @@ export function NewsFormBackendBase({
                         )}
                     </div>
                 </form>
-            </CardContent>
-        </Card>
+            </div>
     );
 }
 

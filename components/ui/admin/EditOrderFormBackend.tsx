@@ -179,16 +179,14 @@ export function EditOrderFormBackend({
             const errorMessage = errorData?.message || 'Échec de la suppression de la demande';
             toast({
                 variant: "destructive",
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
+                title: "Erreur",
                 description: (
                     <ErrorToastBody
                         message={errorMessage}
                         lines={[]}
                         blockingAssignmentId={errorData?.blockingAssignmentId}
                     />
-                ),
-                className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
+                )
             });
             // Signal failure to the caller (keeps the modal open, resets loading)
             // without a message, so the inline fallback doesn't duplicate the toast.
@@ -196,10 +194,9 @@ export function EditOrderFormBackend({
         }
 
         toast({
-            // @ts-expect-error jsx in toast
-            title: <span className="text-2xl font-bold">Succès</span>,
-            description: <span className="text-xl mt-2">La demande a été supprimée avec succès</span>,
-            className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+            title: "Succès",
+            description: "La demande a été supprimée avec succès",
+            className: "bg-green-100 border-green-500 text-green-900"
         });
         if (onSuccess) onSuccess(parseInt(orderId), true);
     };
@@ -224,8 +221,7 @@ export function EditOrderFormBackend({
             const errorMessage = errorData?.message || 'Échec de la mise à jour de la demande';
             toast({
                 variant: "destructive",
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
+                title: "Erreur",
                 // Un refus causé par l'attribution (statut, duplication, clôture)
                 // porte son numéro : le toast mène directement à elle.
                 description: (
@@ -234,8 +230,7 @@ export function EditOrderFormBackend({
                         lines={[]}
                         blockingAssignmentId={errorData?.blockingAssignmentId}
                     />
-                ),
-                className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
+                )
             });
             return Promise.reject();
         }
@@ -243,10 +238,9 @@ export function EditOrderFormBackend({
         const data = await response.json().catch(() => null);
 
         toast({
-            // @ts-expect-error jsx in toast
-            title: <span className="text-2xl font-bold">Succès</span>,
-            description: <span className="text-xl mt-2">La demande a été mise à jour avec succès</span>,
-            className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+            title: "Succès",
+            description: "La demande a été mise à jour avec succès",
+            className: "bg-green-100 border-green-500 text-green-900"
         });
 
         // Hold the modal open behind the reprint dialogue; resolve on acknowledge.
@@ -275,7 +269,6 @@ export function EditOrderFormBackend({
                 showDelete={true}
                 submitButtonText="Mettre à jour la demande"
                 loadingText="Mise à jour en cours..."
-                title="Modifier la demande"
                 onSuccess={onSuccess}
                 initialSelectedUser={initialSelectedUser}
                 initialSelectedBook={initialSelectedBook}

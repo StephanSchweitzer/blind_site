@@ -50,19 +50,16 @@ export function DeletePaymentModal({
             if (!res.ok) throw new Error(data?.message || 'Échec de la suppression');
 
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">Le paiement a été supprimé</span>,
-                className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+                title: "Succès",
+                description: "Le paiement a été supprimé",
+                className: 'bg-green-100 border-green-500 text-green-900',
             });
             onPaymentDeleted?.();
         } catch (err) {
             toast({
                 variant: 'destructive',
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">{err instanceof Error ? err.message : 'Erreur inattendue'}</span>,
-                className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
+                title: "Erreur",
+                description: err instanceof Error ? err.message : 'Erreur inattendue'
             });
         } finally {
             setIsDeleting(false);

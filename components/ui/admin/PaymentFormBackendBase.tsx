@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
     Select,
     SelectContent,
@@ -99,7 +98,6 @@ interface PaymentFormBackendBaseProps {
     onSubmit: (formData: PaymentFormData) => Promise<number>;
     submitButtonText: string;
     loadingText: string;
-    title: string;
     onSuccess?: (paymentId: number) => void;
     initialData?: PaymentFormInitialData;
     initialClient?: User | null;
@@ -113,7 +111,6 @@ export function PaymentFormBackendBase({
                                            onSubmit,
                                            submitButtonText,
                                            loadingText,
-                                           title,
                                            onSuccess,
                                            initialData,
                                            initialClient,
@@ -251,11 +248,7 @@ export function PaymentFormBackendBase({
     };
 
     return (
-        <Card className="bg-card border-border">
-            <CardHeader>
-                <CardTitle className="text-foreground">{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <div>
                 {error && (
                     <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                         <AlertCircle className="h-4 w-4" />
@@ -529,8 +522,7 @@ export function PaymentFormBackendBase({
                         {isLoading ? loadingText : submitButtonText}
                     </Button>
                 </form>
-            </CardContent>
-        </Card>
+            </div>
     );
 }
 
@@ -575,19 +567,16 @@ export function AddPaymentFormBackend({ onSuccess, initialClient, preset }: { on
             const message = data?.message || 'Échec de la création du paiement';
             toast({
                 variant: 'destructive',
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">{message}</span>,
-                className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
+                title: "Erreur",
+                description: message
             });
             throw new Error(message);
         }
 
         toast({
-            // @ts-expect-error jsx in toast
-            title: <span className="text-2xl font-bold">Succès</span>,
-            description: <span className="text-xl mt-2">Le paiement a été créé avec succès</span>,
-            className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+            title: "Succès",
+            description: "Le paiement a été créé avec succès",
+            className: 'bg-green-100 border-green-500 text-green-900',
         });
 
         return data.payment.id;
@@ -598,7 +587,6 @@ export function AddPaymentFormBackend({ onSuccess, initialClient, preset }: { on
             onSubmit={handleSubmit}
             submitButtonText="Créer le paiement"
             loadingText="Création en cours..."
-            title="Créer un nouveau paiement"
             onSuccess={onSuccess}
             initialClient={initialClient}
             preset={preset}

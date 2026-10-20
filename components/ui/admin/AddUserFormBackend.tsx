@@ -64,7 +64,6 @@ export function AddUserFormBackend({
             onSubmit={handleSubmit}
             submitButtonText="Créer la personne"
             loadingText="Création en cours..."
-            title="Créer un nouvel membre"
             onSuccess={onSuccess}
             userType={userType}
             currentUserAccessLevel={currentUserAccessLevel}

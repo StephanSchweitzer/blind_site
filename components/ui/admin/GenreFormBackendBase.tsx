@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
 import { useFormToast } from '@/hooks/useFormToast';
@@ -98,8 +97,7 @@ export function GenreFormBackendBase({
     const busy = isLoading || isDeleting;
 
     return (
-        <Card className="bg-card border-border">
-            <CardContent className="pt-6">
+        <div>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
                         <Alert variant="destructive" className="border-red-300 bg-red-50 dark:border-red-500 dark:bg-red-900/20">
@@ -186,8 +184,7 @@ export function GenreFormBackendBase({
                         )}
                     </div>
                 </form>
-            </CardContent>
-        </Card>
+            </div>
     );
 }
 

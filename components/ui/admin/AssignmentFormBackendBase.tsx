@@ -3,7 +3,6 @@ import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
     Select,
     SelectContent,
@@ -113,7 +112,6 @@ export interface AssignmentFormBackendBaseProps {
     ) => Promise<number>;
     submitButtonText: string;
     loadingText: string;
-    title: string;
     onSuccess?: (assignmentId: number, isDeleted?: boolean) => void;
     onDelete?: () => Promise<void>;
     showDelete?: boolean;
@@ -184,7 +182,6 @@ export function AssignmentFormBackendBase({
                                               onSubmit,
                                               submitButtonText,
                                               loadingText,
-                                              title,
                                               onSuccess,
                                               onDelete,
                                               showDelete,
@@ -773,11 +770,7 @@ export function AssignmentFormBackendBase({
 
     return (
         <>
-        <Card className="w-full max-w-4xl mx-auto bg-card border-border">
-            <CardHeader className="border-b border-border">
-                <CardTitle className="text-2xl font-bold text-foreground">{title}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+        <div>
                 {error && (
                     <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-900 dark:text-red-400">
                         <AlertCircle className="h-4 w-4" />
@@ -1317,9 +1310,7 @@ export function AssignmentFormBackendBase({
                         )}
                     </div>
                 </form>
-            </CardContent>
-
-        </Card>
+            </div>
         <AlertDialog
             open={audioConfirmMessage !== null}
             onOpenChange={(open) => !open && setAudioConfirmMessage(null)}

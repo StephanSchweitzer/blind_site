@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, X, AlertCircle } from "lucide-react";
@@ -73,7 +72,6 @@ interface BookFormBackendBaseProps {
     onSubmit: (formData: BookFormData) => Promise<number>;
     submitButtonText: string;
     loadingText: string;
-    title: string;
     onSuccess?: (bookId: number, isDeleted?: boolean) => void;
     /**
      * La fiche vient d'être supprimée pour de bon. Le formulaire n'appelle plus
@@ -103,7 +101,6 @@ export function BookFormBackendBase({
                                         onSubmit,
                                         submitButtonText,
                                         loadingText,
-                                        title,
                                         onSuccess,
                                         onDeleted,
                                         showDelete,
@@ -269,21 +266,17 @@ export function BookFormBackendBase({
 
     return (
         <>
-        <Card className="bg-card border-border">
-            <CardHeader className="border-b border-border">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <CardTitle className="text-foreground">{title}</CardTitle>
+        <div>
                     {audioBookId != null && (
+                        <div className="mb-4 flex justify-end">
                         <BookAudioButton
                             bookId={audioBookId}
                             bookTitle={formData.title}
                             size="sm"
                             disabled={readOnly}
                         />
+                        </div>
                     )}
-                </div>
-            </CardHeader>
-            <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
                         <Alert variant="destructive" className="border-red-300 bg-red-50 dark:border-red-500 dark:bg-red-900/20">
@@ -590,8 +583,7 @@ export function BookFormBackendBase({
                     </div>
                     </fieldset>
                 </form>
-            </CardContent>
-        </Card>
+            </div>
 
         {onDeleted && audioBookId != null && (
             <DeleteBookModal
@@ -643,10 +635,9 @@ export function AddBookFormBackend({ onSuccess, dirtyRef }: {
             if (!response.ok) throw userErrorFromResponse(response, data);
 
             toast({
-                // @ts-expect-error same jsx problem
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">Le livre a été créé avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+                title: "Succès",
+                description: "Le livre a été créé avec succès",
+                className: "bg-green-100 border-green-500 text-green-900"
             });
 
             return data.book.id;
@@ -664,7 +655,6 @@ export function AddBookFormBackend({ onSuccess, dirtyRef }: {
             onSubmit={handleSubmit}
             submitButtonText="Ajouter le livre"
             loadingText="En ajoutant..."
-            title="Ajouter un nouveau livre"
             onSuccess={onSuccess}
             dirtyRef={dirtyRef}
         />
@@ -735,10 +725,9 @@ export function EditBookFormBackend({ bookId, initialData, deletedAt, onSuccess,
             }
 
             toast({
-                // @ts-expect-error same jsx problem
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">Le livre a été mis à jour avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+                title: "Succès",
+                description: "Le livre a été mis à jour avec succès",
+                className: "bg-green-100 border-green-500 text-green-900"
             });
 
             return parseInt(bookId);
@@ -771,7 +760,6 @@ export function EditBookFormBackend({ bookId, initialData, deletedAt, onSuccess,
                 showDelete={true}
                 submitButtonText="Mettre à jour le livre"
                 loadingText="En cours de mise à jour..."
-                title="Modifier le livre"
                 onSuccess={onSuccess}
                 audioBookId={Number.isInteger(Number(bookId)) ? Number(bookId) : undefined}
                 dirtyRef={dirtyRef}

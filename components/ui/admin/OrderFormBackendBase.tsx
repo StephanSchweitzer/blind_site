@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
     Select,
     SelectContent,
@@ -128,7 +127,6 @@ interface OrderFormBackendBaseProps {
     onSubmit: (formData: OrderFormData) => Promise<number>;
     submitButtonText: string;
     loadingText: string;
-    title: string;
     onSuccess?: (orderId: number, isDeleted?: boolean) => void;
     onDelete?: () => Promise<void>;
     showDelete?: boolean;
@@ -188,7 +186,6 @@ export function OrderFormBackendBase({
                                          onSubmit,
                                          submitButtonText,
                                          loadingText,
-                                         title,
                                          onSuccess,
                                          onDelete,
                                          showDelete,
@@ -680,11 +677,7 @@ export function OrderFormBackendBase({
 
     return (
         <>
-        <Card className="bg-card border-border">
-            <CardHeader>
-                <CardTitle className="text-foreground">{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <div>
                 {error && (
                     <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                         <AlertCircle className="h-4 w-4" />
@@ -1305,8 +1298,6 @@ export function OrderFormBackendBase({
                                 <div className="px-3 py-2 bg-card border border-border rounded-md text-muted-foreground cursor-not-allowed opacity-75">
                                     {getUserDisplayName(selectedStaff)}
                                 </div>
-                                <p className="text-xs text-muted-foreground italic">
-                                </p>
                             </div>
                         </div>
                     )}
@@ -1335,8 +1326,7 @@ export function OrderFormBackendBase({
                     </div>
                     </fieldset>
                 </form>
-            </CardContent>
-        </Card>
+            </div>
         <AlertDialog open={reopenOpen} onOpenChange={setReopenOpen}>
             <AlertDialogContent className="bg-card border-border">
                 <AlertDialogHeader>

@@ -50,10 +50,9 @@ export function EditAssignmentFormBackend({
             }
 
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">L&apos;attribution a été supprimée avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+                title: "Succès",
+                description: "L'attribution a été supprimée avec succès",
+                className: "bg-green-100 border-green-500 text-green-900"
             });
 
             if (onSuccess) {
@@ -90,10 +89,8 @@ export function EditAssignmentFormBackend({
 
                 toast({
                     variant: "destructive",
-                    // @ts-expect-error jsx in toast
-                    title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <ErrorToastBody message={errorMessage} lines={fieldLines} />,
-                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
+                    title: "Erreur",
+                    description: <ErrorToastBody message={errorMessage} lines={fieldLines} />
                 });
 
                 return Promise.reject();
@@ -118,10 +115,7 @@ export function EditAssignmentFormBackend({
             const awaitingOrderId = orderTransition?.awaitingShipment ? orderTransition.orderId : null;
 
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">
-                    {awaitingOrderId != null ? `Attribution n° ${assignmentId} clôturée` : 'Succès'}
-                </span>,
+                title: awaitingOrderId != null ? `Attribution n° ${assignmentId} clôturée` : "Succès",
                 action: awaitingOrderId != null ? (
                     <ToastAction
                         altText="Consulter la demande"
@@ -139,7 +133,7 @@ export function EditAssignmentFormBackend({
                     </ToastAction>
                 ) : undefined,
                 description: (
-                    <span className="text-xl mt-2 block">
+                    <span className="block">
                         {awaitingOrderId == null && <>L&apos;attribution a été mise à jour avec succès</>}
                         {awaitingOrderId != null && (
                             <span className="block text-base">
@@ -198,7 +192,7 @@ export function EditAssignmentFormBackend({
                         )}
                     </span>
                 ),
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+                className: "bg-green-100 border-green-500 text-green-900"
             });
 
             return parseInt(assignmentId);
@@ -217,7 +211,6 @@ export function EditAssignmentFormBackend({
             showDelete={true}
             submitButtonText="Mettre à jour l'attribution"
             loadingText="Mise à jour en cours..."
-            title="Modifier l'attribution"
             onSuccess={onSuccess}
             initialSelectedReader={initialSelectedReader}
             initialSelectedBook={initialSelectedBook}

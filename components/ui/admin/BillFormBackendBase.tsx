@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
     Select,
     SelectContent,
@@ -116,7 +115,6 @@ interface BillFormBackendBaseProps {
     onSubmit: (formData: BillFormData) => Promise<number>;
     submitButtonText: string;
     loadingText: string;
-    title: string;
     onSuccess?: (billId: number) => void;
     initialClient?: User | null;
 }
@@ -129,7 +127,6 @@ export function BillFormBackendBase({
                                         onSubmit,
                                         submitButtonText,
                                         loadingText,
-                                        title,
                                         onSuccess,
                                         initialClient,
                                     }: BillFormBackendBaseProps) {
@@ -431,11 +428,7 @@ export function BillFormBackendBase({
     const getReaderDisplayName = (user: User) => (user ? getUserDisplayName(user) : null);
 
     return (
-        <Card className="bg-card border-border">
-            <CardHeader>
-                <CardTitle className="text-foreground">{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <div>
                 {error && (
                     <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                         <AlertCircle className="h-4 w-4" />
@@ -796,8 +789,7 @@ export function BillFormBackendBase({
                         {isLoading ? loadingText : submitButtonText}
                     </Button>
                 </form>
-            </CardContent>
-        </Card>
+            </div>
     );
 }
 
@@ -828,19 +820,16 @@ export function AddBillFormBackend({ onSuccess, initialClient }: { onSuccess?: (
             const message = data?.message || 'Échec de la création de la facture';
             toast({
                 variant: 'destructive',
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">{message}</span>,
-                className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
+                title: "Erreur",
+                description: message
             });
             throw new Error(message);
         }
 
         toast({
-            // @ts-expect-error jsx in toast
-            title: <span className="text-2xl font-bold">Succès</span>,
-            description: <span className="text-xl mt-2">La facture a été créée avec succès</span>,
-            className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+            title: "Succès",
+            description: "La facture a été créée avec succès",
+            className: 'bg-green-100 border-green-500 text-green-900',
         });
 
         return data.bill.id;
@@ -851,7 +840,6 @@ export function AddBillFormBackend({ onSuccess, initialClient }: { onSuccess?: (
             onSubmit={handleSubmit}
             submitButtonText="Créer la facture"
             loadingText="Création en cours..."
-            title="Créer une nouvelle facture"
             onSuccess={onSuccess}
             initialClient={initialClient}
         />

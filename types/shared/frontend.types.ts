@@ -160,8 +160,6 @@ export interface UserFormData {
     gestconteNotes: string;
     gestconteId: number | null;
     nonProfitAffiliation: string;
-    isActive: boolean;
-    terminationReason: string;
     preferredDeliveryMethod: string;
     paymentThreshold: string;
     currentBalance: string;

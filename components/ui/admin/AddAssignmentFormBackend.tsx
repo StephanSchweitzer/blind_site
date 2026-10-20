@@ -51,26 +51,23 @@ export function AddAssignmentFormBackend({
 
                 toast({
                     variant: "destructive",
-                    // @ts-expect-error jsx in toast
-                    title: <span className="text-2xl font-bold">Erreur</span>,
+                    title: "Erreur",
                     description: (
                         <ErrorToastBody
                             message={errorMessage}
                             lines={fieldLines}
                             blockingAssignmentId={blockingAssignmentId}
                         />
-                    ),
-                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
+                    )
                 });
 
                 return Promise.reject();
             }
 
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">L&apos;attribution a été créée avec succès</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+                title: "Succès",
+                description: "L'attribution a été créée avec succès",
+                className: "bg-green-100 border-green-500 text-green-900"
             });
 
             return data.assignment.id;
@@ -85,7 +82,6 @@ export function AddAssignmentFormBackend({
             onSubmit={handleSubmit}
             submitButtonText="Créer l'attribution"
             loadingText="Création en cours..."
-            title="Créer une nouvelle attribution"
             onSuccess={onSuccess}
             presetClientId={presetClientId}
             initialSelectedReader={initialReader}

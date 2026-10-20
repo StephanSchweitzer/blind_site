@@ -48,8 +48,6 @@ export async function loadUserForEdit(userId: string, signal: AbortSignal): Prom
             gestconteNotes: userData.gestconteNotes || '',
             gestconteId: userData.gestconteId,
             nonProfitAffiliation: userData.nonProfitAffiliation || '',
-            isActive: userData.isActive ?? true,
-            terminationReason: userData.terminationReason || '',
             preferredDeliveryMethod: userData.preferredDeliveryMethod || '',
             paymentThreshold: userData.paymentThreshold?.toString() || '21.00',
             currentBalance: userData.currentBalance?.toString() || '0.00',

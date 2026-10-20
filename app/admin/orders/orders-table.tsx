@@ -806,7 +806,7 @@ export default function OrdersTable({
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                 <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-foreground">Ajouter une nouvelle demande</DialogTitle>
+                        <DialogTitle className="text-foreground">Créer une ou plusieurs demandes</DialogTitle>
                     </DialogHeader>
                     <div className="overflow-y-auto px-1">
                         <AddOrderFormBackend onSuccess={handleOrderAdded} initialClient={presetClient} />

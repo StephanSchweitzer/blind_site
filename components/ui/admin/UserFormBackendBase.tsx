@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Plus, Trash2, Mail } from 'lucide-react';
@@ -44,7 +43,6 @@ interface UserFormBackendBaseProps {
     onSubmit: (formData: UserFormData) => Promise<number>;
     submitButtonText: string;
     loadingText: string;
-    title: string;
     onSuccess?: (userId: number, isDeleted?: boolean) => void;
     onDelete?: () => Promise<void>;
     showDelete?: boolean;
@@ -84,7 +82,6 @@ function sanitizeInitialData(
         cellPhone: formatPhone(data.cellPhone),
         gestconteNotes: data.gestconteNotes || '',
         nonProfitAffiliation: data.nonProfitAffiliation || '',
-        terminationReason: data.terminationReason || '',
         preferredDeliveryMethod: data.preferredDeliveryMethod || '',
         preferredMediaFormatId: data.preferredMediaFormatId ?? null,
         paymentThreshold: data.paymentThreshold || '21.00',
@@ -110,7 +107,6 @@ export function UserFormBackendBase({
                                         onSubmit,
                                         submitButtonText,
                                         loadingText,
-                                        title,
                                         onSuccess,
                                         onDelete,
                                         showDelete,
@@ -165,8 +161,6 @@ export function UserFormBackendBase({
                 gestconteNotes: '',
                 gestconteId: null,
                 nonProfitAffiliation: '',
-                isActive: true,
-                terminationReason: '',
                 preferredDeliveryMethod: '',
                 paymentThreshold: '21.00',
                 currentBalance: '0.00',
@@ -381,11 +375,7 @@ export function UserFormBackendBase({
     });
 
     return (
-        <Card className="bg-card border-border">
-            <CardHeader>
-                <CardTitle className="text-foreground">{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <div>
                 {userId && (
                     <CotisationStatusBanner userId={userId} memberType={formData.memberType} />
                 )}
@@ -972,33 +962,15 @@ export function UserFormBackendBase({
                     </div>
                 </form>
 
-                {/* Deactivation Dialog */}
+                {/* Password reset dialog */}
                 <Dialog open={isPasswordResetDialogOpen} onOpenChange={setIsPasswordResetDialogOpen}>
                     <DialogContent className="bg-card border-border">
                         <DialogHeader>
                             <DialogTitle className="text-foreground">Réinitialiser le mot de passe</DialogTitle>
                             <DialogDescription className="text-muted-foreground">
-                                Cette action génèrera un nouveau mot de passe temporaire et l&apos;enverra par email à la personne.
+                                Un nouveau mot de passe temporaire sera envoyé à <strong>{formData.email}</strong>. L&apos;ancien ne fonctionnera plus et la personne devra le changer à sa prochaine connexion.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="bg-yellow-50 border border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-700 rounded-lg p-4">
-                                <div className="flex gap-3">
-                                    <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                                            Êtes-vous sûr de vouloir réinitialiser le mot de passe ?
-                                        </p>
-                                        <ul className="text-sm text-yellow-700 dark:text-yellow-300/90 space-y-1 list-disc list-inside">
-                                            <li>Un nouveau mot de passe temporaire sera généré</li>
-                                            <li>L&apos;ancien mot de passe ne fonctionnera plus</li>
-                                            <li>Un email sera envoyé à : <strong>{formData.email}</strong></li>
-                                            <li>La personne devra changer son mot de passe à la prochaine connexion</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         <DialogFooter>
                             <Button
                                 type="button"
@@ -1060,7 +1032,6 @@ export function UserFormBackendBase({
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </CardContent>
-        </Card>
+            </div>
     );
 }

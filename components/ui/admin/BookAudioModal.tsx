@@ -358,10 +358,8 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         (message: string) => {
             toast({
                 variant: 'destructive',
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Erreur</span>,
-                description: <span className="text-xl mt-2">{message}</span>,
-                className: 'bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6',
+                title: "Erreur",
+                description: message
             });
         },
         [toast],
@@ -494,10 +492,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         const added = files.length - alreadyPresent;
         if (ok) {
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Envoi terminé</span>,
+                title: "Envoi terminé",
                 description: (
-                    <span className="text-xl mt-2">
+                    <span>
                         {added > 0
                             ? `${added} fichier${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} au dossier.`
                             : 'Aucun fichier ajouté.'}
@@ -521,7 +518,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                 `a été recalculé d'après le poids de l'enregistrement.`}
                     </span>
                 ),
-                className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+                className: 'bg-green-100 border-green-500 text-green-900',
             });
             reset();
             await refreshAll();
@@ -545,10 +542,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             const d = await res.json().catch(() => null);
             if (!res.ok) throw userErrorFromResponse(res, d);
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Restauré</span>,
-                description: <span className="text-xl mt-2">« {item.filename} » est de retour dans le dossier.</span>,
-                className: 'bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6',
+                title: "Restauré",
+                description: `« ${item.filename} » est de retour dans le dossier.`,
+                className: 'bg-green-100 border-green-500 text-green-900',
             });
             await refreshAll();
         } catch (e) {

@@ -3,7 +3,6 @@ import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
     Select,
     SelectContent,
@@ -411,10 +410,8 @@ export function AddOrderFormBackend({
                 const msg = data?.message || 'Échec de la création des demandes';
                 toast({
                     variant: "destructive",
-                    // @ts-expect-error jsx in toast
-                    title: <span className="text-2xl font-bold">Erreur</span>,
-                    description: <span className="text-xl mt-2">{msg}</span>,
-                    className: "bg-red-100 border-2 border-red-500 text-red-900 shadow-lg p-6"
+                    title: "Erreur",
+                    description: msg
                 });
                 setError(msg);
                 return;
@@ -422,10 +419,9 @@ export function AddOrderFormBackend({
 
             const ids: number[] = data.orderIds || [];
             toast({
-                // @ts-expect-error jsx in toast
-                title: <span className="text-2xl font-bold">Succès</span>,
-                description: <span className="text-xl mt-2">{ids.length} demande(s) créée(s){ids.length ? ` : #${ids.join(', #')}` : ''}</span>,
-                className: "bg-green-100 border-2 border-green-500 text-green-900 shadow-lg p-6"
+                title: "Succès",
+                description: `${ids.length} demande(s) créée(s)${ids.length ? ` : #${ids.join(', #')}` : ''}`,
+                className: "bg-green-100 border-green-500 text-green-900"
             });
             // Une facture vient de partir en émission : le dire dans un toast, qui
             // s'efface tout seul, c'est risquer que personne n'imprime jamais le
@@ -452,11 +448,7 @@ export function AddOrderFormBackend({
 
     return (
         <>
-        <Card className="bg-card border-border">
-            <CardHeader>
-                <CardTitle className="text-foreground">Créer une ou plusieurs demandes</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <div>
                 {error && (
                     <Alert variant="destructive" className="mb-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                         <AlertCircle className="h-4 w-4" />
@@ -742,8 +734,7 @@ export function AddOrderFormBackend({
                                 : `Créer ${filledCount} ${filledCount === 1 ? 'demande' : 'demandes'}`}
                     </Button>
                 </form>
-            </CardContent>
-        </Card>
+            </div>
         <UserActivityGuardDialog
             blocked={activityBlocked}
             role={activityRole}
