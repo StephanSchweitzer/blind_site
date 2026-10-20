@@ -15,7 +15,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Search, X, Plus } from 'lucide-react';
+import { Search, X, Plus, FilterX } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -176,6 +176,22 @@ export default function UsersTable({
         updateUrl({ cotisation: value === 'all' ? undefined : value, page: '1' });
     };
 
+    // Every filter except the free-text search — the « Filtres » button's badge
+    // on a phone, and whether « Effacer les filtres » shows. La langue ne
+    // compte que sur l'onglet des lecteurs, le seul qui l'affiche.
+    const activeFilterCount = [
+        statusFilter !== 'all' && statusFilter !== '',
+        cotisationFilter !== 'all',
+        type === 'lecteurs' && languageFilter !== 'all',
+    ].filter(Boolean).length;
+
+    const handleClearFilters = () => {
+        setStatusFilter('all');
+        setCotisationFilter('all');
+        setLanguageFilter('all');
+        updateUrl({ status: undefined, cotisation: undefined, language: undefined, page: '1' });
+    };
+
     const handleUserAdded = () => {
         setIsAddModalOpen(false);
         router.refresh();
@@ -247,7 +263,7 @@ export default function UsersTable({
             </CardHeader>
 
             <CardContent className="pt-6">
-                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-6">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-2 mb-6">
                     <div className="flex flex-1 gap-2 sm:min-w-[280px]">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -269,58 +285,63 @@ export default function UsersTable({
                         )}
                     </div>
                     <MobileFilters
-                        activeCount={[
-                            statusFilter !== 'all' && statusFilter !== '',
-                            cotisationFilter !== 'all',
-                            type === 'lecteurs' && languageFilter !== 'all',
-                        ].filter(Boolean).length}
+                        activeCount={activeFilterCount}
                         className="flex flex-col md:flex-row md:flex-wrap gap-2"
                     >
-                    <Select value={statusFilter} onValueChange={handleStatusFilter}>
-                        <SelectTrigger className="bg-card border-border text-foreground sm:w-56">
-                            <SelectValue placeholder="Statut" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
-                            <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
-                            <SelectItem value="inactive" className="text-foreground">Non actifs (tous sauf actifs)</SelectItem>
-                            {OFFERED_USER_ACTIVITY_STATUSES.map((s) => (
-                                <SelectItem key={s} value={s} className="text-foreground">
-                                    {getUserActivityStatusLabel(s)}
-                                </SelectItem>
-                            ))}
-                            {/* Retired statuses stay filterable so the people left
-                                on them can still be found — just listed apart. */}
-                            {LEGACY_USER_ACTIVITY_STATUSES.map((s) => (
-                                <SelectItem key={s} value={s} className="text-muted-foreground">
-                                    {getUserActivityStatusLabel(s)} (ancien)
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={cotisationFilter} onValueChange={handleCotisationFilter}>
-                        <SelectTrigger className="bg-card border-border text-foreground sm:w-52">
-                            <SelectValue placeholder="Cotisation" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
-                            <SelectItem value="all" className="text-foreground">Toutes les cotisations</SelectItem>
-                            <SelectItem value="a_jour" className="text-foreground">Cotisation à jour</SelectItem>
-                            <SelectItem value="en_retard" className="text-foreground">Cotisation non à jour</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    {type === 'lecteurs' && (
-                        <Select value={languageFilter} onValueChange={handleLanguageFilter}>
-                            <SelectTrigger className="bg-card border-border text-foreground sm:w-48">
-                                <SelectValue placeholder="Langue" />
+                    <div className="sm:w-56">
+                        <label htmlFor="users-status" className="text-sm text-muted-foreground mb-1.5 block">Statut</label>
+                        <Select value={statusFilter} onValueChange={handleStatusFilter}>
+                            <SelectTrigger id="users-status" className="bg-card border-border text-foreground">
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
-                                <SelectItem value="all" className="text-foreground">Toutes les langues</SelectItem>
-                                {LANGUAGE_VALUES.map((l) => (
-                                    <SelectItem key={l} value={l} className="text-foreground">
-                                        {getLanguageLabel(l)}
+                                <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
+                                <SelectItem value="inactive" className="text-foreground">Non actifs (tous sauf actifs)</SelectItem>
+                                {OFFERED_USER_ACTIVITY_STATUSES.map((s) => (
+                                    <SelectItem key={s} value={s} className="text-foreground">
+                                        {getUserActivityStatusLabel(s)}
+                                    </SelectItem>
+                                ))}
+                                {/* Retired statuses stay filterable so the people left
+                                    on them can still be found — just listed apart. */}
+                                {LEGACY_USER_ACTIVITY_STATUSES.map((s) => (
+                                    <SelectItem key={s} value={s} className="text-muted-foreground">
+                                        {getUserActivityStatusLabel(s)} (ancien)
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+                    <div className="sm:w-52">
+                        <label htmlFor="users-cotisation" className="text-sm text-muted-foreground mb-1.5 block">Cotisation</label>
+                        <Select value={cotisationFilter} onValueChange={handleCotisationFilter}>
+                            <SelectTrigger id="users-cotisation" className="bg-card border-border text-foreground">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                                <SelectItem value="all" className="text-foreground">Toutes les cotisations</SelectItem>
+                                <SelectItem value="a_jour" className="text-foreground">Cotisation à jour</SelectItem>
+                                <SelectItem value="en_retard" className="text-foreground">Cotisation non à jour</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {type === 'lecteurs' && (
+                        <div className="sm:w-48">
+                            <label htmlFor="users-language" className="text-sm text-muted-foreground mb-1.5 block">Langue</label>
+                            <Select value={languageFilter} onValueChange={handleLanguageFilter}>
+                                <SelectTrigger id="users-language" className="bg-card border-border text-foreground">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">Toutes les langues</SelectItem>
+                                    {LANGUAGE_VALUES.map((l) => (
+                                        <SelectItem key={l} value={l} className="text-foreground">
+                                            {getLanguageLabel(l)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     )}
                     </MobileFilters>
                 </div>
@@ -355,6 +376,18 @@ export default function UsersTable({
                     label="Pages de la liste"
                     onNavigate={navigate}
                     pending={isPending}
+                    aside={activeFilterCount > 0 && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearFilters}
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                        >
+                            <FilterX className="h-4 w-4" aria-hidden="true" />
+                            Effacer les filtres
+                        </Button>
+                    )}
                 >
                 <div className="space-y-6">
                     {initialUsers.length === 0 ? (

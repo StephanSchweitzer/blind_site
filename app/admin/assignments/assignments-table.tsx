@@ -23,7 +23,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Search, X, Plus } from 'lucide-react';
+import { Search, X, Plus, FilterX } from 'lucide-react';
 import { AddAssignmentModal } from '@/admin/AddAssignmentModal';
 import { EditAssignmentModal, loadAssignmentForEdit } from '@/admin/EditAssignmentModal';
 import { useRecordLoader } from '@/hooks/useRecordLoader';
@@ -95,6 +95,15 @@ export default function AssignmentsTable({
     const currentRetard = searchParams.get('retard') || 'all';
     const currentAudio = searchParams.get('audio') || 'all';
 
+    // Every filter the URL carries except the free-text search — the « Filtres »
+    // button's badge on a phone, and whether « Effacer les filtres » shows.
+    const activeFilterCount = [
+        filterBook,
+        currentStatusId !== 'all',
+        currentRetard !== 'all',
+        currentAudio !== 'all',
+    ].filter(Boolean).length;
+
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
 
@@ -142,6 +151,9 @@ export default function AssignmentsTable({
             page: '1',
         });
     };
+
+    const handleClearFilters = () =>
+        updateUrl({ bookId: undefined, statusId: undefined, retard: undefined, audio: undefined, page: '1' });
 
     const handleAssignmentAdded = () => {
         setIsAddModalOpen(false);
@@ -250,7 +262,7 @@ export default function AssignmentsTable({
                 <div className="mb-6 space-y-4">
                     {/* Le champ de recherche passe au-dessus des quatre filtres tant
                         qu'ils ne tiennent pas avec lui sur une ligne. */}
-                    <div className="flex flex-col xl:flex-row gap-4">
+                    <div className="flex flex-col xl:flex-row xl:items-end gap-4">
                         {!hideSearch && (
                             <div className="flex-1 flex gap-2">
                                 <div className="relative flex-1">
@@ -282,24 +294,25 @@ export default function AssignmentsTable({
                             </div>
                         )}
                         <MobileFilters
-                            activeCount={[filterBook, currentStatusId !== 'all', currentRetard !== 'all', currentAudio !== 'all'].filter(Boolean).length}
-                            className="flex flex-col md:flex-row md:flex-wrap gap-4"
+                            activeCount={activeFilterCount}
+                            className="flex flex-col md:flex-row md:flex-wrap md:items-end gap-4"
                         >
-                        {/* Sans étiquette, comme le statut à côté : ici les filtres
-                            s'annoncent par leur placeholder, pas par un label. */}
+                        {/* Un libellé au-dessus de chaque filtre, comme sur la liste
+                            des demandes. */}
                         <BookFilterPicker
                             book={filterBook}
-                            placeholder="Filtrer par livre"
+                            label="Livre"
                             className="w-full sm:w-64"
                         />
                         <div className="w-full sm:w-64">
+                            <label htmlFor="assignments-status" className="text-sm text-muted-foreground mb-1.5 block">Statut</label>
                             <Select
                                 value={currentStatusId}
                                 onValueChange={handleStatusFilter}
                                 disabled={isPending}
                             >
-                                <SelectTrigger className="bg-field border-border text-foreground">
-                                    <SelectValue placeholder="Filtrer par statut" />
+                                <SelectTrigger id="assignments-status" className="bg-field border-border text-foreground">
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="all" className="text-foreground">
@@ -328,15 +341,13 @@ export default function AssignmentsTable({
                             </Select>
                         </div>
                         <div className="w-full sm:w-48">
+                            <label htmlFor="assignments-retard" className="text-sm text-muted-foreground mb-1.5 block">Suivi</label>
                             <Select
                                 value={currentRetard}
                                 onValueChange={handleRetardFilter}
                                 disabled={isPending}
                             >
-                                <SelectTrigger
-                                    aria-label="Filtrer par suivi"
-                                    className="bg-field border-border text-foreground"
-                                >
+                                <SelectTrigger id="assignments-retard" className="bg-field border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -347,7 +358,8 @@ export default function AssignmentsTable({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <label className="flex items-center gap-2 text-foreground text-sm cursor-pointer whitespace-nowrap">
+                        {/* md:h-10 : la hauteur d'un select, pour s'aligner sur eux. */}
+                        <label className="flex items-center gap-2 text-foreground text-sm cursor-pointer whitespace-nowrap md:h-10">
                             <Checkbox
                                 checked={currentAudio === 'deposee'}
                                 onCheckedChange={(checked) => handleAudioFilter(checked ? 'deposee' : 'all')}
@@ -368,6 +380,18 @@ export default function AssignmentsTable({
                     label="Pages des attributions"
                     onNavigate={navigate}
                     pending={isPending}
+                    aside={activeFilterCount > 0 && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearFilters}
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                        >
+                            <FilterX className="h-4 w-4" aria-hidden="true" />
+                            Effacer les filtres
+                        </Button>
+                    )}
                 >
                 {/* Table — grisée par AdminPaginatedList pendant un chargement. */}
                 <div className={isPending ? 'pointer-events-none' : ''}>

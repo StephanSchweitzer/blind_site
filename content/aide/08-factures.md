@@ -17,7 +17,7 @@ Une facture porte l'un de ces quatre états :
 - **Payée** — un paiement couvre la facture. Elle passe « Payée » toute seule dès que le paiement est enregistré.
 - **Soldée** — on ne réclame plus rien, sans qu'un paiement ait été reçu.
 
-Sur la page principale des factures, on trouve (1) un tableau présentant les factures existantes, (2) la barre de recherche et (3) quelques filtres que l'on peut appliquer à la recherche et au tableau. Vous pouvez filtrer les résultats par état, par type (« Factures standard » ou « Revue », les factures [pro-forma](#les-factures-pro-forma)) et/ou par « Factures à relancer ». Les trois se combinent, sauf « Factures à relancer » qui remplace le filtre d'état. Une facture à relancer est une facture « Émise » depuis **plus de 30 jours** et pas encore réglée : elle apparaît sur fond orange clair, avec une petite horloge à côté de son état, et la page principale la compte « à relancer ».
+Sur la page principale des factures, on trouve (1) un tableau présentant les factures existantes, (2) la barre de recherche et (3) quelques filtres que l'on peut appliquer à la recherche et au tableau. Vous pouvez filtrer les résultats par état, par type (« Factures standard » ou « Revue », les factures [pro-forma](#les-factures-pro-forma)) et/ou par « Factures à relancer ». Les trois se combinent, sauf « Factures à relancer » qui remplace le filtre d'état. Le bouton « Effacer les filtres » les retire tous d'un coup. Une facture à relancer est une facture « Émise » depuis **plus de 30 jours** et pas encore réglée : elle apparaît sur fond orange clair, avec une petite horloge à côté de son état, et la page principale la compte « à relancer ».
 
 L'URL de cette page est https://eca-aveugles.fr/admin/bills
 

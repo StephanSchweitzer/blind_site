@@ -27,7 +27,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Search, X, Plus, Clock } from 'lucide-react';
+import { Search, X, Plus, Clock, FilterX } from 'lucide-react';
 import {
     BillingStatus,
     BILLING_STATUS_LABELS,
@@ -98,6 +98,10 @@ export default function BillsTable({
     const showLateOnly = searchParams.get('late') === 'true';
     const currentKind = searchParams.get('kind');
 
+    // Every filter the URL carries except the free-text search — the « Filtres »
+    // button's badge on a phone, and whether « Effacer les filtres » shows.
+    const activeFilterCount = [currentStatus, currentKind, showLateOnly].filter(Boolean).length;
+
     const updateUrl = (updates: Record<string, string | undefined>) => {
         const params = new URLSearchParams(searchParams.toString());
         Object.entries(updates).forEach(([key, value]) => {
@@ -156,6 +160,9 @@ export default function BillsTable({
         });
     };
 
+    const handleClearFilters = () =>
+        updateUrl({ status: undefined, kind: undefined, late: undefined, page: '1' });
+
     const handleBillAdded = () => {
         setIsAddModalOpen(false);
         router.refresh();
@@ -202,7 +209,7 @@ export default function BillsTable({
 
             <CardContent className="pt-6">
                 {/* Search and Filter Section */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
                     {!hideSearch && (
                         <div className="flex-1 flex gap-2">
                             <div className="relative flex-1">
@@ -234,39 +241,46 @@ export default function BillsTable({
                     )}
 
                     <MobileFilters
-                        activeCount={[currentStatus, currentKind, showLateOnly].filter(Boolean).length}
-                        className="flex flex-wrap items-center gap-3"
+                        activeCount={activeFilterCount}
+                        className="flex flex-wrap items-end gap-3"
                     >
-                        <Select
-                            value={showLateOnly ? BillingStatus.BILLED : (currentStatus ?? 'all')}
-                            onValueChange={handleStatusFilter}
-                            disabled={showLateOnly}
-                        >
-                            <SelectTrigger className="w-full sm:w-[200px] bg-card border-border text-foreground disabled:opacity-50">
-                                <SelectValue placeholder="Filtrer par état" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border">
-                                <SelectItem value="all" className="text-foreground">Tous les états</SelectItem>
-                                {availableStatuses.map((status) => (
-                                    <SelectItem key={status} value={status} className="text-foreground">
-                                        {BILLING_STATUS_LABELS[status]}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <div className="w-full sm:w-[200px]">
+                            <label htmlFor="bills-status" className="text-sm text-muted-foreground mb-1.5 block">État</label>
+                            <Select
+                                value={showLateOnly ? BillingStatus.BILLED : (currentStatus ?? 'all')}
+                                onValueChange={handleStatusFilter}
+                                disabled={showLateOnly}
+                            >
+                                <SelectTrigger id="bills-status" className="bg-card border-border text-foreground disabled:opacity-50">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">Tous les états</SelectItem>
+                                    {availableStatuses.map((status) => (
+                                        <SelectItem key={status} value={status} className="text-foreground">
+                                            {BILLING_STATUS_LABELS[status]}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                        <Select value={currentKind ?? 'all'} onValueChange={handleKindFilter}>
-                            <SelectTrigger className="w-full sm:w-[180px] bg-card border-border text-foreground">
-                                <SelectValue placeholder="Filtrer par type" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border">
-                                <SelectItem value="all" className="text-foreground">Tous les types</SelectItem>
-                                <SelectItem value="STANDARD" className="text-foreground">Factures standard</SelectItem>
-                                <SelectItem value="PROFORMA" className="text-foreground">{BILL_KIND_LABELS.PROFORMA}</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="w-full sm:w-[180px]">
+                            <label htmlFor="bills-kind" className="text-sm text-muted-foreground mb-1.5 block">Type</label>
+                            <Select value={currentKind ?? 'all'} onValueChange={handleKindFilter}>
+                                <SelectTrigger id="bills-kind" className="bg-card border-border text-foreground">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border">
+                                    <SelectItem value="all" className="text-foreground">Tous les types</SelectItem>
+                                    <SelectItem value="STANDARD" className="text-foreground">Factures standard</SelectItem>
+                                    <SelectItem value="PROFORMA" className="text-foreground">{BILL_KIND_LABELS.PROFORMA}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                        <label className="flex items-center gap-2 text-foreground text-sm cursor-pointer whitespace-nowrap">
+                        {/* h-10 : la hauteur d'un select, pour s'aligner sur eux. */}
+                        <label className="flex h-10 items-center gap-2 text-foreground text-sm cursor-pointer whitespace-nowrap">
                             <Checkbox
                                 checked={showLateOnly}
                                 onCheckedChange={(checked) => handleLateFilter(!!checked)}
@@ -283,6 +297,18 @@ export default function BillsTable({
                     label="Pages des factures"
                     onNavigate={navigate}
                     pending={isPending}
+                    aside={activeFilterCount > 0 && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearFilters}
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                        >
+                            <FilterX className="h-4 w-4" aria-hidden="true" />
+                            Effacer les filtres
+                        </Button>
+                    )}
                 >
                 {/* Bills Table */}
                 <div className="relative">
