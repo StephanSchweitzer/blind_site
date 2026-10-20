@@ -24,7 +24,7 @@ const BOLD = 'Helvetica-Bold';
 // une seule constante pour les deux, comme dans BillPDF.
 const PAGE_PAD_X = 48;
 const LOGO_SRC = '/eca_logo_facture.png';
-const LOGO_RATIO = 1000 / 508;
+const LOGO_RATIO = 750 / 381;
 
 const num = (v: number | string | null | undefined): number | null =>
     v == null || v === '' ? null : Number(v);

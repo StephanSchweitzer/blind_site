@@ -30,12 +30,14 @@ const PAGE_PAD_X = 48;
 // Le bloc-marque en tête de facture.
 // PNG et non le JPEG d'origine : celui-ci est encodé en progressif, que le filtre
 // DCTDecode d'un PDF ne sait pas relire — et le PNG évite au passage les artefacts
-// de compression sur les arêtes nettes du logotype. 1000 × 508 px pour une
-// largeur imprimée de 96 à 176 pt, soit 400 à 750 dpi : largement au-dessus des
-// 300 dpi attendus en impression. Le fond est blanc opaque : sur une page
-// blanche, la transparence n'apporterait rien.
+// de compression sur les arêtes nettes du logotype. 750 × 381 px pour une
+// largeur imprimée de 96 à 176 pt, soit 300 à 560 dpi, et une palette de 32
+// couleurs : 39 Ko. L'ancien fichier (1000 × 508, 25 000 couleurs, presque toutes
+// du bruit hérité du JPEG) pesait 200 Ko, et une imprimante a tronqué le logo à
+// mi-hauteur sur une liste de livres (octobre 2026) — garder ce fichier léger.
+// Le fond est blanc opaque : sur une page blanche, la transparence n'apporterait rien.
 const LOGO_SRC = '/eca_logo_facture.png';
-const LOGO_RATIO = 1000 / 508;
+const LOGO_RATIO = 750 / 381;
 
 // ─── Shape this component needs (kept local to stay decoupled) ───────────────
 interface BillOrderLite {

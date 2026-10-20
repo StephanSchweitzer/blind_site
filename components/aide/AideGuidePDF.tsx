@@ -36,10 +36,10 @@ export interface AideImageResolue {
     hauteur: number;
 }
 
-// 1000 × 508 px — le même PNG que BillPDF.tsx, pensé pour l'impression (voir
+// 750 × 381 px — le même PNG que BillPDF.tsx, pensé pour l'impression (voir
 // LOGO_RATIO là-bas). Pas eca_logo.png : trop étroit, pensé pour un bandeau
 // web, pas pour une couverture.
-const LOGO_RATIO = 1000 / 508;
+const LOGO_RATIO = 750 / 381;
 // 226 × 237 px, fond transparent — public/arbre_rose.png, le même fichier que
 // la barre du back-office et le tableau de bord.
 const ARBRE_RATIO = 226 / 237;

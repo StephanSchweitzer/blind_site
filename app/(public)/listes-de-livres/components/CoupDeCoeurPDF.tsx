@@ -53,10 +53,11 @@ Font.register({
     ],
 });
 
-// Même fichier que la facture (BillPDF) : fond blanc opaque, 300 dpi.
+// Même fichier que la facture (BillPDF) : fond blanc opaque, volontairement léger
+// (voir là-bas : l'ancien, quatre fois plus lourd, sortait tronqué à l'impression).
 const LOGO_SRC = '/eca_logo_facture.png';
 const LOGO_WIDTH = 92;
-const LOGO_RATIO = 1000 / 508;
+const LOGO_RATIO = 750 / 381;
 
 const s = StyleSheet.create({
     page: { paddingTop: 52, paddingBottom: 56, paddingHorizontal: 60, fontFamily: SERIF, fontSize: BODY, color: '#000000' },
