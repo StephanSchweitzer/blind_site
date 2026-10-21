@@ -86,7 +86,7 @@ export function MembershipManager({ initial }: { initial: MembershipOption[] }) 
                         </div>
                         <div className="flex gap-2">
                             {dirty && <Button onClick={saveOrder} disabled={busy} variant="save">{running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer l&apos;ordre</Button>}
-                            <Button onClick={() => { setAdding(true); setEditingId(null); setDraft(EMPTY); }} className="bg-muted text-foreground border-border hover:bg-muted">
+                            <Button onClick={() => { setAdding(true); setEditingId(null); setDraft(EMPTY); }} className="bg-muted text-foreground border-border hover:bg-accent">
                                 <Plus className="h-4 w-4 mr-1" /> Ajouter
                             </Button>
                         </div>

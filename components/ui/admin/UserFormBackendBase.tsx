@@ -944,7 +944,7 @@ export function UserFormBackendBase({
                             <Button
                                 variant="outline"
                                 onClick={() => setShowDuplicateDialog(false)}
-                                className="bg-muted text-foreground border-border hover:bg-muted"
+                                className="bg-muted text-foreground border-border hover:bg-accent"
                             >
                                 Annuler
                             </Button>

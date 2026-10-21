@@ -68,7 +68,7 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
                             <CardTitle as="h1" className="text-foreground">Historique ({events.length})</CardTitle>
                             <AideLink section="pages-publiques" />
                         </div>
-                        <Button onClick={() => { setAdding(true); setDraft({ year: '', title: '', description: '', iconKey: 'Calendar' }); }} className="bg-muted text-foreground border-border hover:bg-muted">
+                        <Button onClick={() => { setAdding(true); setDraft({ year: '', title: '', description: '', iconKey: 'Calendar' }); }} className="bg-muted text-foreground border-border hover:bg-accent">
                             <Plus className="h-4 w-4 mr-1" /> Ajouter
                         </Button>
                     </CardHeader>

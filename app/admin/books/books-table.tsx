@@ -1148,7 +1148,7 @@ export default function BooksTable({
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-muted text-foreground border-border hover:bg-muted">
+                        <AlertDialogCancel className="bg-muted text-foreground border-border hover:bg-accent">
                             Continuer la saisie
                         </AlertDialogCancel>
                         <AlertDialogAction

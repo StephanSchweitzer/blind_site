@@ -163,7 +163,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <Button onClick={addMember} disabled={busy || !newName.trim()} className="bg-muted text-foreground border-border hover:bg-muted">
+                            <Button onClick={addMember} disabled={busy || !newName.trim()} className="bg-muted text-foreground border-border hover:bg-accent">
                                 {running === 'add' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />} Ajouter
                             </Button>
                         </div>
