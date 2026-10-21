@@ -20,12 +20,12 @@ import {
     UserMinus,
 } from 'lucide-react';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -757,16 +757,23 @@ export default function PersonAvailabilityPanel({
     );
 
     return (
-        <Dialog open={personId !== null} onOpenChange={(open) => !open && requestClose()}>
-            {/* Three bands, not one scrolling box: the dialog itself no longer
-                scrolls (`overflow-y-hidden` replaces the primitive's own
-                `overflow-y-auto`), only the middle one does. A `sticky` action
+        <Sheet open={personId !== null} onOpenChange={(open) => !open && requestClose()}>
+            {/* A sheet on the right, not a centred dialog: the calendar and the
+                lists stay readable beside it (a save refreshes them while the
+                sheet is open), and it is pinned to the top, so unfolding the
+                date editor or a section no longer re-centres the whole panel
+                under the pointer. */}
+            {/* Three bands, not one scrolling box: the sheet itself does not
+                scroll, only the middle band does. A `sticky` action
                 bar inside a scrolling dialog sticks to the SCROLLPORT, which
                 leaves the rest of the form running on underneath and past it —
                 which is exactly what it looked like. */}
-            <DialogContent className="bg-card border-border max-w-4xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-y-hidden">
-                <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-border">
-                    <DialogTitle className="text-foreground flex flex-wrap items-center gap-2 pr-8">
+            <SheetContent
+                side="right"
+                className="bg-card border-border w-full sm:max-w-xl flex flex-col gap-0 p-0"
+            >
+                <SheetHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-border">
+                    <SheetTitle className="text-foreground flex flex-wrap items-center gap-2 pr-8">
                         {person ? (
                             <IntentLink
                                 href={`/admin/users/dossier/${person.id}`}
@@ -793,8 +800,8 @@ export default function PersonAvailabilityPanel({
                                     coloured chip was one colour too many. */}
                             </>
                         )}
-                    </DialogTitle>
-                    <DialogDescription className={META}>
+                    </SheetTitle>
+                    <SheetDescription className={META}>
                         {person ? (
                             <>
                                 {/* The plafond only matters for someone who can
@@ -824,8 +831,8 @@ export default function PersonAvailabilityPanel({
                         ) : (
                             'Chargement…'
                         )}
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
                 {/* the only scrolling band */}
                 <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
@@ -841,19 +848,13 @@ export default function PersonAvailabilityPanel({
 
                     {person && detail && !loading && (
                         <div className="space-y-4 animate-in fade-in duration-200">
-                        {/* Two columns on a wide screen — what you ACT on to
-                            the left, what you READ to the right. One long
-                            column wasted the width and put the attributions
-                            between the status and everything else; the
-                            original columns were not the problem, what sat
-                            in them was. */}
-                        {/* The right column is the wider one: the status
-                            choices fit two by two, the attribution lines do
-                            not fit at all in less. */}
-                        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
-                            {/* ── left: the status, and its history under it —
-                                the same subject, its present and its past. ── */}
-                            <div className="space-y-3">
+                        {/* One column, in the order the questions are asked:
+                            the status, the books, the lecteur's settings, then
+                            the past. The panel was a centred dialog in two
+                            columns, over the very calendar it is opened to act
+                            on; as a sheet beside the planning it is too narrow
+                            for columns, and needs none. */}
+                        <div className="space-y-3">
                             {/* ── disponibilité: what the panel is opened for ── */}
                             <section className="rounded-xl border border-primary/30 bg-primary/[0.04] p-4 space-y-3 dark:border-primary/50 dark:bg-primary/[0.08]">
                                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -1074,70 +1075,6 @@ export default function PersonAvailabilityPanel({
                                 )}
                             </section>
 
-                            {/* ── history ────────────────────────────── */}
-                            <FoldSection
-                                icon={History}
-                                title="Historique de statut"
-                                summary={
-                                    detail.events.length === 0
-                                        ? 'Aucun changement enregistré'
-                                        : `${detail.events.length} changement(s)`
-                                }
-                                open={showHistory}
-                                onToggle={() => setShowHistory((v) => !v)}
-                            >
-                                {detail.events.length === 0 ? (
-                                    <p className={`text-sm ${META}`}>
-                                        Aucun changement de statut enregistré.
-                                    </p>
-                                ) : (
-                                    <ol className="divide-y divide-border">
-                                        {detail.events.map((event) => (
-                                            <li key={event.id} className="py-2 text-xs">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-sm font-medium text-foreground">
-                                                        {event.fromStatus
-                                                            ? `${getUserActivityStatusLabel(event.fromStatus)} → ${getUserActivityStatusLabel(event.toStatus)}`
-                                                            : getUserActivityStatusLabel(event.toStatus)}
-                                                    </span>
-                                                    <span className={`${META} whitespace-nowrap`}>
-                                                        {parisDate(event.changedAt, {
-                                                            day: '2-digit',
-                                                            month: 'short',
-                                                            year: 'numeric',
-                                                        })}
-                                                    </span>
-                                                </div>
-                                                {event.unavailableFrom && (
-                                                    <p className="mt-0.5 text-foreground">
-                                                        Du {formatDayKey(event.unavailableFrom)}
-                                                        {event.unavailableUntil
-                                                            ? ` au ${formatDayKey(event.unavailableUntil)}`
-                                                            : ''}
-                                                    </p>
-                                                )}
-                                                {event.reason && (
-                                                    <p className="mt-0.5 text-foreground">
-                                                        Motif : {event.reason}
-                                                    </p>
-                                                )}
-                                                {event.comment && (
-                                                    <p className={`mt-0.5 ${META}`}>
-                                                        {event.comment}
-                                                    </p>
-                                                )}
-                                                <p className={`mt-0.5 ${META}`}>
-                                                    Par {event.changedBy ?? 'Système'}
-                                                </p>
-                                            </li>
-                                        ))}
-                                    </ol>
-                                )}
-                            </FoldSection>
-                            </div>
-
-                            {/* ── right: the two subjects of their own — the books, and the lecteur's settings ── */}
-                            <div className="space-y-3">
                             {/* ── attributions ───────────────────────────── */}
                             {/* Folded like the rest. They used to take the
                                 most room by default, which assumed they were
@@ -1280,7 +1217,67 @@ export default function PersonAvailabilityPanel({
                                         </div>
                                     </div>
                                 </FoldSection>
-                            </div>
+
+                            {/* ── history ────────────────────────────── */}
+                            <FoldSection
+                                icon={History}
+                                title="Historique de statut"
+                                summary={
+                                    detail.events.length === 0
+                                        ? 'Aucun changement enregistré'
+                                        : `${detail.events.length} changement(s)`
+                                }
+                                open={showHistory}
+                                onToggle={() => setShowHistory((v) => !v)}
+                            >
+                                {detail.events.length === 0 ? (
+                                    <p className={`text-sm ${META}`}>
+                                        Aucun changement de statut enregistré.
+                                    </p>
+                                ) : (
+                                    <ol className="divide-y divide-border">
+                                        {detail.events.map((event) => (
+                                            <li key={event.id} className="py-2 text-xs">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-sm font-medium text-foreground">
+                                                        {event.fromStatus
+                                                            ? `${getUserActivityStatusLabel(event.fromStatus)} → ${getUserActivityStatusLabel(event.toStatus)}`
+                                                            : getUserActivityStatusLabel(event.toStatus)}
+                                                    </span>
+                                                    <span className={`${META} whitespace-nowrap`}>
+                                                        {parisDate(event.changedAt, {
+                                                            day: '2-digit',
+                                                            month: 'short',
+                                                            year: 'numeric',
+                                                        })}
+                                                    </span>
+                                                </div>
+                                                {event.unavailableFrom && (
+                                                    <p className="mt-0.5 text-foreground">
+                                                        Du {formatDayKey(event.unavailableFrom)}
+                                                        {event.unavailableUntil
+                                                            ? ` au ${formatDayKey(event.unavailableUntil)}`
+                                                            : ''}
+                                                    </p>
+                                                )}
+                                                {event.reason && (
+                                                    <p className="mt-0.5 text-foreground">
+                                                        Motif : {event.reason}
+                                                    </p>
+                                                )}
+                                                {event.comment && (
+                                                    <p className={`mt-0.5 ${META}`}>
+                                                        {event.comment}
+                                                    </p>
+                                                )}
+                                                <p className={`mt-0.5 ${META}`}>
+                                                    Par {event.changedBy ?? 'Système'}
+                                                </p>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                )}
+                            </FoldSection>
                         </div>
 
                             {saveError && (
@@ -1292,7 +1289,7 @@ export default function PersonAvailabilityPanel({
                     )}
                 </div>
 
-                {/* the action bar — a band of the dialog, never part of what
+                {/* the action bar — a band of the sheet, never part of what
                     scrolls, so nothing can run past it */}
                 {person && detail && !loading && (
                     <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-6 py-3">
@@ -1368,7 +1365,7 @@ export default function PersonAvailabilityPanel({
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     );
 }

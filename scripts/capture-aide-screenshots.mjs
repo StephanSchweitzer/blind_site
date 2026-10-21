@@ -1127,7 +1127,9 @@ const SPECS = [
     },
     {
         name: 'disponibilites-05.jpg',
-        viewport: { width: 1440, height: 1000 },
+        // Le volet occupe toute la hauteur de la fenetre : plus haute, la
+        // capture n'ajouterait que du vide sous les sections repliees.
+        viewport: { width: 1440, height: 800 },
         url: '/admin/disponibilites',
         waitFor: 'table tbody tr',
         sleep: 1200,
@@ -1139,11 +1141,11 @@ const SPECS = [
             { waitFor: '[role="dialog"] section' }, { sleep: 1800 },
         ],
         clip: '[role="dialog"]',
-        why: 'la fenêtre de disponibilité d\'un lecteur au plafond : statut, réglages, attributions',
+        why: 'le volet de disponibilité d\'un lecteur au plafond : statut, attributions, réglages',
     },
     {
         name: 'disponibilites-06.jpg',
-        viewport: { width: 1440, height: 1000 },
+        viewport: { width: 1440, height: 800 },
         url: '/admin/disponibilites',
         waitFor: 'table tbody tr',
         sleep: 1200,
@@ -1156,16 +1158,16 @@ const SPECS = [
         clip: '[role="dialog"]',
         // Les numeros reprennent ceux du paragraphe de 11-disponibilites.md.
         annotations: [
-            // Colonne de gauche : le statut, puis son historique ; a droite,
-            // les attributions puis les reglages.
-            { n: 1, selector: '[role="dialog"] .grid > div:nth-child(1) > section:nth-child(1)' },
+            // Une seule colonne : le statut, les attributions, les reglages,
+            // puis l'historique.
+            { n: 1, selector: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(1)' },
             // Le coin haut-droit : a gauche, la pastille recouvrirait les titres,
             // dont le texte commence au bord du cadre.
-            { n: 2, selector: '[role="dialog"] .grid > div:nth-child(1) > section:nth-child(2)', coin: 'hd' },
-            { n: 3, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1)', coin: 'hd' },
-            { n: 4, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(2)', coin: 'hd' },
+            { n: 2, selector: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(2)', coin: 'hd' },
+            { n: 3, selector: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(3)', coin: 'hd' },
+            { n: 4, selector: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(4)', coin: 'hd' },
         ],
-        why: 'les deux colonnes : statut et historique, attributions et réglages, repliés',
+        why: 'la colonne unique : statut, attributions, réglages, historique, repliés',
     },
     {
         name: 'disponibilites-07.jpg',
@@ -1179,19 +1181,19 @@ const SPECS = [
             { clickInRow: { cell: '3 / 3', text: 'Gérer', sauf: 'ne prend pas' } },
             { waitFor: '[role="dialog"] section' }, { sleep: 1800 },
             // Le volet est replie a l'ouverture : on le deplie pour la photo.
-            { clickSelector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) h3 button' },
+            { clickSelector: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(2) h3 button' },
             { sleep: 600 },
         ],
-        clip: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1)',
+        clip: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(2)',
         // Coin haut-droit : les cadres commencent sur du texte.
         annotations: [
             // Les liens de CHAQUE attribution, sous le meme numero. `> div > ul`
             // ne prend que la liste des attributions en cours, pas celle des
             // terminees, rangee un niveau plus bas.
-            { n: 1, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) > div > ul > li:nth-child(1)', coin: 'hd' },
-            { n: 1, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) > div > ul > li:nth-child(2)', coin: 'hd' },
-            { n: 1, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) > div > ul > li:nth-child(3)', coin: 'hd' },
-            { n: 2, selector: '[role="dialog"] .grid > div:nth-child(2) > section:nth-child(1) > div > div.mt-2 > button', coin: 'hd' },
+            { n: 1, selector: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(2) > div > ul > li:nth-child(1)', coin: 'hd' },
+            { n: 1, selector: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(2) > div > ul > li:nth-child(2)', coin: 'hd' },
+            { n: 1, selector: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(2) > div > ul > li:nth-child(3)', coin: 'hd' },
+            { n: 2, selector: '[role="dialog"] .space-y-4 > .space-y-3 > section:nth-child(2) > div > div.mt-2 > button', coin: 'hd' },
         ],
         why: 'le volet Attributions déplié : liens, attributions terminées',
     },
