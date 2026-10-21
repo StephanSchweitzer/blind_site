@@ -1,3 +1,4 @@
+import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
 import React, { useState, useEffect } from 'react';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
@@ -277,7 +278,11 @@ export function UserFormBackendBase({
         if (!onDelete) return;
 
         if (await confirm({
-            title: 'Supprimer cette personne ?',
+            title: `${formData.firstName} ${formData.lastName}`.trim()
+                ? `Supprimer ${`${formData.firstName} ${formData.lastName}`.trim()} ?`
+                : 'Supprimer cette personne ?',
+            // Soft delete (DELETE /api/user/[id]) — the dossier offers « Restaurer ».
+            description: 'Sa fiche disparaîtra des listes, mais pourra être restaurée depuis son dossier.',
             confirmLabel: 'Supprimer',
             destructive: true,
         })) {
@@ -861,7 +866,7 @@ export function UserFormBackendBase({
                     </div>
 
                     {/* Submit Buttons */}
-                    <div className="space-y-4">
+                    <StickySubmitBar>
                         <Button
                             type="submit"
                             disabled={isLoading}
@@ -869,7 +874,8 @@ export function UserFormBackendBase({
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
-
+                    </StickySubmitBar>
+                    <div className="space-y-4">
                         {showDelete && onDelete && !isLoginAccountLocked && (
                             <Button
                                 type="button"

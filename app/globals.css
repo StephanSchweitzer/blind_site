@@ -387,6 +387,11 @@
     scroll-padding-top: 6rem;
     scroll-padding-bottom: 5rem;
 }
+/* La même chose pour la barre du back-office (h-16) : sans marge, ce qu'on
+   faisait défiler jusqu'à soi au clavier finissait caché dessous. */
+:root:has(#navigation-back-office) {
+    scroll-padding-top: 5rem;
+}
 
 /* Taille du texte. Tout le site est en rem, donc tout suit. En pourcentage de
    la taille du navigateur, pour s'ajouter au réglage du visiteur plutôt que de

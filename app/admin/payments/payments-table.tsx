@@ -673,7 +673,7 @@ export default function PaymentsTable({
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Créer un nouveau paiement</DialogTitle>
                     </DialogHeader>
-                    <div className="overflow-y-auto px-1">
+                    <div className="px-1">
                         <AddPaymentFormBackend onSuccess={handlePaymentAdded} initialClient={presetClient} />
                     </div>
                 </DialogContent>

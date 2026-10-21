@@ -1,3 +1,4 @@
+import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
 import React, { useState, useRef } from 'react';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
@@ -702,14 +703,16 @@ export function AddOrderFormBackend({
                         </div>
                     )}
 
-                    <Button type="submit" disabled={isLoading}
-                            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent">
-                        {isLoading
-                            ? 'Création en cours...'
-                            : filledCount === 0
-                                ? 'Créer la demande'
-                                : `Créer ${filledCount} ${filledCount === 1 ? 'demande' : 'demandes'}`}
-                    </Button>
+                    <StickySubmitBar>
+                        <Button type="submit" disabled={isLoading}
+                                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent">
+                            {isLoading
+                                ? 'Création en cours...'
+                                : filledCount === 0
+                                    ? 'Créer la demande'
+                                    : `Créer ${filledCount} ${filledCount === 1 ? 'demande' : 'demandes'}`}
+                        </Button>
+                    </StickySubmitBar>
                 </form>
             </div>
         <UserActivityGuardDialog

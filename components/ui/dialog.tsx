@@ -50,10 +50,12 @@ const DialogContent = React.forwardRef<
       {/* data-dialog-close: callers that supply their own close control hide this
           one with `[&>[data-dialog-close]]:hidden`. Without the attribute the
           selector matched nothing and both buttons rendered, so screen readers
-          announced two close controls for the same dialog. */}
+          announced two close controls for the same dialog.
+          32 px: the target used to be the 16 px icon itself. The icon stays
+          where it was (right-2 + 8 px of padding = right-4). */}
       <DialogPrimitive.Close
         data-dialog-close=""
-        className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+        className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
       >
         <X aria-hidden="true" className="h-4 w-4" />
         <span className="sr-only">Fermer</span>

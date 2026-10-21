@@ -89,7 +89,7 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                     onClick={() => setIsAddOpen(true)}
                 >
                     <Plus className="mr-2 h-4 w-4" />
-                    Ajouter un Genre
+                    Ajouter un genre
                 </Button>
             </CardHeader>
             <CardContent className="pt-6">
@@ -172,7 +172,7 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Ajouter un genre</DialogTitle>
                     </DialogHeader>
-                    <div className="overflow-y-auto px-1">
+                    <div className="px-1">
                         <AddGenreFormBackend onSuccess={handleSaved} onCancel={() => setIsAddOpen(false)} />
                     </div>
                 </DialogContent>
@@ -188,7 +188,7 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                                 <CopyableId id={editing.id} label="du genre" />
                             </DialogTitle>
                         </DialogHeader>
-                        <div className="overflow-y-auto px-1">
+                        <div className="px-1">
                             <EditGenreFormBackend
                                 genreId={editing.id}
                                 initialData={{

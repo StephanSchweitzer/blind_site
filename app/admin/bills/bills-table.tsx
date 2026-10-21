@@ -443,7 +443,7 @@ export default function BillsTable({
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Créer une nouvelle facture</DialogTitle>
                     </DialogHeader>
-                    <div className="overflow-y-auto px-1">
+                    <div className="px-1">
                         <AddBillFormBackend onSuccess={handleBillAdded} initialClient={presetClient} />
                     </div>
                 </DialogContent>

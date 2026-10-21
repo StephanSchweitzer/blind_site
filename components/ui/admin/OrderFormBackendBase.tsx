@@ -1,3 +1,4 @@
+import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
 import React, { useState } from 'react';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
@@ -574,7 +575,9 @@ export function OrderFormBackendBase({
         if (!onDelete) return;
 
         if (await confirm({
-            title: 'Supprimer cette demande ?',
+            title: selectedBook?.title ? `Supprimer la demande « ${selectedBook.title} » ?` : 'Supprimer cette demande ?',
+            // Soft delete (DELETE /api/orders/[id]) — OrderDeletedNotice restores it.
+            description: 'Elle disparaîtra des listes, mais pourra être restaurée.',
             confirmLabel: 'Supprimer',
             destructive: true,
         })) {
@@ -1268,7 +1271,7 @@ export function OrderFormBackendBase({
                     )}
 
                     {/* Submit Button */}
-                    <div className="space-y-4">
+                    <StickySubmitBar>
                         <Button
                             type="submit"
                             disabled={isLoading}
@@ -1276,7 +1279,8 @@ export function OrderFormBackendBase({
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
-
+                    </StickySubmitBar>
+                    <div className="space-y-4">
                         {showDelete && onDelete && (
                             <Button
                                 type="button"

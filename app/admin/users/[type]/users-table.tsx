@@ -489,7 +489,7 @@ export default function UsersTable({
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Ajouter une nouvelle personne</DialogTitle>
                     </DialogHeader>
-                    <div className="overflow-y-auto px-1">
+                    <div className="px-1">
                         <AddUserFormBackend
                             onSuccess={handleUserAdded}
                             userType={type}

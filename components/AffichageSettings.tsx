@@ -91,9 +91,14 @@ export function AffichageSettings({ children }: { children: ReactNode }) {
         <Popover onOpenChange={onOpenChange}>
             <PopoverAnchor virtualRef={ancre} />
             <FenetreId.Provider value={id}>{children}</FenetreId.Provider>
+            {/* max-h : la hauteur que Radix laisse sous le bouton. En « texte très
+                grand », la fenêtre faisait 772 px : sur un téléphone de 600 px,
+                ses derniers réglages restaient hors de l'écran, sans moyen d'y
+                descendre — pour qui en a le plus besoin. Elle défile désormais. */}
             <PopoverContent
                 align="end"
-                className="w-80 p-5 text-base"
+                collisionPadding={8}
+                className="w-80 max-h-[var(--radix-popover-content-available-height)] overflow-y-auto overscroll-contain p-5 text-base"
                 onInteractOutside={(e) => {
                     // Radix ne retient qu'un bouton, le dernier monté : un clic
                     // sur l'autre passerait pour un clic dehors, fermerait la

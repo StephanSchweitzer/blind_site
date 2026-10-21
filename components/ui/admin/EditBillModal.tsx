@@ -1092,7 +1092,7 @@ export function EditBillModal({
                                 Enregistrer un paiement — facture #{bill.id}
                             </DialogTitle>
                         </DialogHeader>
-                        <div className="overflow-y-auto px-1">
+                        <div className="px-1">
                             <AddPaymentFormBackend
                                 preset={{
                                     client: {

@@ -794,7 +794,7 @@ export default function OrdersTable({
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Créer une ou plusieurs demandes</DialogTitle>
                     </DialogHeader>
-                    <div className="overflow-y-auto px-1">
+                    <div className="px-1">
                         <AddOrderFormBackend onSuccess={handleOrderAdded} initialClient={presetClient} />
                     </div>
                 </DialogContent>

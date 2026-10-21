@@ -28,7 +28,7 @@ Dans les champs de recherche des formulaires (choisir un auditeur, un livre, un 
 
 ## Un formulaire
 
-Un formulaire est l'élément de base de la plupart des interactions sur le Web. Il comporte des champs contenant des informations et, une fois validé, modifie, crée ou supprime les entrées correspondantes dans la base de données. La plupart de nos formulaires sont intégrés dans des fenêtres modales pour faciliter la tâche des permanents.
+Un formulaire est l'élément de base de la plupart des interactions sur le Web. Il comporte des champs contenant des informations et, une fois validé, modifie, crée ou supprime les entrées correspondantes dans la base de données. La plupart de nos formulaires sont intégrés dans des fenêtres modales pour faciliter la tâche des permanents. Dans les plus longs, le bouton d'enregistrement reste collé au bas de la fenêtre pendant que vous la faites défiler : inutile de descendre jusqu'en bas pour enregistrer une correction faite en haut. Le bouton de suppression, lui, reste tout en bas.
 
 ## Un champ
 

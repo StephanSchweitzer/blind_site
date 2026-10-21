@@ -42,7 +42,7 @@ export function AddAssignmentModal({
                 </DialogHeader>
                 {/* Rien à attendre : les statuts viennent du layout (useReferenceData),
                     et le choix de la demande charge sa propre liste à l'ouverture. */}
-                <div className="overflow-y-auto px-1">
+                <div className="px-1">
                     <AddAssignmentFormBackend
                         onSuccess={handleSuccess}
                         presetClientId={presetClientId}

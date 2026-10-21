@@ -72,7 +72,8 @@ export function GenreFormBackendBase({
     const handleDeleteClick = async () => {
         if (!onDelete) return;
         if (!(await confirm({
-            title: 'Supprimer ce genre ?',
+            // Named: « Supprimer ce genre ? » left the permanent guessing which one.
+            title: formData.name.trim() ? `Supprimer le genre « ${formData.name.trim()} » ?` : 'Supprimer ce genre ?',
             description: 'Cette action est irréversible.',
             confirmLabel: 'Supprimer',
             destructive: true,

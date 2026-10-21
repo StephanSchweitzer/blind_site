@@ -1,3 +1,4 @@
+import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
 import React, { useState, useMemo, useRef } from 'react';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
@@ -546,7 +547,7 @@ export function BookFormBackendBase({
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <StickySubmitBar>
                         <Button
                             type="submit"
                             disabled={isLoading}
@@ -554,7 +555,8 @@ export function BookFormBackendBase({
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
-
+                    </StickySubmitBar>
+                    <div className="space-y-4">
                         {showDelete && onDeleted && audioBookId != null && (
                             <Button
                                 type="button"

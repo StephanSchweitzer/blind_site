@@ -93,7 +93,7 @@ export function EditOrderModal({
                         {orderId && <CopyableId id={orderId} label="de la demande" />}
                     </DialogTitle>
                 </DialogHeader>
-                <div className="overflow-y-auto px-1">
+                <div className="px-1">
                     <FormLoadingGate loading={!order} error={error} fields={8}>
                         {order && (
                             <EditOrderFormBackend

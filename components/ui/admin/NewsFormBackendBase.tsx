@@ -79,7 +79,8 @@ export function NewsFormBackendBase({
     const handleDeleteClick = async () => {
         if (!onDelete) return;
         if (!(await confirm({
-            title: 'Supprimer cette information ?',
+            title: formData.title.trim() ? `Supprimer « ${formData.title.trim()} » ?` : 'Supprimer cette information ?',
+            description: 'Elle disparaîtra de la page « Dernières infos » du site.',
             confirmLabel: 'Supprimer',
             destructive: true,
         }))) return;

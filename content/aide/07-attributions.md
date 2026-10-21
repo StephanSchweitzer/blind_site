@@ -125,6 +125,6 @@ Une attribution déjà terminée reste modifiable (notes, méthode de livraison�
 
 Le reste de la fenêtre contextuelle fonctionne de la même manière que celle permettant d'ajouter une attribution. Pour corriger le livre, modifiez-le sur la [demande](/admin/aide/demandes) : l'attribution suit automatiquement.
 
-En bas de la fenêtre, vous trouverez (1) le bouton « Mettre à jour l'attribution », qui enregistrera vos modifications, et (2) le bouton « Supprimer l'attribution », qui supprimera l'attribution.
+En bas de la fenêtre, vous trouverez (1) le bouton « Mettre à jour l'attribution », qui enregistrera vos modifications — il reste visible pendant que vous faites défiler —, et (2) le bouton « Supprimer l'attribution », qui supprimera l'attribution. La demande liée repasse alors en « Attente envoi vers lecteur ».
 
 ![Attributions - capture 16](/admin/aide/images/attributions-16.jpg)

@@ -110,7 +110,7 @@ export function EditAssignmentModal({
                         {assignmentId && <CopyableId id={assignmentId} label="de l'attribution" />}
                     </DialogTitle>
                 </DialogHeader>
-                <div className="overflow-y-auto px-1">
+                <div className="px-1">
                     <FormLoadingGate loading={!assignment} error={error} fields={7}>
                         {assignment && (
                             <EditAssignmentFormBackend

@@ -1,5 +1,6 @@
 'use client';
 
+import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -630,13 +631,15 @@ export function BillFormBackendBase({
                         </div>
                     )}
 
-                    <Button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full bg-muted hover:bg-muted text-foreground border-border"
-                    >
-                        {isLoading ? loadingText : submitButtonText}
-                    </Button>
+                    <StickySubmitBar>
+                        <Button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-muted hover:bg-muted text-foreground border-border"
+                        >
+                            {isLoading ? loadingText : submitButtonText}
+                        </Button>
+                    </StickySubmitBar>
                 </form>
             </div>
     );

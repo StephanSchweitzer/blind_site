@@ -1,3 +1,4 @@
+import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
 import React, {useState, useEffect, useCallback, useRef} from 'react';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
@@ -631,8 +632,13 @@ export function AssignmentFormBackendBase({
         if (!onDelete) return;
 
         const confirmed = await confirm({
-            title: 'Supprimer cette attribution ?',
-            description: 'Cette action est irréversible.',
+            title: selectedBook?.title ? `Supprimer l’attribution « ${selectedBook.title} » ?` : 'Supprimer cette attribution ?',
+            // Not « irréversible » — the row is soft-deleted. What the permanent
+            // needs to know is the side effect (DELETE /api/assignments/[id]):
+            // the linked demande goes back to the start.
+            description: selectedOrder
+                ? `La demande n°${selectedOrder.id} repassera en « Attente envoi vers lecteur ».`
+                : undefined,
             confirmLabel: 'Supprimer',
             destructive: true,
         });
@@ -1254,9 +1260,9 @@ export function AssignmentFormBackendBase({
                     </div>
 
                     {/* Submit Button */}
-                    <div className="space-y-4">
-                        {/* No lecteur, no attribution — the submit stays disabled on
-                            creation. The API refuses it too (guardAssignmentHasReader). */}
+                    {/* No lecteur, no attribution — the submit stays disabled on
+                        creation. The API refuses it too (guardAssignmentHasReader). */}
+                    <StickySubmitBar>
                         <Button
                             type="submit"
                             disabled={isLoading || (!isEditMode && !selectedReaderId)}
@@ -1265,7 +1271,8 @@ export function AssignmentFormBackendBase({
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
-
+                    </StickySubmitBar>
+                    <div className="space-y-4">
                         {showDelete && onDelete && (
                             <Button
                                 type="button"

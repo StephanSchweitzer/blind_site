@@ -87,7 +87,12 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
     const [isAddOpen, setIsAddOpen] = useState(false);
     /** Article open in the edit dialogue, with the content the list doesn't carry. */
     const [editing, setEditing] = useState<{ id: number; data: NewsFormData } | null>(null);
-    const [isLoadingArticle, setIsLoadingArticle] = useState(false);
+    // The article being fetched. The dialogue opens at once and says
+    // « Chargement… » inside — it used to black out the whole screen with a
+    // spinner nobody's screen reader announced. The ref lets a close during
+    // the fetch win: a late answer must not reopen what was just closed.
+    const [loadingArticleId, setLoadingArticleId] = useState<number | null>(null);
+    const loadingArticleRef = useRef<number | null>(null);
 
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -213,13 +218,15 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
     // The list only carries title/type/date — the content comes from the API
     // when the dialogue opens, the same way the catalogue loads a book.
     const openArticle = useCallback(async (articleId: number) => {
-        setIsLoadingArticle(true);
+        loadingArticleRef.current = articleId;
+        setLoadingArticleId(articleId);
         try {
             const res = await fetch(`/api/news/${articleId}`, {
                 headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
             });
             if (!res.ok) throw new Error('Échec du chargement');
             const article = await res.json();
+            if (loadingArticleRef.current !== articleId) return;
             setEditing({
                 id: articleId,
                 data: {
@@ -229,13 +236,17 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                 },
             });
         } catch {
+            if (loadingArticleRef.current !== articleId) return;
             toast({
                 title: 'Chargement impossible',
                 description: 'L’information n’a pas pu être ouverte. Réessayez.',
                 variant: 'destructive',
             });
         } finally {
-            setIsLoadingArticle(false);
+            if (loadingArticleRef.current === articleId) {
+                loadingArticleRef.current = null;
+                setLoadingArticleId(null);
+            }
         }
     }, []);
 
@@ -437,43 +448,52 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                 </AdminPaginatedList>
             </CardContent>
 
-            {isLoadingArticle && (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 gap-3">
-                    <Loader2 className="h-10 w-10 animate-spin text-white" />
-                    <span className="text-white text-sm">Chargement de l&apos;information...</span>
-                </div>
-            )}
-
             {/* Add */}
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Ajouter une information</DialogTitle>
                     </DialogHeader>
-                    <div className="overflow-y-auto px-1">
+                    <div className="px-1">
                         <AddNewsFormBackend onSuccess={handleSaved} onCancel={() => setIsAddOpen(false)} />
                     </div>
                 </DialogContent>
             </Dialog>
 
             {/* Edit */}
-            {editing && (
-                <Dialog open onOpenChange={(open) => { if (!open) { setEditing(null); clearNewsParam(); } }}>
+            {(editing || loadingArticleId !== null) && (
+                <Dialog
+                    open
+                    onOpenChange={(open) => {
+                        if (open) return;
+                        loadingArticleRef.current = null;
+                        setLoadingArticleId(null);
+                        setEditing(null);
+                        clearNewsParam();
+                    }}
+                >
                     <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
                             <DialogTitle className="text-foreground flex flex-wrap items-center gap-3">
                                 Modifier la dernière info
-                                <CopyableId id={editing.id} label="de l'information" />
-                                <NewsTypeBadge type={editing.data.type} />
+                                <CopyableId id={editing?.id ?? loadingArticleId!} label="de l'information" />
+                                {editing && <NewsTypeBadge type={editing.data.type} />}
                             </DialogTitle>
                         </DialogHeader>
-                        <div className="overflow-y-auto px-1">
-                            <EditNewsFormBackend
-                                newsId={editing.id}
-                                initialData={editing.data}
-                                onSuccess={handleSaved}
-                                onCancel={() => setEditing(null)}
-                            />
+                        <div className="px-1">
+                            {editing ? (
+                                <EditNewsFormBackend
+                                    newsId={editing.id}
+                                    initialData={editing.data}
+                                    onSuccess={handleSaved}
+                                    onCancel={() => setEditing(null)}
+                                />
+                            ) : (
+                                <p role="status" className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                                    <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                                    Chargement de l&apos;information…
+                                </p>
+                            )}
                         </div>
                     </DialogContent>
                 </Dialog>

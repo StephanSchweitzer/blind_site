@@ -1082,7 +1082,7 @@ export default function BooksTable({
                     <DialogHeader>
                         <DialogTitle className="text-foreground">Ajouter un nouveau livre</DialogTitle>
                     </DialogHeader>
-                    <div className="overflow-y-auto px-1">
+                    <div className="px-1">
                         <AddBookFormBackend
                             key={addSeq}
                             onSuccess={handleBookAdded}
@@ -1105,7 +1105,7 @@ export default function BooksTable({
                             {/* Ce qui existe déjà pour ce livre, un clic vers chaque liste. */}
                             {selectedBook && <BookUsageLinks bookId={selectedBook.id} />}
                         </DialogHeader>
-                        <div className="overflow-y-auto px-1">
+                        <div className="px-1">
                             {/* key: the form seeds its state from initialData on
                                 mount only. Keyed on the opening rather than the
                                 book id so that reopening the *same* book also

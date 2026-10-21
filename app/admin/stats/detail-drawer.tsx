@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { IntentLink } from '@/components/admin/IntentLink';
-import { X, ExternalLink, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { ExternalLink, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { billEventLabel, billEventTint } from '@/components/ui/admin/BillHistory';
 import { OPERATION_LABELS } from '@/lib/audit/labels';
 import type {
@@ -102,6 +102,10 @@ export default function DetailDrawer({
         return () => { cancelled = true; };
     }, [key, metric, granularity, actorId, bucket]);
 
+    // What had focus when the drawer mounted: the cell that was clicked.
+    const [opener] = useState<HTMLElement | null>(() =>
+        typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null));
+
     const current = result?.key === key ? result : null;
     const items = current ? current.items : undefined; // undefined = loading
     const error = current !== null && current.items === null;
@@ -127,28 +131,27 @@ export default function DetailDrawer({
         });
 
     return (
-        <>
-            <div
-                className="fixed inset-0 z-[60] bg-black/40"
-                onClick={onClose}
-                aria-hidden="true"
-            />
-            <aside
-                role="dialog"
-                aria-label={`Détail — ${actorName}`}
-                className="fixed inset-y-0 right-0 z-[70] w-full max-w-md bg-card border-l border-border shadow-xl flex flex-col"
+        // The shared Sheet, not a hand-made <aside role="dialog">: that one let
+        // focus stay on the grid behind it, ignored Escape and left the page
+        // scrolling underneath. Radix brings all three.
+        <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
+            <SheetContent
+                side="right"
+                // No SheetTrigger here — the heatmap cell opens it — so Radix
+                // would hand focus to <body> on close. Back to the cell instead,
+                // so a keyboard user carries on where they were.
+                onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+                    opener?.focus();
+                }}
+                className="bg-card border-border w-full sm:max-w-md flex flex-col gap-0 p-0"
             >
-                <div className="flex items-start justify-between gap-3 p-4 border-b border-border">
-                    <div>
-                        <h3 className="font-semibold text-foreground">{actorName}</h3>
-                        <p className="text-sm text-muted-foreground">
-                            {staffMetricFilterLabel(metric)} — {formatBucketLabel(bucket, granularity)}
-                        </p>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer">
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
+                <SheetHeader className="shrink-0 p-4 pr-14 border-b border-border text-left">
+                    <SheetTitle className="text-base font-semibold text-foreground">{actorName}</SheetTitle>
+                    <SheetDescription className="text-sm text-muted-foreground">
+                        {staffMetricFilterLabel(metric)} — {formatBucketLabel(bucket, granularity)}
+                    </SheetDescription>
+                </SheetHeader>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
                     {error && (
@@ -298,7 +301,7 @@ export default function DetailDrawer({
                         );
                     })}
                 </div>
-            </aside>
-        </>
+            </SheetContent>
+        </Sheet>
     );
 }
