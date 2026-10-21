@@ -98,7 +98,7 @@ export function ListNoteDialog({ bookTitle, note, savesNow, onClose, onSave }: L
                             type="button"
                             disabled={pending !== null}
                             onClick={() => void submit(normalizeListNote(draft), 'save')}
-                            className="bg-muted hover:bg-muted text-foreground border-border"
+                            variant="save"
                         >
                             {pending === 'save' && <Loader2 className="animate-spin" />}
                             {savesNow ? 'Enregistrer la note' : 'Valider'}

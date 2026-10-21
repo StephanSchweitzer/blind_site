@@ -705,7 +705,7 @@ export function AddOrderFormBackend({
 
                     <StickySubmitBar>
                         <Button type="submit" disabled={isLoading}
-                                className="w-full bg-muted hover:bg-muted text-foreground border-border">
+                                variant="save" className="w-full">
                             {isLoading
                                 ? 'Création en cours...'
                                 : filledCount === 0

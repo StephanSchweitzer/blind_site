@@ -136,7 +136,7 @@ export function GenreFormBackendBase({
                     )}
 
                     <div className="flex flex-wrap items-center gap-3 pt-2">
-                        <Button type="submit" disabled={busy} className="bg-muted hover:bg-muted text-foreground border-border">
+                        <Button type="submit" disabled={busy} variant="save">
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isLoading ? loadingText : submitButtonText}
                         </Button>

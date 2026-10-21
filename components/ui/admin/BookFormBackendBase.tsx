@@ -551,7 +551,7 @@ export function BookFormBackendBase({
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-muted hover:bg-muted text-foreground border-border"
+                            variant="save" className="w-full"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>

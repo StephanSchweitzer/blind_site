@@ -1325,7 +1325,7 @@ export default function PersonAvailabilityPanel({
                                 size="sm"
                                 onClick={handleSave}
                                 disabled={!dirty || saving}
-                                className="bg-muted hover:bg-muted text-foreground border-border"
+                                variant="save"
                             >
                                 {saving && <Loader2 size={14} className="mr-2 animate-spin" />}
                                 Enregistrer

@@ -143,7 +143,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                             <AideLink section="pages-publiques" />
                         </div>
                         {dirty && (
-                            <Button onClick={saveOrder} disabled={busy} className="bg-muted hover:bg-muted text-foreground border-border">
+                            <Button onClick={saveOrder} disabled={busy} variant="save">
                                 {running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}
                                 Enregistrer l&apos;ordre
                             </Button>

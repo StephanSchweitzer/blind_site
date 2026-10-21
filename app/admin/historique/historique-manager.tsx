@@ -141,7 +141,7 @@ function EventForm({ draft, setDraft, busy, saving, onSave, onCancel }: {
             <Textarea placeholder="Description" value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} className={`${field} min-h-24`} />
             <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={onCancel}><X className="h-4 w-4 mr-1" /> Annuler</Button>
-                <Button size="sm" disabled={busy} onClick={onSave} className="bg-muted hover:bg-muted text-foreground border-border">{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />} Enregistrer</Button>
+                <Button size="sm" disabled={busy} onClick={onSave} variant="save">{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />} Enregistrer</Button>
             </div>
         </div>
     );

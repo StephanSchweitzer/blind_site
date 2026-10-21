@@ -119,7 +119,7 @@ export function ContactForm({ initial }: ContactFormProps) {
                             {saved && <p className="text-sm text-green-600 dark:text-green-400">Enregistré.</p>}
 
                             <div className="flex justify-end pt-4">
-                                <Button type="submit" disabled={saving} className="bg-muted text-foreground border-border hover:bg-muted">
+                                <Button type="submit" disabled={saving} variant="save">
                                     {saving ? 'Enregistrement…' : 'Enregistrer'}
                                 </Button>
                             </div>

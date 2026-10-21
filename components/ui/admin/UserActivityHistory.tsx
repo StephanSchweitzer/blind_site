@@ -211,7 +211,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
                         type="button"
                         onClick={handleSave}
                         disabled={loading || !draft.isComplete || draft.status === currentStatus || saving}
-                        className="bg-muted hover:bg-muted text-foreground border-border"
+                        variant="save"
                         size="sm"
                     >
                         {saving ? 'Enregistrement\u2026' : 'Enregistrer le statut'}
