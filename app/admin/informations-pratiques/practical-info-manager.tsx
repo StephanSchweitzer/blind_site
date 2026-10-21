@@ -74,7 +74,7 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
                             <AideLink section="pages-publiques" />
                         </div>
                         <div className="flex gap-2">
-                            {dirty && <Button onClick={saveOrder} disabled={busy} className="bg-primary text-primary-foreground hover:bg-primary/90">{running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer l&apos;ordre</Button>}
+                            {dirty && <Button onClick={saveOrder} disabled={busy} className="bg-muted hover:bg-muted text-foreground border-border">{running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer l&apos;ordre</Button>}
                             <Button onClick={() => { setAdding(true); setEditingId(null); setDraft(EMPTY); }} className="bg-muted text-foreground border-border hover:bg-muted">
                                 <Plus className="h-4 w-4 mr-1" /> Ajouter
                             </Button>
@@ -147,7 +147,7 @@ function InfoForm({ draft, setDraft, busy, saving, onSave, onCancel }: {
             <Textarea placeholder="Réponse (markdown : **gras**, [lien](url), listes)" value={draft.body} onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))} className={`${field} min-h-40 font-mono text-sm`} />
             <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={onCancel}><X className="h-4 w-4 mr-1" /> Annuler</Button>
-                <Button size="sm" disabled={busy} onClick={onSave} className="bg-primary text-primary-foreground hover:bg-primary/90">{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />} Enregistrer</Button>
+                <Button size="sm" disabled={busy} onClick={onSave} className="bg-muted hover:bg-muted text-foreground border-border">{saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />} Enregistrer</Button>
             </div>
         </div>
     );

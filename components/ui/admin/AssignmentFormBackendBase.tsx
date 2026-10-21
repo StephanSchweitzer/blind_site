@@ -1267,7 +1267,7 @@ export function AssignmentFormBackendBase({
                             type="submit"
                             disabled={isLoading || (!isEditMode && !selectedReaderId)}
                             title={!isEditMode && !selectedReaderId ? 'Sélectionnez d’abord un lecteur' : undefined}
-                            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-muted hover:bg-muted text-foreground border-border disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>

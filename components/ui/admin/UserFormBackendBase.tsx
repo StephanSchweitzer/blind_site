@@ -870,7 +870,7 @@ export function UserFormBackendBase({
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                            className="w-full bg-muted hover:bg-muted text-foreground border-border"
                         >
                             {isLoading ? loadingText : submitButtonText}
                         </Button>

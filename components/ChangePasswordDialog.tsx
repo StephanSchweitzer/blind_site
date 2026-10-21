@@ -170,7 +170,7 @@ export default function ChangePasswordDialog({ open, onOpenChange }: ChangePassw
                         <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                             Annuler
                         </Button>
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting} className="bg-muted hover:bg-muted text-foreground border-border">
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

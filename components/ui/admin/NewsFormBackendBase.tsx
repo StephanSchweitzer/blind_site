@@ -158,7 +158,7 @@ export function NewsFormBackendBase({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 pt-2">
-                        <Button type="submit" disabled={busy} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Button type="submit" disabled={busy} className="bg-muted hover:bg-muted text-foreground border-border">
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isLoading ? loadingText : submitButtonText}
                         </Button>

@@ -122,7 +122,7 @@ export default function AccountSecurity({ email }: AccountSecurityProps) {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Button type="submit" disabled={!dirty || saving}>
+                    <Button type="submit" disabled={!dirty || saving} className="bg-muted hover:bg-muted text-foreground border-border">
                         {saving ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                         ) : (

@@ -473,7 +473,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                         {/* Rien à annuler une fois tout enregistré : le bouton ne fait plus que sortir. */}
                         {isDirty || isNew ? 'Annuler' : 'Fermer'}
                     </Button>
-                    <Button type="submit" disabled={!canSave}>
+                    <Button type="submit" disabled={!canSave} className="bg-muted hover:bg-muted text-foreground border-border">
                         {isSaving && <Loader2 className="animate-spin" />}
                         {isSaving ? 'Enregistrement…' : isNew ? 'Créer la liste' : 'Enregistrer'}
                     </Button>
