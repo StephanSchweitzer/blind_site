@@ -18,9 +18,10 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        // Tous les boutons d'enregistrement du back-office. Au survol, --accent
-        // est la teinte juste au-dessus de --muted dans chaque thème.
-        save: "bg-muted text-foreground hover:bg-accent",
+        // Tous les boutons d'enregistrement du back-office : le bleu ECA, l'action
+        // principale du formulaire. Le gris-bleu (bg-muted) se confondait avec la
+        // fiche en thème sombre ; il reste aux boutons secondaires (Ajouter, Annuler).
+        save: "bg-primary text-primary-foreground hover:bg-primary/90",
       },
       size: {
         default: "h-10 px-4 py-2",
