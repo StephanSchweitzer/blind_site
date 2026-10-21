@@ -3,6 +3,8 @@ import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { redirect } from 'next/navigation';
 import { TeamManager } from './team-manager';
 
+export const metadata = { title: 'Équipe' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function AdminTeam() {

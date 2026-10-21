@@ -991,7 +991,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             >
                 <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <CardTitle className="text-lg text-foreground flex items-center gap-2">
+                        <CardTitle as="h2" className="text-lg text-foreground flex items-center gap-2">
                             Calendrier des indisponibilités
                             {/* The panel writes, then the page re-reads from the
                                 server: without this the calendar simply looks
@@ -1068,7 +1068,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             >
                 <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle className="text-lg text-foreground">Lecteurs</CardTitle>
+                        <CardTitle as="h2" className="text-lg text-foreground">Lecteurs</CardTitle>
                         <span className="text-sm text-muted-foreground">
                             {displayedReaders.length} sur {readerRows.length}
                         </span>
@@ -1077,7 +1077,10 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                        <div className="flex items-center gap-1">
+                        {/* flex-wrap : sur téléphone, les deux tris côte à côte
+                            dépassaient de 130 px, et le cadre (overflow-x-clip)
+                            coupait le second sans qu'on puisse le faire défiler. */}
+                        <div className="flex flex-wrap items-center gap-1">
                             {READER_SORTS.map((sort) => (
                                 <Button
                                     key={sort.value}

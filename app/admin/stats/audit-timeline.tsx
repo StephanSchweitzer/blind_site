@@ -480,12 +480,21 @@ function EventRow({
                     : 'border-border bg-card'
             }`}
         >
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2.5">
+            {/* The chevron was the only way in, a 15 px target. The whole line
+                now opens the detail for the mouse — except its own links and
+                buttons — while the chevron stays the keyboard entry point. */}
+            <div
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2.5 cursor-pointer"
+                onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('a, button')) return;
+                    onToggle();
+                }}
+            >
                 <button
                     type="button"
                     onClick={onToggle}
                     aria-expanded={expanded}
-                    className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground shrink-0"
+                    className="-m-1.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground shrink-0"
                 >
                     {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                     <span className="sr-only">Voir le détail</span>
@@ -547,7 +556,7 @@ function EventRow({
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground shrink-0"
+                        className="-m-1.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground shrink-0"
                         aria-label={`Ouvrir ${describeRecord(event)}`}
                     >
                         <ExternalLink size={13} />

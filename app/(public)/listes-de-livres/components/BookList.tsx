@@ -17,11 +17,18 @@ const TruncatedDescription: React.FC<{ description: string, characterLimit?: num
         return <>{description}</>;
     }
 
+    // Cut at the last whole word: a hard cut at 200 left « 1940 au m… ».
+    // A word longer than the whole limit (a URL) keeps the hard cut.
+    const cut = description.substring(0, characterLimit + 1);
+    const lastSpace = cut.lastIndexOf(' ');
+    const excerpt = (lastSpace > characterLimit / 2 ? cut.substring(0, lastSpace) : cut.substring(0, characterLimit))
+        .replace(/[\s,;:.!?«(\-–—]+$/, '');
+
     return (
         // aria-hidden: the affordance is already carried by the title button's
         // own name, and "Cliquer pour…" reads as an instruction to click, which
         // is meaningless for a keyboard or screen-reader user (RGAA 13.10).
-        <>{description.substring(0, characterLimit)}… <span aria-hidden="true" className="text-blue-700 dark:text-blue-300 font-medium hover:underline">Cliquer pour tout afficher</span></>
+        <>{excerpt}… <span aria-hidden="true" className="text-blue-700 dark:text-blue-300 font-medium hover:underline">Cliquer pour tout afficher</span></>
     );
 };
 

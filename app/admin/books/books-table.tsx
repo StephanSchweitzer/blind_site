@@ -737,7 +737,7 @@ export default function BooksTable({
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle className="text-foreground">Catalogue</CardTitle>
+                        <CardTitle as="h1" className="text-foreground">Catalogue</CardTitle>
                         <AideLink section="catalogue" />
                     </div>
                 </div>

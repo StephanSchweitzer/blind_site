@@ -33,11 +33,14 @@ CardHeader.displayName = "CardHeader"
 // `asChild` lets a card that *is* the page (the auth screens) render its title
 // as the real <h1> instead of a styled <div>, so the page is not published
 // without a top-level heading (RGAA 9.1).
+// `as` does the same without wrapping the children: the back-office pages are
+// cards whose title is the page title (`as="h1"`), or a section of it (`h2`).
+// Without it, every page from Demandes to Genres had no heading at all.
 const CardTitle = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { asChild?: boolean }
->(({ className, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "div"
+  React.HTMLAttributes<HTMLDivElement> & { asChild?: boolean; as?: "h1" | "h2" | "h3" | "div" }
+>(({ className, asChild = false, as = "div", ...props }, ref) => {
+  const Comp = asChild ? Slot : as
   return (
     <Comp
       ref={ref}

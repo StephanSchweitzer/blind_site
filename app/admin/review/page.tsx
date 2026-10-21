@@ -8,6 +8,8 @@ import { pageInfo, pageSkip, parsePageParam, redirectPastLastPage } from '@/lib/
 import { bookReviewIdClauses, buildBookReviewSearchWhere } from '@/lib/search';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 
+export const metadata = { title: 'Doublons' };
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

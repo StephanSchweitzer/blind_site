@@ -251,7 +251,7 @@ function OrphanCard({
             <CardHeader className="space-y-2">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <CardTitle className="text-base">{orphan.title}</CardTitle>
+                        <CardTitle as="h2" className="text-base">{orphan.title}</CardTitle>
                         {/* Le n° de dossier et l'année se lisent dans le chemin juste
                             dessous ; la date du dernier passage du scan ne regarde que lui. */}
                         <CardDescription className="mt-1 flex flex-wrap items-center gap-2 text-xs">
@@ -529,7 +529,7 @@ export default function OrphansClient({
                 <CardHeader className="space-y-4">
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle>Audio orphelin</CardTitle>
+                            <CardTitle as="h1">Audio orphelin</CardTitle>
                             <AideLink section="audio-orphelin" />
                         </div>
                         {/* Le titre du menu, et une phrase : les trois gestes sont les

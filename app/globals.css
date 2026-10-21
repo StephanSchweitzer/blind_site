@@ -414,7 +414,30 @@
    Césure française (la page est en lang="fr"). */
 :root:is([data-taille-texte], [data-espacement]):has(#navigation-principale) main :is(h1, h2, h3) {
     hyphens: auto;
-    overflow-wrap: break-word;
+}
+/* Et ce qui n'a pas de césure — une adresse e-mail, un lien, un mot plus
+   long que l'écran — passe à la ligne n'importe où plutôt que d'élargir la
+   page : à 375 px, texte agrandi, l'adresse de la permanence faisait défiler
+   chaque page de côté (WCAG 1.4.10). `anywhere` et non `break-word` : seul
+   le premier compte dans la largeur minimale d'une grille ou d'un flex. */
+:root:is([data-taille-texte], [data-espacement]):has(#navigation-principale) main {
+    overflow-wrap: anywhere;
+}
+/* Les numéros et l'adresse de la permanence se gardent d'un bloc
+   (whitespace-nowrap, components/PhoneLines.tsx, DemandeContact.tsx) : à
+   150 %, espacés, un seul dépasse déjà l'écran. Mieux vaut un numéro sur
+   deux lignes qu'une page qui défile de côté. */
+:root:is([data-taille-texte], [data-espacement]):has(#navigation-principale) main :is(a[href^='tel:'], a[href^='mailto:']) {
+    white-space: normal;
+}
+/* La barre sur téléphone, texte agrandi ou espacé : le nom en trois lignes et
+   les trois boutons ne tiennent plus côte à côte (jusqu'à 540 px pour 375).
+   Le monogramme reste, comme dans la barre complète sous 1536 px ; le lien
+   garde son nom accessible (« ECA — retour à l'accueil »). */
+@media (max-width: 599px) {
+    :root:is([data-taille-texte], [data-espacement]):has(#navigation-principale) .nav-compacte .nav-nom {
+        display: none;
+    }
 }
 
 /* La barre publique : le menu complet ne s'affiche que là où il tient. À

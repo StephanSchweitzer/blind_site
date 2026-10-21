@@ -239,7 +239,7 @@ export default function AssignmentsTable({
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
                             {/* Dans un dossier, l'onglet porte déjà le titre. */}
-                            <CardTitle className={inDossier ? 'sr-only' : 'text-3xl font-bold text-foreground'}>
+                            <CardTitle as={inDossier ? 'h2' : 'h1'} className={inDossier ? 'sr-only' : 'text-3xl font-bold text-foreground'}>
                                 Attributions
                             </CardTitle>
                             <AideLink section="attributions" />

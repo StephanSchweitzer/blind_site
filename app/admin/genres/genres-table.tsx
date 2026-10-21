@@ -80,7 +80,7 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle className="text-foreground">Genres</CardTitle>
+                        <CardTitle as="h1" className="text-foreground">Genres</CardTitle>
                         <AideLink section="genres" />
                     </div>
                 </div>

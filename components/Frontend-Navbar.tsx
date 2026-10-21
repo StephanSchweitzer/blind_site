@@ -21,7 +21,9 @@ import { AffichageBouton, AffichageSettings } from '@/components/AffichageSettin
  *
  * Dans la barre complète, le nom n'apparaît qu'à partir de 1536 px : en
  * dessous, il serrait le menu (surtout avec le lien « Administration »), et le
- * monogramme seul y reste lisible. Sur téléphone, il est toujours là.
+ * monogramme seul y reste lisible. Sur téléphone, il est là, sauf texte
+ * agrandi ou espacé, où il ne tient plus à côté des boutons (`.nav-nom`,
+ * app/globals.css).
  */
 function EcaLogo({ nameFrom2xl = false }: { nameFrom2xl?: boolean }) {
     return (
@@ -29,7 +31,7 @@ function EcaLogo({ nameFrom2xl = false }: { nameFrom2xl?: boolean }) {
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white p-1 ring-1 ring-border">
                 <Image src="/eca_mark.png" alt="" aria-hidden="true" width={40} height={36} className="h-auto w-full" priority />
             </span>
-            <span className={`${nameFrom2xl ? 'hidden 2xl:block' : 'block'} text-[0.8125rem] font-semibold leading-[1.15] text-foreground`}>
+            <span className={`nav-nom ${nameFrom2xl ? 'hidden 2xl:block' : 'block'} text-[0.8125rem] font-semibold leading-[1.15] text-foreground`}>
                 {/* Trois lignes voulues, coupées au sens : le nom tient ainsi à côté du
                     menu complet, sans se casser au hasard. */}
                 <span className="block whitespace-nowrap">Enregistrements</span>
@@ -155,7 +157,9 @@ const FrontendNavbar = () => {
                 className="sticky top-0 z-50 bg-card border-b border-border text-foreground shadow-sm"
             >
                 <div className="w-full px-4 sm:px-6">
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center py-3 w-full">
+                    {/* gap-x-4 : à 1280 px, connecté, « Administration » touchait
+                        le bouton « Affichage » sans le moindre écart. */}
+                    <div className="grid grid-cols-[1fr_auto_1fr] gap-x-4 items-center py-3 w-full">
                         {/* Small logo on left - visible on desktop.
                             `nav-large` / `nav-compacte` (app/globals.css) rather than
                             lg: — the full menu does not fit at 1024 px, and an

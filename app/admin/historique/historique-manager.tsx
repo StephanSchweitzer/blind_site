@@ -65,7 +65,7 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="text-foreground">Historique ({events.length})</CardTitle>
+                            <CardTitle as="h1" className="text-foreground">Historique ({events.length})</CardTitle>
                             <AideLink section="pages-publiques" />
                         </div>
                         <Button onClick={() => { setAdding(true); setDraft({ year: '', title: '', description: '', iconKey: 'Calendar' }); }} className="bg-muted text-foreground border-border hover:bg-muted">

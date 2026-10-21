@@ -8,6 +8,8 @@ import { buildDeletedAudioSearchWhere } from '@/lib/search';
 import TrashClient, { type TrashGroup, type TrashRow, type TrashTab } from './trash-client';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 
+export const metadata = { title: 'Corbeille audio' };
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

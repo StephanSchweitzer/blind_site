@@ -65,6 +65,18 @@ export function calendarMonth(value: Date | string | null | undefined): string {
     return parts ? String(parts.month).padStart(2, '0') : '';
 }
 
+/**
+ * A publication date as a reader should see it: the year alone when only the
+ * year is known (1 January — 12 801 of 12 888 dated books in October 2026),
+ * the full `JJ/MM/AAAA` otherwise. « 01/01/2018 » claimed a day nobody knows.
+ */
+export function formatPublicationDate(value: Date | string | null | undefined, fallback = ''): string {
+    const parts = toCalendarParts(value);
+    if (!parts) return fallback;
+    if (parts.month === 1 && parts.day === 1) return String(parts.year);
+    return formatCalendarDate(value, fallback);
+}
+
 /** `JJ/MM/AAAA`, the French written form, without a timezone in sight. */
 export function formatCalendarDate(value: Date | string | null | undefined, fallback = ''): string {
     const parts = toCalendarParts(value);

@@ -3,6 +3,8 @@ import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { redirect } from 'next/navigation';
 import { HistoriqueManager } from './historique-manager';
 
+export const metadata = { title: 'Historique' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHistorique() {

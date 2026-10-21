@@ -275,7 +275,7 @@ export default function ReviewClient({ pairs, pagination, search, searchSuggesti
                 <CardHeader className="space-y-4">
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle>Doublons</CardTitle>
+                            <CardTitle as="h1">Doublons</CardTitle>
                             <AideLink section="doublons" />
                         </div>
                         {/* Le nombre se lit dans « 1–10 sur N livres » sous la recherche :
@@ -566,7 +566,7 @@ function PairCard({
             <Card>
                 <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
                     <div>
-                        <CardTitle className="text-base">
+                        <CardTitle as="h2" className="text-base">
                             {flagged.title} <CopyIdButton id={flagged.id} label="du livre" className="text-muted-foreground font-normal" />
                         </CardTitle>
                         <CardDescription>{flagged.author}</CardDescription>
@@ -988,7 +988,9 @@ function EscalateRow({
                 variant="outline"
                 size="sm"
                 disabled={busy || escalated}
-                className={className}
+                // Wraps instead of the Button's nowrap: « Impossible de fusionner,
+                // envoyer à Stéphan » ran past a phone's edge, cut by the layout.
+                className={`h-auto min-h-9 whitespace-normal text-left ${className ?? ''}`}
                 // The card behind this row opens the comparison on click.
                 onClick={(e) => {
                     e.stopPropagation();

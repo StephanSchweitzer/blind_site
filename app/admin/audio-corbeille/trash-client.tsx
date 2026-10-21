@@ -317,7 +317,7 @@ export default function TrashClient({
                 <CardHeader className="space-y-4">
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle>Corbeille audio</CardTitle>
+                            <CardTitle as="h1">Corbeille audio</CardTitle>
                             <AideLink section="corbeille-audio" />
                         </div>
                         <CardDescription>

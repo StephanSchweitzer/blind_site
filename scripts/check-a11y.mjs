@@ -1,6 +1,6 @@
 /**
  * Audit d'accessibilité automatique du site public (axe-core, WCAG 2.2 AA et
- * bonnes pratiques).
+ * bonnes pratiques), plus, sur téléphone, l'absence de défilement horizontal.
  *
  * Le site sert des personnes aveugles et malvoyantes : une régression de
  * contraste, un bouton sans nom ou un titre sauté se paient chez elles, pas
@@ -223,6 +223,44 @@ async function auditer(config) {
     })()`);
 }
 
+/**
+ * Défilement horizontal (WCAG 1.4.10, « redistribution ») — qu'axe ne teste pas.
+ * À 375 px, une page plus large que l'écran oblige à défiler dans les deux
+ * sens pour lire chaque ligne : à fort zoom, c'est illisible. Une adresse web
+ * collée dans une actualité suffisait (/dernieres-infos, octobre 2026) et
+ * l'audit passait au vert. Désigne l'élément le plus profond qui déborde :
+ * c'est celui qu'il faut corriger, pas ses parents qui ne font que le suivre.
+ */
+async function verifierRedistribution() {
+    return evaluate(`(() => {
+        const page = document.documentElement;
+        // clientWidth, pas innerWidth : en émulation téléphone, Chrome dézoome une page
+        // trop large pour la faire tenir, et innerWidth grandit avec elle.
+        if (page.scrollWidth <= page.clientWidth + 1) return [];
+        const deborde = (el) => {
+            if (el.scrollWidth <= el.clientWidth + 1) return false;
+            const ox = getComputedStyle(el).overflowX;
+            return ox === 'visible';
+        };
+        const fautifs = [...document.querySelectorAll('body *')]
+            .filter((el) => deborde(el) && ![...el.children].some(deborde))
+            .slice(0, 3)
+            .map((el) => {
+                const classes = typeof el.className === 'string' ? el.className.trim().split(/\\s+/).slice(0, 3).join('.') : '';
+                return {
+                    target: el.tagName.toLowerCase() + (classes ? '.' + classes : ''),
+                    summary: (el.textContent || '').trim().slice(0, 60),
+                };
+            });
+        return [{
+            id: 'reflow',
+            impact: 'serious',
+            help: 'La page est plus large que l\\'écran (' + page.scrollWidth + ' px pour ' + page.clientWidth + ')',
+            nodes: fautifs.length ? fautifs : [{ target: 'html', summary: '' }],
+        }];
+    })()`);
+}
+
 async function capturer(nom) {
     const { data } = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
     fs.writeFileSync(path.join(SHOTS_DIR, nom), Buffer.from(data, 'base64'));
@@ -279,6 +317,7 @@ async function main() {
                     }
                     await sleep(800);
                     const violations = await auditer(config);
+                    if (config.mobile) violations.push(...(await verifierRedistribution()));
                     if (SHOTS_DIR) await capturer(`${slug(config.name)}__${slug(nom) || 'accueil'}.png`);
                     if (!violations.length) {
                         console.log(`  ✓ ${nom}`);

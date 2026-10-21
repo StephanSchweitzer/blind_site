@@ -10,6 +10,8 @@ import AvailabilityDashboard from './availability-dashboard';
  * happens inside getAvailabilityOverview), which is why the page must never be
  * cached: a stale render would show absences that ended days ago.
  */
+export const metadata = { title: 'Disponibilités' };
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

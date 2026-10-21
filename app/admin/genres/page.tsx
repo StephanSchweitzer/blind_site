@@ -14,6 +14,8 @@ interface PageProps {
     }>;
 }
 
+export const metadata = { title: 'Genres' };
+
 export const dynamic = 'force-dynamic';
 
 async function getGenres(page: number, pageSize: number, searchTerm: string) {

@@ -87,7 +87,7 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
                 <div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle className="text-2xl font-bold text-foreground">Listes de livres</CardTitle>
+                        <CardTitle as="h1" className="text-2xl font-bold text-foreground">Listes de livres</CardTitle>
                         <AideLink section="liste-de-livres" />
                     </div>
                 </div>

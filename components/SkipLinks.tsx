@@ -4,9 +4,14 @@ import React from 'react';
 
 type SkipTarget = { id: string; label: string };
 
-const TARGETS: SkipTarget[] = [
+/**
+ * `navId` : le back-office passe l'id de sa propre barre. Il ne peut pas
+ * reprendre « navigation-principale » — app/globals.css s'en sert pour savoir
+ * qu'il est sur le site public et y appliquer les réglages d'affichage.
+ */
+const targets = (navId: string): SkipTarget[] => [
     { id: 'contenu-principal', label: 'Aller au contenu principal' },
-    { id: 'navigation-principale', label: 'Aller à la navigation' },
+    { id: navId, label: 'Aller à la navigation' },
 ];
 
 /**
@@ -23,7 +28,7 @@ const TARGETS: SkipTarget[] = [
  *    hydration, so `#contenu-principal` can resolve to a copy of the target
  *    that is display:none. Selecting the live node explicitly sidesteps that.
  */
-export function SkipLinks() {
+export function SkipLinks({ navId = 'navigation-principale' }: { navId?: string }) {
     const skipTo = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
         // Pick the node that is actually rendered, not a streaming buffer copy.
         const target = Array.from(document.querySelectorAll<HTMLElement>(`#${id}`))
@@ -40,7 +45,7 @@ export function SkipLinks() {
 
     return (
         <>
-            {TARGETS.map(({ id, label }) => (
+            {targets(navId).map(({ id, label }) => (
                 <a key={id} href={`#${id}`} className="skip-link" onClick={(e) => skipTo(e, id)}>
                     {label}
                 </a>

@@ -33,6 +33,11 @@ export function generateStaticParams() {
     return USER_TYPE_VALUES.map((type) => ({ type }));
 }
 
+export async function generateMetadata({ params }: Pick<PageProps, 'params'>) {
+    const { type } = await params;
+    return isUserType(type) ? { title: USER_TYPE_META[type].plural } : {};
+}
+
 async function getUsers(
     page: number,
     pageSize: number,

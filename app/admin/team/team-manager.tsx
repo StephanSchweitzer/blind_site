@@ -139,7 +139,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border flex flex-row items-center justify-between">
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="text-foreground">Équipe ({total})</CardTitle>
+                            <CardTitle as="h1" className="text-foreground">Équipe ({total})</CardTitle>
                             <AideLink section="pages-publiques" />
                         </div>
                         {dirty && (
@@ -174,7 +174,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                 {SECTION_ORDER.map((section) => (
                     <Card key={section} className="bg-card border-border">
                         <CardHeader className="border-b border-border">
-                            <CardTitle className="text-foreground text-lg">{SECTION_LABELS[section]}</CardTitle>
+                            <CardTitle as="h2" className="text-foreground text-lg">{SECTION_LABELS[section]}</CardTitle>
                         </CardHeader>
                         <CardContent className="pt-4">
                             {groups[section].length === 0 ? (

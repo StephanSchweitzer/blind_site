@@ -311,7 +311,7 @@ export default function OrdersTable({
                         )}
                         <div>
                             <div className="flex flex-wrap items-center gap-2">
-                                <CardTitle className={presetClient ? 'sr-only' : 'text-2xl text-foreground'}>Demandes</CardTitle>
+                                <CardTitle as={presetClient ? 'h2' : 'h1'} className={presetClient ? 'sr-only' : 'text-2xl text-foreground'}>Demandes</CardTitle>
                                 <AideLink section="demandes" />
                             </div>
                         </div>

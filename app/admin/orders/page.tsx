@@ -19,6 +19,8 @@ interface PageProps {
     }>;
 }
 
+export const metadata = { title: 'Demandes' };
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

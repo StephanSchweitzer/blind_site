@@ -12,6 +12,8 @@ import { pageInfo, pageSkip, parsePageParam, redirectPastLastPage } from '@/lib/
 import { buildOrphanFolderSearchWhere } from '@/lib/search';
 import { rescueEmptySearch, RESCUE_CANDIDATES } from '@/lib/search-rescue';
 
+export const metadata = { title: 'Audio orphelin' };
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

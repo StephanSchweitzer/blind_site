@@ -22,6 +22,40 @@ const DEBOUNCE_DELAY = 300;
 
 type NewsQuery = { search: string; type: string; page: number };
 
+// Une adresse web dans le texte d'une actualité. La ponctuation qui la suit
+// (« … sur https://exemple.fr. ») reste au texte, hors du lien.
+const URL_IN_TEXT = /https?:\/\/[^\s<>«»"]+[^\s<>«»".,;:!?)\]]/g;
+
+/**
+ * Le texte d'une actualité, ses adresses web rendues cliquables. Elles
+ * n'étaient que du texte : on ne pouvait ni les suivre ni les ouvrir au
+ * lecteur d'écran, et sur téléphone ces longs mots sans espace élargissaient
+ * la page (le paragraphe peut désormais couper n'importe où, `overflow-wrap: anywhere`).
+ */
+function TextWithLinks({ text }: { text: string }) {
+    const parts: React.ReactNode[] = [];
+    let last = 0;
+    for (const match of text.matchAll(URL_IN_TEXT)) {
+        const start = match.index ?? 0;
+        if (start > last) parts.push(text.slice(last, start));
+        parts.push(
+            <a
+                key={start}
+                href={match[0]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-700 dark:text-blue-300 underline underline-offset-2 hover:no-underline"
+            >
+                {match[0]}
+                <span className="sr-only"> (nouvelle fenêtre)</span>
+            </a>
+        );
+        last = start + match[0].length;
+    }
+    if (last < text.length) parts.push(text.slice(last));
+    return <>{parts}</>;
+}
+
 /** The feed's state as a query string, the parameters /api/news reads. Defaults left out. */
 function newsParams(q: NewsQuery): URLSearchParams {
     const params = new URLSearchParams();
@@ -332,8 +366,8 @@ export function DernieresInfosClient({ initialData }: DernieresInfosClientProps)
                                 </div>
 
                                 <div className="mb-4 p-4 rounded-xl bg-gray-100 dark:bg-gray-700/30 border border-gray-300 dark:border-gray-600/30">
-                                    <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                        {post.content}
+                                    <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap [overflow-wrap:anywhere] leading-relaxed">
+                                        <TextWithLinks text={post.content} />
                                     </p>
                                 </div>
 

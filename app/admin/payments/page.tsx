@@ -22,6 +22,8 @@ interface PageProps {
     }>;
 }
 
+export const metadata = { title: 'Paiements' };
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

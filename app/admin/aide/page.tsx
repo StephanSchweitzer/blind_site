@@ -9,7 +9,7 @@ import { AideSearch } from '@/components/aide/AideSearch';
 import { TECH_CONTACT_EMAIL } from '@/lib/user-error';
 
 export const metadata = {
-    title: "Mode d'emploi — Arbre Rose",
+    title: "Mode d'emploi",
 };
 
 /**
@@ -41,7 +41,7 @@ export default function AidePage() {
                                 priority
                             />
                             <div>
-                                <CardTitle className="text-2xl font-bold text-foreground">
+                                <CardTitle as="h1" className="text-2xl font-bold text-foreground">
                                     Mode d&apos;emploi
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground mt-1">

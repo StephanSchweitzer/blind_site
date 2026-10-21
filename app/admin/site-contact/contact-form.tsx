@@ -69,7 +69,7 @@ export function ContactForm({ initial }: ContactFormProps) {
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border">
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="text-foreground">Coordonnées du site</CardTitle>
+                            <CardTitle as="h1" className="text-foreground">Coordonnées du site</CardTitle>
                             <AideLink section="pages-publiques" />
                         </div>
                         <CardDescription className="text-muted-foreground">

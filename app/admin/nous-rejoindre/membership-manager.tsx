@@ -81,7 +81,7 @@ export function MembershipManager({ initial }: { initial: MembershipOption[] }) 
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="text-foreground">Nous rejoindre ({items.length})</CardTitle>
+                            <CardTitle as="h1" className="text-foreground">Nous rejoindre ({items.length})</CardTitle>
                             <AideLink section="pages-publiques" />
                         </div>
                         <div className="flex gap-2">

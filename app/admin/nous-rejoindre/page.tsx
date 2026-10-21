@@ -3,6 +3,8 @@ import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { redirect } from 'next/navigation';
 import { MembershipManager } from './membership-manager';
 
+export const metadata = { title: 'Nous rejoindre' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function AdminMembership() {

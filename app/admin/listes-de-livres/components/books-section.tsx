@@ -278,7 +278,7 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
             <CardHeader className="gap-4 space-y-0 border-b border-border pb-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+                        <CardTitle as="h2" className="flex items-center gap-2 text-lg text-foreground">
                             Livres
                             <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                                 {books.length}

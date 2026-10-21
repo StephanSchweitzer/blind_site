@@ -21,6 +21,19 @@ interface LayoutProps {
     params: Promise<{ id: string }>;
 }
 
+// L'onglet porte le nom de la personne : plusieurs dossiers ouverts à la fois
+// se distinguent sans avoir à les afficher un par un.
+export async function generateMetadata({ params }: Pick<LayoutProps, 'params'>) {
+    const userId = parseInt((await params).id);
+    if (isNaN(userId)) return {};
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true },
+    });
+    const fullName = user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : '';
+    return { title: fullName ? `${fullName} · Dossier` : 'Dossier' };
+}
+
 export default async function DossierLayout({ children, params }: LayoutProps) {
     const { id } = await params;
     const userId = parseInt(id);

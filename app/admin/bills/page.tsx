@@ -18,6 +18,8 @@ interface PageProps {
     }>;
 }
 
+export const metadata = { title: 'Factures' };
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

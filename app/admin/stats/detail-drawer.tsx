@@ -207,9 +207,9 @@ export default function DetailDrawer({
                                                 rel="noopener noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
                                                 aria-label={`Ouvrir ${item.title}`}
-                                                className="text-muted-foreground hover:text-foreground shrink-0"
+                                                className="-m-1.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground shrink-0"
                                             >
-                                                <ExternalLink className="h-3.5 w-3.5 mt-0.5" />
+                                                <ExternalLink className="h-3.5 w-3.5" />
                                             </IntentLink>
                                         ) : (
                                             <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />

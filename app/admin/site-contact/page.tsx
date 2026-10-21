@@ -3,6 +3,8 @@ import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
 import { redirect } from 'next/navigation';
 import { ContactForm } from './contact-form';
 
+export const metadata = { title: 'Coordonnées du site' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function AdminSiteContact() {

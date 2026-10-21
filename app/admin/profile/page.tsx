@@ -23,6 +23,8 @@ import MyUnavailability from './my-unavailability';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 
+export const metadata = { title: 'Mon compte' };
+
 export const dynamic = 'force-dynamic';
 
 /**

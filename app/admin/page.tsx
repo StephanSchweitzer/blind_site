@@ -89,6 +89,10 @@ function duplicationRows(tally: DelaiTally): DashboardStatusRow[] {
     return rows;
 }
 
+// `absolute` : le modèle « … — Arbre Rose » de app/admin/layout.tsx ne s'applique
+// qu'aux pages des sous-dossiers, pas à celle qui partage son dossier.
+export const metadata = { title: { absolute: 'Tableau de bord — Arbre Rose' } };
+
 export const dynamic = 'force-dynamic';
 
 /**

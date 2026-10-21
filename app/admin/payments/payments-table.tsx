@@ -333,7 +333,7 @@ export default function PaymentsTable({
                         <div className="flex flex-wrap items-center gap-2">
                             {/* Dans un dossier, l'onglet « Paiements » juste au-dessus
                                 porte déjà le titre : il ne reste que pour le lecteur d'écran. */}
-                            <CardTitle className={presetClient ? 'sr-only' : 'text-2xl font-bold text-foreground'}>Paiements</CardTitle>
+                            <CardTitle as={presetClient ? 'h2' : 'h1'} className={presetClient ? 'sr-only' : 'text-2xl font-bold text-foreground'}>Paiements</CardTitle>
                             <AideLink section="paiements" />
                         </div>
                         {showTotal && (

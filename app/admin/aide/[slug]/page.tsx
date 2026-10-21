@@ -84,7 +84,7 @@ export default async function AideSectionPage({ params }: PageProps) {
 
             <Card className="bg-card border-border">
                 <CardHeader className="border-b border-border pb-4">
-                    <CardTitle className="text-2xl font-bold text-foreground">
+                    <CardTitle as="h1" className="text-2xl font-bold text-foreground">
                         {section.title}
                     </CardTitle>
                 </CardHeader>

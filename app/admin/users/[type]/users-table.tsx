@@ -247,7 +247,7 @@ export default function UsersTable({
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="text-2xl text-foreground">{plural}</CardTitle>
+                            <CardTitle as="h1" className="text-2xl text-foreground">{plural}</CardTitle>
                             <AideLink section="membres" />
                         </div>
                     </div>

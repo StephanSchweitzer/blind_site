@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Loader2 } from "lucide-react";
-import { calendarMonth, calendarYear, formatCalendarDate } from '@/lib/calendar-date';
+import { calendarMonth, calendarYear, formatPublicationDate } from '@/lib/calendar-date';
 
 interface BookSearchProps {
     onBookSelect: (bookData: {
@@ -300,7 +300,9 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                                 )}
                                 {book.publishedDate && (
                                     <p className="text-sm text-muted-foreground">
-                                        Publié le {formatCalendarDate(book.publishedDate)}
+                                        {/* « Publié en 2018 » quand seule l'année est connue. */}
+                                        Publié {formatPublicationDate(book.publishedDate).includes('/') ? 'le' : 'en'}{' '}
+                                        {formatPublicationDate(book.publishedDate)}
                                     </p>
                                 )}
                                 {book.pageCount > 0 && (

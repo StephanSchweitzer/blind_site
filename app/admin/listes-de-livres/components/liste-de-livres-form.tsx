@@ -334,7 +334,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                 {/* ── informations ────────────────────────────────────── */}
                 <Card className="flex min-w-0 flex-col bg-card border-border lg:col-span-3">
                     <CardHeader className="pb-4">
-                        <CardTitle className="text-lg text-foreground">Informations</CardTitle>
+                        <CardTitle as="h2" className="text-lg text-foreground">Informations</CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-1 flex-col gap-5">
                         <div className="space-y-2">
@@ -379,7 +379,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                     {/* ── présentation audio ──────────────────────────── */}
                     <Card className="flex flex-1 flex-col bg-card border-border">
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-lg text-foreground">Présentation audio</CardTitle>
+                            <CardTitle as="h2" className="text-lg text-foreground">Présentation audio</CardTitle>
                             <CardDescription>
                                 Facultative : une brève introduction enregistrée pour les auditeurs.
                             </CardDescription>

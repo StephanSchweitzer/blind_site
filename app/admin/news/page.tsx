@@ -7,6 +7,8 @@ interface PageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+export const metadata = { title: 'Dernières infos' };
+
 export const dynamic = 'force-dynamic';
 
 /**
