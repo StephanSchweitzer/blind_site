@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { SearchBar } from '@/listes-de-livres/SearchBar';
 import { CoupDeCoeurList } from '@/listes-de-livres/CoupDeCoeurList';
 import { BookModal } from '@/components/BookModal';
@@ -191,11 +192,18 @@ export default function CoupsDeCoeurClient({
                         les listes une à une. Un <details> : replié, il ne prend
                         qu'une ligne, et clavier comme lecteur d'écran l'ouvrent
                         d'office. Le choix laisse le focus sur le bouton ; la région
-                        d'état de la pagination annonce la liste affichée. */}
+                        d'état de la pagination annonce la liste affichée.
+                        Le triangle natif du <details>, à gauche, se lisait comme
+                        un bouton « lecture » : il est masqué, au profit du chevron
+                        à droite de l'index des genres juste en dessous. */}
                     {listTitles.length > 1 && (
-                        <details className="glass-card p-4 sm:px-6">
-                            <summary className="cursor-pointer rounded-sm text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background">
-                                Toutes les listes ({listTitles.length})
+                        <details className="group glass-card p-4 sm:px-6">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-sm text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background [&::-webkit-details-marker]:hidden">
+                                <span>
+                                    Toutes les listes{' '}
+                                    <span className="font-normal text-gray-700 dark:text-gray-300">({listTitles.length})</span>
+                                </span>
+                                <ChevronDown aria-hidden="true" className="h-5 w-5 shrink-0 transition-transform group-open:rotate-180" />
                             </summary>
                             <nav aria-label="Toutes les listes de livres" className="mt-3">
                                 <ol className="grid list-none gap-1 p-0 sm:grid-cols-2">
