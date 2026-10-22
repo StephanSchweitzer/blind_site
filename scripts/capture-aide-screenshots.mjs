@@ -783,8 +783,12 @@ const SPECS = [
             { n: 3, label: 'Créer une fiche', self: true },
             { n: 4, selector: 'form table tbody button[role="checkbox"][aria-label^="Sélectionner « "]', self: true },
             { n: 5, selector: 'form table tbody button[aria-label^="Retirer « "]', self: true },
+            // La base de dev porte une note sur « Crimes de sang tome 1 », premier
+            // livre de la liste : le 7 la montre, le 6 vise le livre suivant.
+            { n: 6, selector: 'form table tbody button[aria-label^="Ajouter une note pour"]', self: true, coin: 'd' },
+            { n: 7, selector: 'form table tbody button[aria-label^="Modifier la note pour"]', self: true, coin: 'd' },
         ],
-        why: 'les trois façons d’ajouter un livre, la sélection et le retrait',
+        why: 'les trois façons d’ajouter un livre, la sélection, le retrait et les notes',
     },
     {
         name: 'liste-de-livres-09.jpg',

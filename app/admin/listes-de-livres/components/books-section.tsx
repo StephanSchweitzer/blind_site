@@ -387,8 +387,11 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                                         </button>
                                     </>
                                 ) : (
+                                    // La note, dite une fois ici plutôt que sur chaque ligne :
+                                    // son lien reste discret, et rien d'autre ne l'annonce.
                                     <span className="text-muted-foreground">
-                                        Cochez des livres pour les retirer en une fois.
+                                        Cochez des livres pour les retirer en une fois. « Ajouter une note », sous un
+                                        titre, donne une précision sur le livre pour cette liste.
                                     </span>
                                 )}
                                 {/* Un avertissement, pas une règle : republier un titre est
@@ -488,10 +491,11 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                                                         de plus à côté du crayon de la fiche se confondait avec
                                                         lui, et une note de liste écrite dans la fiche part au
                                                         catalogue et dans toutes les listes.
-                                                        « Ajouter une note », écrit sur chaque ligne, se lisait
-                                                        cinquante fois par liste : il n'apparaît plus qu'au
-                                                        survol ou au clavier (toujours sur un écran tactile,
-                                                        qui n'a pas de survol). « Modifier la note » reste. */}
+                                                        « Ajouter une note » a été caché jusqu'au survol, pour ne
+                                                        pas se lire cinquante fois par liste : personne ne le
+                                                        découvrait. Il reste donc affiché, petit et gris comme un
+                                                        sous-titre. Pas plus pâle : en transparence, il tombait
+                                                        sous le contraste minimal du texte (2,2:1 en thème clair). */}
                                                     {notes[book.id] && (
                                                         <p className="mt-1 whitespace-pre-wrap text-sm italic text-muted-foreground">
                                                             {notes[book.id]}
@@ -499,11 +503,7 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                                                     )}
                                                     <button
                                                         type="button"
-                                                        className={cn(
-                                                            'mt-1 inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline',
-                                                            !notes[book.id] &&
-                                                                '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100'
-                                                        )}
+                                                        className="mt-1 inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                                                         onClick={() => setNoteBook(book)}
                                                         aria-label={`${notes[book.id] ? 'Modifier la note' : 'Ajouter une note'} pour « ${book.title} »`}
                                                     >

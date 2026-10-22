@@ -77,6 +77,8 @@ Une fois la liste commencée, le bloc Livres se présente ainsi :
 - (3) « **Créer une fiche** » ajoute un livre entièrement nouveau. En procédant ainsi, le livre sera ÉGALEMENT ajouté au catalogue.
 - (4) Cochez plusieurs livres, puis cliquez sur « Retirer de la liste » pour les retirer d'un coup.
 - (5) La croix au bout d'une ligne retire ce livre.
+- (6) « **Ajouter une note** », sous le titre d'un livre, lui ajoute une précision pour cette liste (voir « Ajouter une note à un livre » plus bas).
+- (7) Une fois la note écrite, elle s'affiche en italique sous le titre, suivie de « **Modifier la note** ».
 
 ![Liste de Livres - capture 8](/admin/aide/images/liste-de-livres-08.jpg)
 
@@ -97,13 +99,11 @@ Dès qu'un ordre est choisi, le haut du bloc Livres indique « **Ordre choisi** 
 
 Une note donne une précision sur un livre pour cette liste seulement (« Prix Goncourt 2026 », « Lu par l'auteur »…). Le même livre dans une autre liste a sa propre note, ou aucune ; la fiche du livre, le catalogue et l'annonce vocale ne la montrent jamais.
 
-Passez la souris sur la ligne d'un livre : le lien « **+ Ajouter une note** » apparaît sous son titre (au clavier, en arrivant sur la ligne ; sur une tablette ou un téléphone, il est toujours affiché). Cliquez dessus. Saisissez la note (500 caractères au plus) dans la fenêtre, puis cliquez sur « **Enregistrer la note** ». La note s'affiche en italique sous le titre du livre. Elle s'affiche aussi en italique après la présentation du livre, sur le site public et dans la liste imprimée.
+Sous le titre de chaque livre du tableau figure le lien « **+ Ajouter une note** » (repère 6 de la capture 8) ; la ligne grise au-dessus du tableau le rappelle. Cliquez dessus. Saisissez la note (500 caractères au plus) dans la fenêtre, puis cliquez sur « **Enregistrer la note** ». La note s'affiche en italique sous le titre du livre. Elle s'affiche aussi en italique après la présentation du livre, sur le site public et dans la liste imprimée.
 
-Pour changer une note, cliquez sur « **Modifier la note** », sous la note. Le bouton « **Supprimer la note** » de la fenêtre la retire. Une note vidée est retirée elle aussi.
+Pour changer une note, cliquez sur « **Modifier la note** », sous la note (repère 7). Le bouton « **Supprimer la note** » de la fenêtre la retire. Une note vidée est retirée elle aussi.
 
 La note est enregistrée tout de suite, sans attendre le bouton « Enregistrer » de la liste : un message « Note enregistrée » le confirme. Seule exception : un livre que vous venez d'ajouter à la liste. Sa note est enregistrée avec la liste, et le bouton de la fenêtre s'appelle alors « **Valider** ». Il en va de même pour toutes les notes d'une liste pas encore créée.
-
-La capture ci-dessus date d'avant les notes : le lien « Ajouter une note » n'y figure pas encore.
 
 Lorsque vous êtes prêt, cliquez sur « **Créer la liste** » (ou « **Enregistrer** » pour une liste existante) dans la barre d'enregistrement en bas de l'écran (1).
 

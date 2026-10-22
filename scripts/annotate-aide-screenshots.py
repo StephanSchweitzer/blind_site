@@ -122,10 +122,19 @@ def dessiner(chemin_image, reperes):
         # courte disparait entierement dessous — « Livre » mesure moins large
         # que la pastille. Le coin haut-DROIT, lui, donne sur le blanc qui suit
         # l'etiquette. D'ou « coin »: 'hd', pose par la spec de la capture.
+        #
+        # Et un dernier : un petit lien serre sous un titre (« Ajouter une
+        # note »). Ses deux coins du haut tombent sur le titre, qui court
+        # au-dessus de lui. « coin »: 'd' pose la pastille A DROITE du cadre, a
+        # mi-hauteur, dans le vide qui suit le lien sur sa ligne.
         rayon = max(largeur, hauteur) // 2 + 9
-        ancre_x = x1 if repere.get('coin') == 'hd' else x0
+        coin = repere.get('coin')
+        if coin == 'd':
+            ancre_x, ancre_y = x1 + rayon + 4, (y0 + y1) // 2
+        else:
+            ancre_x, ancre_y = (x1 if coin == 'hd' else x0), y0
         cx = min(max(ancre_x, rayon), image.width - rayon - 1)
-        cy = min(max(y0, rayon), image.height - rayon - 1)
+        cy = min(max(ancre_y, rayon), image.height - rayon - 1)
         dessin.ellipse([cx - rayon, cy - rayon, cx + rayon, cy + rayon],
                        fill=VERT, outline=(255, 255, 255), width=2)
         dessin.text((cx - largeur // 2 - boite[0], cy - hauteur // 2 - boite[1]),
