@@ -45,13 +45,15 @@ The back office has no equivalent: its pages are `force-dynamic` and re-read the
 | `/auth/password-changed-success` | Confirmation screen after a successful password change. |
 | `/auth/forgot-password` | Request a reset link. Reachable signed out, and answers identically whatever the address is, so it cannot be used to enumerate accounts. |
 | `/auth/reset-password` | Set a new password from a link's single-use token (30 min, SHA-256 at rest, re-checked against the account's *current* access level). |
+| `/auth/dev-signin` | Local development only: signs in as `claude@eca.test` and lands on `/admin`. Exists only when `NODE_ENV=development`, `DEV_AUTH_BYPASS=true` and the database is local (see « Signing in locally »). |
 
-Access control lives in `proxy.ts` (protects `/admin/*`, `/profile`, `/auth/change-password`) and in `lib/auth/guards.ts`, which exports the `withAuth` / `withAdmin` / `withSuperAdmin` route wrappers plus `getCurrentUser` / `isAdmin` / `isSuperAdmin`.
+Access control lives in `proxy.ts` (protects `/admin/*` and `/auth/change-password`) and in `lib/auth/guards.ts`, which exports the `withAuth` / `withAdmin` / `withSuperAdmin` route wrappers plus `getCurrentUser` / `isAdmin` / `isSuperAdmin`.
 
-**Every API route is guarded, but not all of them by a wrapper.** The exceptions are deliberate and each says so in its own header comment — treat anything *not* on this list as a bug:
+**Every API route is guarded, but not all of them by a wrapper.** The exceptions are deliberate — treat anything *not* on this list as a bug:
 
 - **Public by necessity** — `password-reset` and `password-reset/confirm` (someone locked out cannot authenticate; knowledge of the single-use token *is* the authentication), and `auth/[...nextauth]`.
-- **Public reads serving public pages** — `polly`, `news` (GET on the list and on `news/[id]`; whitelisted fields, author by displayed name only), `listes-de-livres/preview` and `listes-de-livres/position`. They take reference input only, and respect `hiddenFromCatalogue` like every other public query.
+- **Public reads serving public pages** — `polly`, `news` (GET on the list and on `news/[id]`; whitelisted fields, author by displayed name only), `catalogue` and `catalogue/[id]` (the public catalogue's search and shared-link fiche — they read no session, and `listPublicBooks` / `findPublicBook` fix what a visitor may see), `listes-de-livres/page/[page]` (the public lists' later pages, served by ISR), `listes-de-livres/preview` and `listes-de-livres/position`. They take reference input only, and respect `hiddenFromCatalogue` like every other public query.
+- **Public GETs on the CMS routes** — `site-contact`, `team`, `historique`, `practical-info`, `membership`: they return the same content the public pages render. Every write on those routes is `withSuperAdmin`.
 - **Secret-authenticated** — `cron/*`, on `CRON_SECRET` (§8).
 - **Guarded by hand rather than by a wrapper**, because the rule isn't a flat access level: `user/[id]` GET (admins see anyone; a member only their own record, capped at `basic`) and `upload-audio` (`getCurrentUser` + `isAdmin`).
 
@@ -68,15 +70,18 @@ Super-admin-only screens 404 or redirect rather than showing a 403 — `/admin/s
 
 Isolated from the public layout via its own `layout.tsx` + `Backend-Navbar`, grouped into **Livres**, **Gestion**, **Membres** and **Pages**. The landing page is a dashboard of live counts.
 
+**Recherche rapide** (`components/admin/QuickSearch.tsx`, `GET /api/search/quick`) is one box, opened from any back-office page by Ctrl+K (⌘K) or a visible « Rechercher » button, that finds a page, a person, a book or a numbered record and opens it — the dossier, or the list opened on that one row through its deep link. It is kept small on purpose (five people, five books): a way in, not a results page.
+
 ### Livres
 
 | Route | Purpose |
 |---|---|
-| `/admin/books` | Catalogue CRUD. Search with availability pills, audio-presence and "hidden from catalogue" filters consolidated into a *Filtres* popover; create with ISBN check + Google Books lookup; per-book edit. |
+| `/admin/books` | Catalogue CRUD. Search with availability pills, audio-presence and "hidden from catalogue" filters consolidated into a *Filtres* popover; create with ISBN check + Google Books lookup; per-book edit. Deleting a book is a **soft delete** (`Book.deletedAt`), undone from `POST /api/books/[id]/restore`; before the confirmation opens, `books/[id]/deletion-check` says what blocks it (live demandes or attributions) and what to decide about its audio folder (`lib/books/deleteBookWithAudio.ts`). |
 | `/admin/genres` | Genre taxonomy applied to books. |
-| `/admin/listes-de-livres` (+ `new`, `[id]`) | Build staff-pick selections: pick books, record a description, reorder, export to PDF. |
+| `/admin/listes-de-livres` (+ `new`, `[id]`, `[id]/apercu`) | Build staff-pick selections: pick books (with a warning when a book is already in another list), record a description, reorder, export to PDF. `apercu` shows a list exactly as visitors will see it — hidden lists included, which is mostly why it exists. |
 | `/admin/review` | **Doublons.** The duplicate-fusion queue, fed by `needsReview` / `id_arbre` from the Access import. Pairs a flagged book with its counterpart, shows the diff, and fuses on confirmation. A pair holding **two different recordings** cannot be fused: it is escalated instead (`escalatedAt` + an email via `lib/email/sendReviewEscalation.ts`) and left for a human. |
 | `/admin/audio-orphelins` | **Audio orphelin.** Bucket folders no book points at, in three tabs — *à traiter*, *rattachés*, *écartés*. A folder can be listened to in place before being relinked, so a recording is never attached to the wrong catalogue entry on the strength of a folder name. Deleting a linked book re-opens its row as *à traiter* rather than letting it drop silently out of the queue. |
+| `/admin/audio-corbeille` | **Corbeille audio.** Deleted tracks waiting out their 14 days, with restore and « Supprimer définitivement » — see §5. |
 
 ### Gestion
 
@@ -84,8 +89,8 @@ Isolated from the public layout via its own `layout.tsx` + `Backend-Navbar`, gro
 |---|---|
 | `/admin/orders` | **Demandes** — listeners' recording requests: book, media format (required per ouvrage), delivery method, status, billing status, tarif. |
 | `/admin/assignments` | **Attributions** — the work of recording a demanded book, tracked through a status state machine, with reader assignment/history and reception/sent/returned dates. |
-| `/admin/bills` | **Factures** — invoices grouping billable demandes per client, with issue/payment tracking and a `BillEvent` audit trail. |
-| `/admin/payments` | **Paiements** — payments recorded against clients/bills (cotisations, enregistrements, dons, divers). |
+| `/admin/bills` | **Factures** — invoices grouping billable demandes per client, with issue/payment tracking and a `BillEvent` audit trail. Pro-forma factures (one per demande priced by the page, §6) carry a badge. |
+| `/admin/payments` | **Paiements** — payments recorded against clients/bills (cotisations, enregistrements, dons, divers). The list exports to CSV with exactly the search, filters and sort on screen (`payments/export`). |
 | `/admin/stats` | **Super-admin only.** Trend cards, a per-staff heatmap, a members chart and the 14-day audit journal, with a click-through detail drawer. Day/time maths is pinned to Europe/Paris. |
 
 ### Membres
@@ -115,7 +120,7 @@ accepted an anonymous donor) — the guide now renders two ways from **one** sou
 is nothing left to fall out of sync.
 
 - **Content** — `content/aide/<order>-<slug>.md`, one file per section (`01-composants-de-base.md`
-  … `16-mon-compte.md`), each with a small YAML frontmatter (`title`, `slug`, `order`).
+  … `17-mon-compte.md`), each with a small YAML frontmatter (`title`, `slug`, `order`).
   `lib/aide.ts` is the only reader: `listAideSections()` for the summary at `/admin/aide`,
   `getAideSection(slug)` for one page, `getAllAideSections()` for the PDF. Screenshots live in
   `content/aide/images/`, served by the guarded route `app/admin/aide/images/[name]` —
@@ -123,8 +128,11 @@ is nothing left to fall out of sync.
 - **Anchors, never page numbers.** A link is `/admin/aide/<slug>#<heading-slug>`
   (`lib/aide-slug.ts` derives the anchor from the heading text) — a heading survives a rewrite,
   a page number does not. `pnpm aide:check` (`scripts/check-aide-links.ts`) fails if an
-  `AideLink`'s `section` doesn't resolve to a real file, so a broken help link breaks the build
-  instead of quietly sending someone to the wrong page.
+  `AideLink`'s `section` doesn't resolve to a real file, or if a search synonym in
+  `lib/aide-search.ts` (`AIDE_SYNONYMS`) no longer leads to a word of the guide — the search
+  bar on `/admin/aide` is built from the same Markdown, one entry per heading. It is **not** part of `pnpm build` or
+  the commit hook, so run it after adding or moving an `AideLink` — otherwise a broken help
+  link quietly sends someone to the wrong page.
 - **The PDF is rendered at build time, never committed** — `pnpm build` runs
   `scripts/build-aide-pdf.ts` (also `pnpm aide:pdf`), which writes `generated/mode-d-emploi.pdf`
   (git-ignored, traced into the route's function). Rebuilt from the same Markdown on every
@@ -241,7 +249,9 @@ The `-core` files omit `server-only` **on purpose**: the maintenance scripts run
 
 **The tarif is derived from the weight of the recording** (`lib/pricing.ts`): a CD holds 700 Mio, every started 700 Mio block costs 3 €, minimum one CD. It is always a *proposal* — the field stays hand-editable; it exists so large books stop being billed at the default.
 
-`repriceOpenOrdersForBook` (`lib/pricing-sync.ts`) is called from `refreshBookAudioState`, i.e. the one function every path that can change the weight already goes through (upload, delete, restore, orphan relink, fusion). It only touches demandes that are still adjustable — `ADJUSTABLE_ORDER_WHERE`: unbilled, and on no facture or on a `DRAFT` one. An issued facture has been printed and sent; a paid or soldée one is locked.
+`repriceOpenOrdersForBook` (`lib/pricing-sync.ts`) is called from `refreshBookAudioState`, i.e. the one function every path that can change the weight already goes through (upload, delete, restore, orphan relink, fusion). It only touches demandes that are still adjustable — `ADJUSTABLE_ORDER_WHERE`: unbilled, not priced by the page, and on no facture or on a `DRAFT` one. An issued facture has been printed and sent; a paid or soldée one is locked.
+
+**A demande can instead be priced by the page** (`PagePricingFields`, `lib/orders/pagePricing.ts`): pages read, pages counted, price per page (3 € suggested, `PRICE_PER_PAGE_EUR`) and an optional transfer fee. Its cost is derived by `pageCostEuros` — counted pages, or read pages when none are entered, × price, + fee; there is no fixed « 3 pages for 1 » rule, because the ratio varies from document to document. Such a demande leaves weight-based repricing, and when it reaches « Terminé » it gets its **own pro-forma facture** (`BillKind.PROFORMA`, `ProformaPDF`), issued at once with no draft and no threshold. The draft and threshold accruals only look at standard factures, and attaching a demande by hand refuses to mix the two kinds.
 
 The chain, in order:
 
@@ -275,17 +285,18 @@ Bill totals auto-recompute, bills lock at `PAID`/`SOLDE`, and every mutation is 
 
 ## 8. Scheduled jobs
 
-Declared in `vercel.json`, all three implemented under `app/api/cron/`:
+Declared in `vercel.json`, all four implemented under `app/api/cron/`:
 
 | Cron | Schedule (UTC) | What it does |
 |---|---|---|
 | `/api/cron/expire-unavailability` | `10 2 * * *` | Closes indisponibilités that have reached their term. |
 | `/api/cron/purge-audit-events` | `40 2 * * *` | Drops `AuditEvent` rows past the retention window. |
 | `/api/cron/purge-audio-trash` | `10 3 * * *` | Permanently removes corbeille objects past 14 days (`retainForever` rows exempt). |
+| `/api/cron/refresh-search-vocabulary` | `40 3 * * *` | Refreshes the `search_vocabulary` materialized view behind « Vouliez-vous dire … ? » (§9), concurrently so suggestions keep working meanwhile. A name entered today is searchable at once, but only proposed as a correction after this has run. |
 
-All three accept Vercel's scheduler, which sends `Authorization: Bearer $CRON_SECRET`. **With no `CRON_SECRET` configured they refuse rather than standing open.**
+All four accept Vercel's scheduler, which sends `Authorization: Bearer $CRON_SECRET`. **With no `CRON_SECRET` configured they refuse rather than standing open.**
 
-The two purges additionally accept a **signed-in super admin**, so they can be forced from `/admin/stats` when the size warning appears. `expire-unavailability` does not, and does not need to: its on-demand equivalent is `POST /api/availability/expire` (`withAdmin`), the « Clôturer » button on `/admin/disponibilites`, which runs the same idempotent sweep.
+The two purges and the vocabulary refresh additionally accept a **signed-in super admin** — the purges so they can be forced from `/admin/stats` when the size warning appears, the refresh to force it after an import. `expire-unavailability` does not, and does not need to: its on-demand equivalent is `POST /api/availability/expire` (`withAdmin`), the « Clôturer » button on `/admin/disponibilites`, which runs the same idempotent sweep.
 
 ## 9. API layer (`app/api`)
 
@@ -301,6 +312,16 @@ Standard REST CRUD per entity (`books`, `genres`, `news`, `orders`, `assignments
 - `books/[id]/audio/trash` — the corbeille for one book, with restore.
 - `books/[id]/audio/duration` — « Recalculer »: measure from the bucket and rewrite the duration.
 - `audio-orphans/[id]/tracks` — listen to an orphaned folder before relinking it. The prefix comes from the row, never the request.
+
+**Books, demandes, factures — beyond CRUD**
+- `books/[id]/deletion-check` — what blocks a deletion and what the audio folder holds, asked *before* the confirmation opens; a GET with no side effect.
+- `books/[id]/usage` — how many demandes and attributions name the book (`BookUsageLinks`), with links to the filtered lists.
+- `books/[id]/restore`, `orders/[id]/restore`, `bills/[id]/restore` (and `user/[id]/restore`) — undo a soft delete as a column write, not a rebuild from the journal. A demande whose facture moved on meanwhile comes back detached from it; a facture comes back as an empty draft, since its demandes and payments may already sit elsewhere.
+- `assignments/[id]/readers` — an attribution's reader history.
+- `payments/export` — CSV of the payments list, same selection as the screen (`lib/payments/list-query.ts`).
+- `listes-de-livres/memberships` — which books are already in which list, for the picker's warning.
+
+**Search** — `search/quick` (Recherche rapide, §3) and `search/suggestions`. The admin search bars share one engine: `lib/search.ts` (tokenizing, field builders), `lib/search-normalize.ts` (folding apostrophes and other typography on both sides — the `Book` table holds both « ' » and « ’ »), `lib/search-query.ts` (client-safe helpers). When a search finds nothing, `lib/search-rescue.ts` proposes the objects it would have found without each active filter, then spelling corrections and dropped words from `lib/search-suggest.ts`, which guesses from the `search_vocabulary` trigram index and **verifies every guess with the list's own count** before showing it — so nothing is proposed that leads to another empty page, and a word from a hidden book can never surface. `search/suggestions` returns unverified candidates and is admin-only for that reason; the pickers verify them with their own fetcher.
 
 **Stats & audit** — `stats/trends`, `stats/staff`, `stats/staff/details`, `stats/members`, `stats/audit`, `stats/audit/[id]/restore`.
 
@@ -322,12 +343,14 @@ Core entities: `User` (+ `Address`, `ReaderLanguage`), `Book`, `Genre`, `Orders`
 
 **CMS tables** — `SiteContact` (singleton, id = 1), `TeamMember`, `HistoryEvent`, `PracticalInfo`, `MembershipOption`.
 
+**Accounts** — `PasswordResetToken` (only the SHA-256 of a reset link's secret).
+
 Notable patterns:
 
-- **Soft delete** — `deletedAt` on `User`, `Orders`, `Assignment`, `Bill` and `Payment`. A global Prisma query extension (`lib/prisma.ts`) hides deleted rows for `User`, `Orders` and `Assignment` — the three whose children cascade onto append-only history (`OrderEvent`, `AssignmentEvent`, `AssignmentReader`), which a physical delete would destroy. It filters **list reads only** (`findMany` / `findFirst` / `count` / `aggregate` / `groupBy`): `findUnique` is deliberately left alone, because Prisma forbids a non-unique `deletedAt` in its `where` and because a by-id read is intentional admin access that must still resolve a deleted row — so detail routes check `deletedAt` themselves. Raw SQL bypasses the extension entirely; the `/admin/stats` queries filter it by hand.
+- **Soft delete** — `deletedAt` on `User`, `Book`, `Orders`, `Assignment`, `Bill` and `Payment`. A global Prisma query extension (`lib/prisma.ts`) hides deleted rows for `User`, `Book`, `Orders` and `Assignment` — the ones whose children cascade onto append-only history (`OrderEvent`, `AssignmentEvent`, `AssignmentReader`), which a physical delete would destroy. `Book` joined later for a related reason: demandes and attributions reference it with `RESTRICT`, live or soft-deleted, so a book with any history was physically undeletable — deleting it now sets `deletedAt` instead (`lib/books/deleteBookWithAudio.ts`). It filters **list reads only** (`findMany` / `findFirst` / `count` / `aggregate` / `groupBy`): `findUnique` is deliberately left alone, because Prisma forbids a non-unique `deletedAt` in its `where` and because a by-id read is intentional admin access that must still resolve a deleted row — so detail routes check `deletedAt` themselves. Raw SQL bypasses the extension entirely; the `/admin/stats` queries filter it by hand.
 - **`audioSizeKb` is in kibioctets, not bytes** — a byte count overflows `Int` past 2 Gio and would force `BigInt`, which neither `NextResponse.json` nor the client-component boundary can serialize, and a raw `Book` row crosses both.
 - **`hiddenFromCatalogue`** keeps sensitive or personal titles off the public site while leaving them fully usable in the back office.
-- Enums for delivery method, billing/order status, payment type/method, member type, access level, news type, language, save type, user activity status, audio link status and audio track action.
+- Enums for delivery method, billing/order status, bill kind (standard / pro-forma), payment type/method, member type, access level, news type, team section, language, save type, user activity status, audit operation, the event-log types, audio link status and audio track action.
 
 The Prisma client is generated to `app/generated/prisma` (custom output), configured in `prisma.config.ts` with `@prisma/adapter-pg`.
 
@@ -347,23 +370,24 @@ Three layers: app-specific components at the top of `components/`, the shadcn/ui
 | `AudioRecorder` | Wraps `MediaRecorder` (record → segment → confirm/clear); feeds `upload-audio`. |
 | `ChangePasswordDialog`, `NewsTypeBadge`, `loading-skeleton`, `userWarnIfUnsavedChanges` | Password strength meter; news type badge; themed spinner; dirty-form navigation guard. |
 | `components/admin/IconPicker`, `ThemePicker` | Pickers for the CMS editors. |
+| `components/admin/QuickSearch` | The back office's Ctrl+K « Recherche rapide » (§3). |
 
 ### Back-office kit (`components/ui/admin`)
 
 Built on semantic theme tokens (`bg-card`, `border-border`, `text-foreground`) so light/dark stays consistent.
 
-- **Layout primitives** — `AdminCard`, `AdminDashboardCard`.
+- **Layout primitives** — `AdminCard`, `AdminDashboardCard`, and `AdminPaginatedList` (`AdminPagination.tsx`) — the list frame most admin lists now render through (books, demandes, attributions, factures, corbeille, orphelins…), with pagination that stays readable on a phone.
 - **Entity search kit** — `EntitySearchCombobox` (debounced search-and-pick popover: `AbortController` cancellation, stale-results-while-loading, keyboard navigation, a spinner while a selection resolves) on `hooks/useEntitySearch`, plus `UserSearchCombobox` (optionally `assignable`-filtered), `BookSearchCombobox` and `BillSearchCombobox` (bill number, linked book/author, or payment reference — used by `PaymentFormBackendBase` to pick the facture a payment settles, replacing what used to be a plain dropdown of up to 100 bills). Don't hand-roll a search popover.
 - **Form bases** — `BookFormBackendBase`, `UserFormBackendBase`, `OrderFormBackendBase`, `AssignmentFormBackendBase`, `BillFormBackendBase`, `PaymentFormBackendBase`, `GenreFormBackendBase`, `NewsFormBackendBase`. **The "new" form and the "edit" modal render the same base**, differing only in whether `initialData` is present — except for demandes, whose create form (`AddOrderFormBackend`) takes several books at once — the DRY spine of the admin.
 - **Modals** — `BookModalBackend`, `EditBookModal`, `Add`/`EditAssignmentModal`, `EditOrderModal`, `EditBillModal`, `EditPaymentModal`, `EditUserModal`, `DeleteBillModal` / `DeletePaymentModal`. `EditBillModal` encodes the billing state machine (DRAFT→BILLED→PAID→SOLDE, BILLED can reopen); `EditUserModal` is permission-aware.
 - **Audio manager** — `BookAudioButton` / `BookAudioModal` (upload with per-file progress, folder or plain-file picker with the same batching UX, per-track durations, folder zip download, corbeille with restore), plus `RenameAudioTrackModal`, `DeleteAudioTrackModal`, `DeleteAllAudioTracksModal`.
-- **Auxiliary display** — `BillHistory`, `UserActivityHistory`, `UserActivityGuardDialog` (blocks assigning work to inactive users, pairs with `useUserActivityGuard`), `CotisationStatusBanner`, `ActivityStatusFields`, `ReaderLanguagesField`, `AssignmentFormErrors`, and `BillPDF` / `BillPDFButton` (`@react-pdf/renderer`; the button also issues the bill DRAFT→BILLED). **`BillPDF` uses adaptive density spacing — preserve that logic when editing.**
+- **Auxiliary display** — `BillHistory`, `UserActivityHistory`, `UserActivityGuardDialog` (blocks assigning work to inactive users, pairs with `useUserActivityGuard`), `CotisationStatusBanner`, `ActivityStatusFields`, `ReaderLanguagesField`, `AssignmentFormErrors`, and `BillPDF` / `BillPDFButton` (`@react-pdf/renderer`; the button also issues the bill DRAFT→BILLED). **`BillPDF` uses adaptive density spacing — preserve that logic when editing.** `ProformaPDF` follows the same layout for a pro-forma, on one page and without adaptive density, since it carries a single demande.
 
-**Page interaction pattern (uniform across the admin):** a server `page.tsx` fetches rows via Prisma → passes them to a client `*-table.tsx` → the table owns search/pagination and modal open-state → a row action renders an Edit/Add/Delete modal → which renders the shared `FormBackendBase` → which calls `/api/<entity>` → whose callback triggers `router.refresh()`. Deep-link params open the matching modal directly (payments, news).
+**Page interaction pattern (uniform across the admin):** a server `page.tsx` fetches rows via Prisma → passes them to a client `*-table.tsx` → the table owns search/pagination (through `AdminPaginatedList`) and modal open-state → a row action renders an Edit/Add/Delete modal → which renders the shared `FormBackendBase` → which calls `/api/<entity>` → whose callback triggers `router.refresh()`. Deep-link params open the matching modal directly (payments, news).
 
 ### Hooks (`hooks/`)
 
-`useEntitySearch`, `useAudioUpload`, `useAudioFolderZip`, `useUserActivityGuard`, `useRecordingCheck`, `useFormToast`, `useInvalidField`, `use-toast`.
+`useEntitySearch`, `useVerifiedSuggestions` (a picker's « Vouliez-vous dire … ? » with the items each proposal finds), `useRecordLoader` (open-a-record state for the edit modals), `useListUrl` (a public list's search and page kept in the URL), `useAudioUpload`, `useAudioFolderZip`, `useUserActivityGuard`, `useRecordingAdvice` (a recording still under way for this book, which blocks a duplication), `useCopyToClipboard`, `useFormToast`, `useInvalidField`, `use-toast`.
 
 ## 12. Type system
 
@@ -399,9 +423,10 @@ lib/
   audio/                Bucket access, naming, state cache, corbeille, durations
   audit/                Prisma-extension audit trail, retention, labels
   auth/                 withAuth / withAdmin guards
-  books/ orders/ users/  Domain helpers
+  books/ orders/ assignments/ users/ payments/ news/   Domain helpers
   email/                sendEmail chokepoint + templated senders
-  aide.ts aide-slug.ts aide-blocks.ts aide-images.ts aide-image-size.ts   Mode d'emploi reader/parser
+  aide.ts aide-slug.ts aide-blocks.ts aide-images.ts aide-image-size.ts aide-search.ts aide-pdf.ts   Mode d'emploi
+  search.ts search-normalize.ts search-query.ts search-suggest.ts search-rescue.ts   Admin search engine
   billing.ts pricing.ts pricing-sync.ts statusSync.ts stats.ts cotisation.ts
   cache-tags.ts revalidate-public.ts revalidate-admin.ts concurrency.ts feature-flags.ts
 prisma/                 schema.prisma, migrations, seed, dev-claude-user
@@ -414,7 +439,7 @@ vercel.json             Cron schedules
 
 ## 15. Getting started
 
-Requires **Node.js**, **pnpm 10.9+**, and a **PostgreSQL** database.
+Requires **Node.js**, **pnpm 10.9+**, and a **PostgreSQL** database. **Python** is needed only for `pnpm aide:optimize` / `aide:annotate`.
 
 ```bash
 pnpm install
@@ -455,7 +480,13 @@ RESEND_API_KEY=            # transactional email
 RESEND_FROM_EMAIL=
 REVIEW_ESCALATION_EMAIL=   # recipient for blocked duplicate fusions
 CRON_SECRET=               # required, or the /api/cron/* routes refuse
+
+# Local development only
+DEV_AUTH_BYPASS=           # "true" enables /auth/dev-signin (with NODE_ENV=development and a local DB)
+PRISMA_QUERY_LOG=          # "true" logs every query in development
 ```
+
+Scripts read a few more of their own: `MIGRATE_DEPLOY_HOST` (`db:deploy` against a remote host), `SEED_RESET=true` (lets the seed wipe a database holding real-looking data), `DEV_USER_ALLOW_HOST` (`dev:claude-user` on a named non-local host), `AIDE_BASE_URL` / `AIDE_USER` / `AIDE_PASSWORD` (`aide:shots`, default the local dev account) and `A11Y_BASE_URL` / `A11Y_SHOTS` (`a11y:check`).
 
 > ⚠️ Keep AWS and B2 credentials server-side only — never expose them via `NEXT_PUBLIC_`. All S3 and email operations happen on the server; the browser only ever receives expiring presigned URLs.
 
@@ -470,12 +501,13 @@ pnpm tsx scripts/set-audio-cors.ts
 | Command | Description |
 |---|---|
 | `pnpm dev` | Development server |
-| `pnpm build` | `prisma generate` + Next.js build |
+| `pnpm build` | `prisma generate`, then the mode d'emploi PDF (`scripts/build-aide-pdf.ts`), then the Next.js build |
 | `pnpm start` | Serve the production build |
 | `pnpm lint` | ESLint |
 | `pnpm prisma db seed` | Seed the database |
 | `pnpm db:migrate` / `pnpm db:deploy` | Create / apply a migration — see « Schema changes » below |
-| `pnpm aide:check` | Fails if an `AideLink` points at a mode d'emploi section that doesn't exist |
+| `pnpm aide:check` | Fails if an `AideLink` points at a mode d'emploi section that doesn't exist, or a search synonym finds nothing (not run by the build) |
+| `pnpm aide:pdf` | Renders the mode d'emploi PDF by hand (the build does it too) |
 | `pnpm aide:shots` | Recaptures the mode d'emploi screenshots by driving the app |
 | `pnpm aide:optimize` | Compresses those screenshots (keeps the generated PDF under Vercel's response cap) |
 | `pnpm aide:annotate` | Draws the numbered markers some sections reference in prose |
@@ -503,6 +535,19 @@ Every script that opens its own database connection reads `DIRECT_URL` first, vi
 | `set-audio-cors.ts` | bucket config | Sets the CORS rule the browser uploads need. |
 | `audio-match-rules.test.ts`, `audio-naming.test.ts` | no | Filename-matching and upload-naming tests. No network, no DB. |
 | `audio-manage.e2e.ts` | scratch prefix | End-to-end check of delete/restore/`FOLDER_EMPTY` against the real bucket, in its own scratch prefix. |
+| `book-deletion.e2e.ts` | local DB + bucket | End-to-end check of book deletion and its three audio dispositions. |
+
+### Other scripts (`scripts/`)
+
+| Script | Writes? | Description |
+|---|---|---|
+| `backfill-order-closure-dates.ts` | DB only | Fills in the closure date of demandes attached to a facture (the facture's « Livraison » column). |
+| `diag-audit-restore.ts` | no | Why a recorded deletion refuses to restore from the journal. SELECT only, safe on production. |
+| `search-normalize.test.ts` | no | Typographic folding tests. No network, no DB. |
+| `search.e2e.ts`, `search-fold.e2e.ts`, `search-suggest.e2e.ts` | no | Read-only checks of the admin search against a real database: apostrophes, the accent-insensitive person search, the « Vouliez-vous dire … ? » suggestions. |
+| `capture-aide-screenshots.mjs`, `optimize-aide-images.py`, `annotate-aide-screenshots.py`, `redact-aide-screenshots.py`, `aide-ocr.ps1` | `content/aide/images/` | Mode d'emploi screenshots: capture, compress, annotate, and blank out personal details (located by Windows' built-in OCR). |
+| `convert-user-guide.py` | the folders it is given | One-off conversion of the original Word guide into per-section Markdown plus extracted images — how `content/aide/` was seeded. |
+| `check-a11y.mjs`, `check-aide-links.ts`, `build-aide-pdf.ts`, `migrate.ts`, `db-url.ts` | — | Behind `pnpm a11y:check`, `aide:check`, `aide:pdf`, `db:migrate` / `db:deploy`, and the shared `DIRECT_URL` helper. |
 
 ### Signing in locally
 
@@ -523,7 +568,7 @@ Some objects can't be expressed in `schema.prisma` — a partial unique index, a
 
 ## 18. Deployment
 
-Deployed on **Vercel**. `pnpm build` runs `prisma generate` first. Before a release:
+Deployed on **Vercel**. `pnpm build` runs `prisma generate` and renders the mode d'emploi PDF before the Next.js build. Before a release:
 
 - set `DATABASE_URL`, `DIRECT_URL` and every integration credential in the Vercel project, `CRON_SECRET` included;
 - apply pending migrations with `pnpm db:deploy` (see « Schema changes » above);
