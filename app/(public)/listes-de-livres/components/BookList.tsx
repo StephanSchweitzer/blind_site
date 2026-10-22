@@ -1,4 +1,7 @@
-import React from 'react';
+'use client';
+
+import React, { useId, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { PublicBook } from '@/lib/books/publicBook';
 import { sectionSpine } from '@/lib/books/genreFamily';
 import { groupListByGenre } from '@/lib/books/listGenres';
@@ -43,6 +46,67 @@ const goToGenre = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     heading?.scrollIntoView({ block: 'start' });
 };
 
+/**
+ * The genre shortcuts, as an index: name on the left, count on the right,
+ * flowing down in columns so the order reads top to bottom. They were pills
+ * wrapped in a cloud, each as wide as its name — seventeen genres made a
+ * ragged block of half-filled lines, and on a phone 550 px of it before the
+ * first book.
+ *
+ * Columns are sized in rem, so the site's larger text settings drop to fewer
+ * columns instead of squeezing the names. On a phone the index is folded behind
+ * one button: it is a shortcut, not content, and a screen-reader user no longer
+ * swipes past seventeen links to reach the first book. From `sm` up it is always
+ * open, and the button gives way to a plain label.
+ */
+const GenreShortcuts: React.FC<{ genres: [string, number][] }> = ({ genres }) => {
+    const [open, setOpen] = useState(false);
+    const listId = useId();
+    const label = 'Genres de cette liste';
+
+    return (
+        <nav aria-label={label} className="rounded-xl border border-border bg-gray-100/60 dark:bg-gray-700/20 px-2 py-2 sm:px-3 sm:py-3">
+            <button
+                type="button"
+                aria-expanded={open}
+                aria-controls={listId}
+                onClick={() => setOpen((value) => !value)}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+            >
+                <span>
+                    {label} <span className="font-normal text-gray-700 dark:text-gray-300">({genres.length})</span>
+                </span>
+                <ChevronDown aria-hidden="true" className={`h-5 w-5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+            {/* The nav's own name already says it: the label is for the eye only. */}
+            <p aria-hidden="true" className="hidden px-2 pb-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300 sm:block">
+                {label}
+            </p>
+            <ul
+                id={listId}
+                // One column on a phone: two there left ~136 px each, and most
+                // names broke over two or three lines.
+                className={`${open ? 'block' : 'hidden'} mt-1 list-none p-0 sm:mt-0 sm:block sm:columns-[12rem] sm:gap-x-4`}
+            >
+                {genres.map(([genre, count], genreIndex) => (
+                    <li key={genre} className="break-inside-avoid">
+                        <a
+                            href={`#genre-${genreIndex}`}
+                            onClick={(event) => goToGenre(event, `genre-${genreIndex}`)}
+                            className="flex items-baseline gap-2 rounded-md px-2 py-1 text-sm leading-snug text-foreground transition-colors hover:bg-primary/10 dark:hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                            <span aria-hidden="true" className={`block h-3 w-1 shrink-0 translate-y-0.5 rounded-[1px] ${sectionSpine(genreIndex)}`} />
+                            <span className="min-w-0 flex-1 break-words">{genre}</span>
+                            <span aria-hidden="true" className="shrink-0 tabular-nums text-gray-700 dark:text-gray-300">{count}</span>
+                            <span className="sr-only">, {count} {count === 1 ? 'livre' : 'livres'}</span>
+                        </a>
+                    </li>
+                ))}
+            </ul>
+        </nav>
+    );
+};
+
 export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
     if (!books || books.length === 0) {
         return (
@@ -61,24 +125,7 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
             {/* Shortcuts to each genre: a list of thirty books is otherwise read,
                 or tabbed through, from the top to reach the one genre wanted. */}
             {groups.length >= GENRE_SHORTCUTS_FROM && (
-                <nav aria-label="Genres de cette liste">
-                    <ul className="flex flex-wrap gap-2 list-none p-0">
-                        {groups.map(([genre, entries], genreIndex) => (
-                            <li key={genre}>
-                                <a
-                                    href={`#genre-${genreIndex}`}
-                                    onClick={(event) => goToGenre(event, `genre-${genreIndex}`)}
-                                    className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
-                                >
-                                    <span aria-hidden="true" className={`block h-3.5 w-1.5 shrink-0 rounded-[1px] ${sectionSpine(genreIndex)}`} />
-                                    {genre}
-                                    <span aria-hidden="true" className="text-gray-700 dark:text-gray-300">{entries.length}</span>
-                                    <span className="sr-only">, {entries.length} {entries.length === 1 ? 'livre' : 'livres'}</span>
-                                </a>
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
+                <GenreShortcuts genres={groups.map(([genre, entries]) => [genre, entries.length])} />
             )}
             {groups.map(([genre, books], genreIndex) => (
                 <section
@@ -94,7 +141,8 @@ export const BookList: React.FC<BookListProps> = ({ books, onBookClick }) => {
                         {/* tabIndex -1: the genre shortcuts above put focus here. */}
                         <h3 id={`genre-${genreIndex}`} tabIndex={-1} className="scroll-mt-28 text-xl font-bold text-foreground outline-none">{genre}</h3>
                         <div aria-hidden="true" className="h-0.5 flex-1 bg-border"></div>
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-3 py-1 rounded-full">
+                        {/* nowrap: on a phone a long genre name squeezed it onto two lines. */}
+                        <span className="shrink-0 whitespace-nowrap text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-3 py-1 rounded-full">
                             {books.length} {books.length === 1 ? 'livre' : 'livres'}
                         </span>
                     </div>
