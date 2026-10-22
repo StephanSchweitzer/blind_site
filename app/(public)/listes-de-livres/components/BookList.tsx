@@ -54,10 +54,11 @@ const goToGenre = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
  * first book.
  *
  * Columns are sized in rem, so the site's larger text settings drop to fewer
- * columns instead of squeezing the names. On a phone the index is folded behind
- * one button: it is a shortcut, not content, and a screen-reader user no longer
- * swipes past seventeen links to reach the first book. From `sm` up it is always
- * open, and the button gives way to a plain label.
+ * columns instead of squeezing the names. The index is folded behind one
+ * button, on every screen: it is a shortcut, not content — readers come for the
+ * books — and neither a screen-reader swipe nor a Tab key goes through
+ * seventeen links to reach the first one. « Toutes les listes », just above,
+ * is folded the same way.
  */
 const GenreShortcuts: React.FC<{ genres: [string, number][] }> = ({ genres }) => {
     const [open, setOpen] = useState(false);
@@ -71,22 +72,18 @@ const GenreShortcuts: React.FC<{ genres: [string, number][] }> = ({ genres }) =>
                 aria-expanded={open}
                 aria-controls={listId}
                 onClick={() => setOpen((value) => !value)}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+                className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
                 <span>
                     {label} <span className="font-normal text-gray-700 dark:text-gray-300">({genres.length})</span>
                 </span>
                 <ChevronDown aria-hidden="true" className={`h-5 w-5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
-            {/* The nav's own name already says it: the label is for the eye only. */}
-            <p aria-hidden="true" className="hidden px-2 pb-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300 sm:block">
-                {label}
-            </p>
             <ul
                 id={listId}
                 // One column on a phone: two there left ~136 px each, and most
                 // names broke over two or three lines.
-                className={`${open ? 'block' : 'hidden'} mt-1 list-none p-0 sm:mt-0 sm:block sm:columns-[12rem] sm:gap-x-4`}
+                className={`${open ? 'block' : 'hidden'} mt-1 list-none p-0 sm:columns-[12rem] sm:gap-x-4`}
             >
                 {genres.map(([genre, count], genreIndex) => (
                     <li key={genre} className="break-inside-avoid">
