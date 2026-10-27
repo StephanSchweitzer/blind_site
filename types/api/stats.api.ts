@@ -11,6 +11,7 @@ export type StaffMetric =
     | 'coupsDeCoeur'
     | 'news'
     | 'audioEvents'
+    | 'reviewEvents'
     | 'auditEvents';
 
 /** Org-wide series with no actor to attribute them to — trend cards only. */
@@ -33,7 +34,7 @@ export interface StaffStatsRow {
     bucket: string; // 'YYYY-MM-DD' (Paris-local day, or ISO-Monday of the week)
     actorId: number;
     count: number;
-    /** BillEventType / AudioTrackAction / OrderEventType, per METRIC_SOURCES.typeColumn. */
+    /** BillEventType / AudioTrackAction / OrderEventType / BookReviewAction, per METRIC_SOURCES.typeColumn. */
     type?: string;
 }
 
@@ -57,7 +58,7 @@ export interface StaffDetailItem {
     subtitle: string | null;
     href: string | null; // deep link to the matching admin screen
     needsReview?: boolean; // books only — "à vérifier"
-    /** BillEventType / AudioTrackAction / OrderEventType, per metric. */
+    /** BillEventType / AudioTrackAction / OrderEventType / BookReviewAction, per metric. */
     type?: string;
     /** billEvents only — carries e.g. { reason: 'accrual' } for auto-attached orders. */
     payload?: Record<string, unknown> | null;

@@ -155,7 +155,7 @@ touch `app/`, `lib/` or `components/`. These are the rows where the three column
 | donors / benefactors | Donateurs *(bienfaiteur)* | `memberType: bienfaiteur` **(label "Donateur")**; users tab `bienfaiteurs` |
 | listeners / the visually impaired | Auditeurs *(sing. auditeur)* | `memberType: auditeur`; users tab `auditeurs` *(legacy `ecouteur` → displays as Auditeur)* |
 | staff picks / book list | Coups de cœur / "Liste des Livres" | `CoupsDeCoeur` model; `/admin/listes-de-livres`; `/api/listes-de-livres`; public `/listes-de-livres` |
-| duplicates / merge queue | Doublons | `Book.needsReview` / `id_arbre`; `/admin/review`; `BookMergeEvent` |
+| duplicates / merge queue | Doublons | `Book.needsReview` / `id_arbre`; `/admin/review`; `BookMergeEvent`; `BookReviewEvent` (every decision, for stats) |
 | bill / invoice | Facture | `Bill` model; `/admin/bills`; `/api/bills` |
 | trash / recycle bin (audio) | Corbeille | `DeletedAudioTrack`; `/admin/audio-corbeille`; `lib/audio/trash.ts` |
 
@@ -194,7 +194,7 @@ invalidation, code style.
 ### Append-only tables — insert only, never update or delete
 
 `BillEvent`, `OrderEvent`, `AssignmentEvent`, `UserActivityEvent`, `BookMergeEvent`,
-`AuditEvent`, `AudioTrackEvent`.
+`BookReviewEvent`, `AuditEvent`, `AudioTrackEvent`.
 
 `AudioTrackDuration` is **not** one of these — it is a cache and is updated in place.
 

@@ -106,6 +106,19 @@ export const METRIC_SOURCES: Record<TrendMetric, MetricSource> = {
         extraWhere: Prisma.empty,
         typeColumn: Prisma.sql`"action"`,
     },
+    reviewEvents: {
+        // The Doublons queue (/admin/review): fusions, « pas un doublon »,
+        // suppressions. None of these leaves a row behind that the other metrics
+        // read — a fusion removes a book rather than adding one, a dismissal only
+        // flips needsReview — so without its own log that work was invisible
+        // here. BookReviewEvent is not an audited model, so it does not overlap
+        // auditEvents either, and belongs in the « Tous » total.
+        table: Prisma.sql`"BookReviewEvent"`,
+        dateColumn: Prisma.sql`"createdAt"`,
+        actorExpr: orSystem(Prisma.sql`"performedById"`),
+        extraWhere: Prisma.empty,
+        typeColumn: Prisma.sql`"action"`,
+    },
     auditEvents: {
         table: Prisma.sql`"AuditEvent"`,
         dateColumn: Prisma.sql`"createdAt"`,
@@ -166,8 +179,8 @@ export function parseMetricFilterParam(value: string | null): StaffMetricFilter 
  * Metrics summed for the "Tous" total. auditEvents is deliberately left out: Book,
  * CoupsDeCoeur, News, Orders, Assignment, Bill and AudioTrackEvent are all audited
  * models (AUDITED_MODELS, lib/audit/config.ts), so almost every row behind the
- * other seven metrics already produces its own AuditEvent — adding auditEvents as
- * an eighth addend would double-count the very production the total is supposed to
+ * other metrics already produces its own AuditEvent — adding auditEvents as
+ * one more addend would double-count the very production the total is supposed to
  * add up. Same "a count would mislead" reasoning already keeps auditEvents out of
  * the production trend cards — see TREND_TABS in app/admin/stats/stats-utils.ts.
  */

@@ -242,6 +242,45 @@ async function loadItems(
             }));
         }
 
+        case 'reviewEvents': {
+            // Raw SQL on purpose: a fusion's removed book and a deleted one are
+            // gone or soft-deleted, and the soft-delete extension would hide the
+            // very books these decisions were about.
+            const rows = await prisma.$queryRaw<Array<{
+                id: number; action: string; bookId: number; bookTitle: string | null;
+                bookAuthor: string | null; bookDeleted: boolean | null;
+                otherBookId: number | null; otherTitle: string | null; at: string;
+            }>>`
+                SELECT e.id, e.action::text AS action, e."bookId",
+                       b.title AS "bookTitle", b.author AS "bookAuthor",
+                       b."deletedAt" IS NOT NULL AS "bookDeleted",
+                       e."otherBookId", o.title AS "otherTitle",
+                       ${isoUtc(Prisma.sql`e."createdAt"`)} AS at
+                FROM "BookReviewEvent" e
+                LEFT JOIN "Book" b ON b.id = e."bookId"
+                LEFT JOIN "Book" o ON o.id = e."otherBookId"
+                WHERE ${actorCondition(Prisma.sql`e."performedById"`, actorId)}
+                  AND e."createdAt" >= ${from} AND e."createdAt" < ${to}
+                ORDER BY e."createdAt" ASC
+                LIMIT ${DETAILS_LIMIT}`;
+            return rows.map((r) => {
+                // A fusion's absorbed book is physically deleted, so its title is
+                // usually gone too — the id is all that is left to name it.
+                const absorbed = r.otherBookId === null
+                    ? null
+                    : `absorbe ${r.otherTitle ? `« ${r.otherTitle} »` : `le livre n°${r.otherBookId}`}`;
+                return {
+                    id: r.id,
+                    at: r.at,
+                    title: r.bookTitle ?? `Livre n°${r.bookId}`,
+                    subtitle: [r.bookAuthor, absorbed].filter(Boolean).join(' — ') || null,
+                    type: r.action,
+                    // A deleted fiche has no screen to open.
+                    href: r.bookTitle !== null && !r.bookDeleted ? `/admin/books?book=${r.bookId}` : null,
+                };
+            });
+        }
+
         case 'auditEvents': {
             const rows = await prisma.$queryRaw<Array<{
                 id: number; model: string; recordId: string; operation: AuditOperation;

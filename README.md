@@ -337,7 +337,7 @@ Standard REST CRUD per entity (`books`, `genres`, `news`, `orders`, `assignments
 
 Core entities: `User` (+ `Address`, `ReaderLanguage`), `Book`, `Genre`, `Orders`, `Assignment` (+ `AssignmentReader`), `Bill`, `Payment`, `CoupsDeCoeur`, `News`, plus the reference tables `MediaFormat`, `Civility`, `Status`.
 
-**Append-only event logs** — insert only, never update or delete: `BillEvent`, `OrderEvent`, `AssignmentEvent`, `UserActivityEvent`, `BookMergeEvent`, `AuditEvent`, `AudioTrackEvent`.
+**Append-only event logs** — insert only, never update or delete: `BillEvent`, `OrderEvent`, `AssignmentEvent`, `UserActivityEvent`, `BookMergeEvent`, `BookReviewEvent`, `AuditEvent`, `AudioTrackEvent`.
 
 **Audio tables** — `OrphanAudioFolder` (folders no book claims), `DeletedAudioTrack` (the corbeille), `AudioTrackDuration` (the measurement cache), `AudioFilepathBackup` (pre-backfill snapshot of the NAS paths, since the rewrite is one-way).
 

@@ -26,6 +26,8 @@ Cette grille montre une ligne par permanent et une colonne par jour. Plus une ca
 
 (1) Les boutons au-dessus choisissent ce que la grille compte : livres ajoutés, demandes traitées, etc. Cliquez sur une case pour voir le détail.
 
+« **Doublons traités** » compte les décisions prises sur la page « Doublons » : les fusions, les « Pas un doublon » et les suppressions. Ce travail entre aussi dans « **Tous** ».
+
 ![Statistiques - l'activité des permanents](/admin/aide/images/statistiques-03.jpg)
 
 ## Membres

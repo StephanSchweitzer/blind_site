@@ -26,7 +26,7 @@ these mostly kept their original English names even though the French rename hap
 | bill / invoice | Facture | `Bill` model; `/admin/bills`; `/api/bills` |
 | payments | Paiements | `Payment` model; `/admin/payments`; `/api/payments` |
 | news | Dernières infos | `News` model; `/admin/news`; `/api/news`; public `/dernieres-infos` |
-| duplicates / merge queue | Doublons | `Book.needsReview` / `id_arbre`; `/admin/review`; `BookMergeEvent` |
+| duplicates / merge queue | Doublons | `Book.needsReview` / `id_arbre`; `/admin/review`; `BookMergeEvent`; `BookReviewEvent` (every decision, for stats) |
 | orphaned audio folders | Audio orphelin | `OrphanAudioFolder`; `/admin/audio-orphelins`; `/api/audio-orphans` |
 | audio tracks / recordings | Pistes / Enregistrement | bucket objects; `/api/books/[id]/audio/*`; `lib/audio/` |
 | trash / recycle bin (audio) | Corbeille | `DeletedAudioTrack`; `/admin/audio-corbeille`; `lib/audio/trash.ts` |

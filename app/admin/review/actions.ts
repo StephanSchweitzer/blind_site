@@ -299,6 +299,11 @@ export async function fuseBooks(
                 await tx.bookMergeEvent.create({
                     data: { canonicalId: survivorId, duplicateId: removedId, snapshot, performedById: me.id },
                 });
+                // Ce que /admin/stats compte (« Doublons traités ») — BookMergeEvent
+                // garde la photo du doublon, celui-ci garde le geste.
+                await tx.bookReviewEvent.create({
+                    data: { action: 'FUSION', bookId: survivorId, otherBookId: removedId, performedById: me.id },
+                });
             });
             committed = true;
 
@@ -386,6 +391,18 @@ export async function deleteBook(bookId: number): Promise<ActionResult> {
                 disposition: { mode: 'leave' },
             });
             if (!result.ok) return { ok: false, message: result.error };
+
+            // Après coup, hors de la transaction de deleteBookWithAudio, qui sert
+            // aussi le catalogue : seule la suppression faite depuis la file est un
+            // geste de doublons. La fiche est déjà supprimée — un échec ici ne doit
+            // pas l'annoncer ratée, il coûte seulement une case aux statistiques.
+            try {
+                await prisma.bookReviewEvent.create({
+                    data: { action: 'DELETE', bookId, performedById: me.id },
+                });
+            } catch (error) {
+                console.error('deleteBook: BookReviewEvent not recorded for book', bookId, error);
+            }
 
             refresh();
             await revalidateChangedBooks(publicBefore);
@@ -538,11 +555,16 @@ export async function escalateReview(
 
 /** NOT A DUP: clear the review flag on the flagged book — no merge, no delete. */
 export async function dismissReview(bookId: number): Promise<ActionResult> {
-    return asAdminAction(async () => {
+    return asAdminAction(async (me) => {
         if (!Number.isInteger(bookId)) return { ok: false, message: 'Identifiant invalide' };
 
         try {
-            await prisma.book.update({ where: { id: bookId }, data: { needsReview: false } });
+            // Ensemble : le retrait de la file n'existe pas sans sa trace, que
+            // /admin/stats compte dans « Doublons traités ».
+            await prisma.$transaction([
+                prisma.book.update({ where: { id: bookId }, data: { needsReview: false } }),
+                prisma.bookReviewEvent.create({ data: { action: 'DISMISS', bookId, performedById: me.id } }),
+            ]);
             refresh();
             return { ok: true, message: 'Livre retiré de la file de révision' };
         } catch (error) {

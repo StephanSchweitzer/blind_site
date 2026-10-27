@@ -80,6 +80,7 @@ model User {
   orderEventsPerformed      OrderEvent[]        @relation("OrderEventsPerformedBy")
   assignmentEventsPerformed AssignmentEvent[]   @relation("AssignmentEventsPerformedBy")
   bookMergeEventsPerformed  BookMergeEvent[]    @relation("BookMergeEventsPerformedBy")
+  bookReviewEventsPerformed BookReviewEvent[]   @relation("BookReviewEventsPerformedBy")
   activityEvents            UserActivityEvent[] @relation("UserActivityEvents")
   activityEventsPerformed   UserActivityEvent[] @relation("UserActivityEventsBy")
   audioTracksDeleted        DeletedAudioTrack[] @relation("AudioTracksDeletedBy")
@@ -728,6 +729,35 @@ model BookMergeEvent {
 
   @@index([canonicalId])
   @@index([duplicateId])
+  @@index([createdAt])
+}
+
+/// What a permanent decided in the Doublons queue (/admin/review). Append-only.
+enum BookReviewAction {
+  FUSION
+  DISMISS
+  DELETE
+}
+
+/// Append-only log of every decision taken in the Doublons queue, one row per
+/// gesture: a fusion, a « pas un doublon », a suppression. Exists so that work
+/// shows on /admin/stats (« Doublons traités ») — a dismissal otherwise left
+/// nothing durable behind (only the AuditEvent, purged after 14 days), and a
+/// fusion only its BookMergeEvent, which keeps the snapshot and stays the
+/// source for that. Never updated or deleted.
+///
+/// bookId: the survivor (FUSION), the flagged book (DISMISS), the deleted book
+/// (DELETE). otherBookId: the absorbed duplicate, FUSION only. Plain ints, no
+/// FK, for the same reason as BookMergeEvent: the row outlives the books.
+model BookReviewEvent {
+  id            Int              @id @default(autoincrement())
+  action        BookReviewAction
+  bookId        Int
+  otherBookId   Int?
+  performedById Int?
+  createdAt     DateTime         @default(now())
+  performedBy   User?            @relation("BookReviewEventsPerformedBy", fields: [performedById], references: [id], onDelete: SetNull)
+
   @@index([createdAt])
 }
 

@@ -87,6 +87,7 @@ export const METRIC_LABELS: Record<TrendMetric, string> = {
     coupsDeCoeur: 'Listes de livres',
     news: 'Actualités publiées',
     audioEvents: 'Pistes audio modifiées',
+    reviewEvents: 'Doublons traités',
     auditEvents: 'Modifications tracées',
     payments: 'Paiements enregistrés',
     bills: 'Factures créées',
@@ -103,6 +104,7 @@ export const STAFF_METRIC_ORDER: StaffMetric[] = [
     'coupsDeCoeur',
     'news',
     'audioEvents',
+    'reviewEvents',
 ];
 
 /** The heatmap's own button row: the combined total first, then each metric on its own. */
@@ -143,7 +145,7 @@ export const TREND_TABS: TrendTab[] = [
     {
         value: 'production',
         label: 'Production',
-        metrics: ['books', 'audioEvents'],
+        metrics: ['books', 'audioEvents', 'reviewEvents'],
     },
     {
         value: 'demandes',
@@ -168,6 +170,7 @@ export const METRIC_HINTS: Partial<Record<TrendMetric, string>> = {
     orders: 'Création, clôture, réouverture et changements de statut — quel que soit le chemin emprunté.',
     assignments: 'Création, clôture, réouverture et changements de statut — quel que soit le chemin emprunté.',
     audioEvents: 'Envoi, renommage, suppression et restauration de pistes.',
+    reviewEvents: 'Fusions, « pas un doublon » et suppressions faites depuis la file Doublons.',
     // Both windows, because the shorter one applies on its own once the table
     // passes its soft limit (lib/audit/retention.ts) — a hard-coded « 14 jours »
     // is simply wrong on the days that matter most.
@@ -201,6 +204,19 @@ export const LIFECYCLE_EVENT_TINT: Record<string, string> = {
  * reads — this alias keeps the existing call sites unchanged.
  */
 export { AUDIO_TRACK_ACTION_LABELS as AUDIO_ACTION_LABEL } from '@/lib/audio-enums';
+
+/** BookReviewAction → French label, for the badge on a reviewEvents detail row. */
+export const REVIEW_ACTION_LABEL: Record<string, string> = {
+    FUSION: 'Fusion',
+    DISMISS: 'Pas un doublon',
+    DELETE: 'Suppression',
+};
+
+export const REVIEW_ACTION_TINT: Record<string, string> = {
+    FUSION: 'bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-200',
+    DISMISS: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200',
+    DELETE: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200',
+};
 
 export const AUDIO_ACTION_TINT: Record<string, string> = {
     UPLOAD: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200',

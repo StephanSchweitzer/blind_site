@@ -18,6 +18,8 @@ import {
     AUDIO_ACTION_LABEL,
     AUDIO_ACTION_TINT,
     LIFECYCLE_EVENT_LABEL,
+    REVIEW_ACTION_LABEL,
+    REVIEW_ACTION_TINT,
     LIFECYCLE_EVENT_TINT,
     OPERATION_TINT,
     formatBucketLabel,
@@ -45,6 +47,7 @@ const BADGE_MAPS: Partial<Record<StaffMetric, [Record<string, string>, Record<st
     audioEvents: [AUDIO_ACTION_LABEL, AUDIO_ACTION_TINT],
     orders: [LIFECYCLE_EVENT_LABEL, LIFECYCLE_EVENT_TINT],
     assignments: [LIFECYCLE_EVENT_LABEL, LIFECYCLE_EVENT_TINT],
+    reviewEvents: [REVIEW_ACTION_LABEL, REVIEW_ACTION_TINT],
     auditEvents: [AUDIT_BADGE_LABEL, AUDIT_BADGE_TINT],
 };
 
