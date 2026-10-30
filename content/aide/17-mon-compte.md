@@ -16,6 +16,8 @@ L'URL de cette page est https://eca-aveugles.fr/admin/profile
 
 Vous pouvez y modifier votre adresse email (qui sert à vous connecter) et votre mot de passe. Votre nom, lui, est celui de votre fiche : demandez au secrétariat de le corriger.
 
+Le bouton « Déconnexion » de cette carte ferme votre session, comme celui de la [barre de navigation](/admin/aide/page-principale).
+
 ## Mes indisponibilités
 
 Déclarez ici vos absences, avec une date de début et une date de fin. Pendant cette période, on ne vous confiera pas d'attribution. Un permanent peut aussi les renseigner pour vous depuis la page [Disponibilités](/admin/aide/disponibilites).

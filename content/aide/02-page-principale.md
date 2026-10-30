@@ -32,6 +32,8 @@ Enfin, si vous cliquez sur le bouton « Mon Compte », vous serez redirigé vers
 
 ![Page principale - capture 4](/admin/aide/images/page-principale-04.jpg)
 
+Pour quitter Arbre Rose, cliquez sur le bouton « Déconnexion », juste à côté de « Mon Compte » (sur un écran étroit, il n'affiche que son icône, une porte avec une flèche ; sur téléphone, il se trouve dans le menu). Si un formulaire n'a pas été enregistré, Arbre Rose vous demande d'abord confirmation.
+
 La barre de navigation comporte aussi un lien « Aide », qui ouvre ce mode d'emploi dans un nouvel onglet, à la page qui correspond à celle où vous vous trouvez.
 
 En haut du sommaire du mode d'emploi, une barre de recherche retrouve le passage qui vous intéresse sans savoir dans quelle section il est rangé. Tapez un mot — « reçu », « brouillon », « mot de passe » — et chaque résultat vous amène directement au paragraphe concerné ; la touche Entrée ouvre le premier. Les accents ne comptent pas, et les mots courants sont compris même quand l'interface en emploie un autre : « commande » trouve les demandes, « bénévole » les lecteurs, « poubelle » la corbeille.

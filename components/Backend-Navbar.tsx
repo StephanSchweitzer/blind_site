@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { IntentLink } from '@/components/admin/IntentLink';
 import Image from 'next/image';
-import { Menu, X, ChevronDown, HelpCircle } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { Menu, X, ChevronDown, HelpCircle, LogOut } from 'lucide-react';
+import { signOut, useSession } from 'next-auth/react';
+import { confirmLeavingPage } from '@/components/userWarnIfUnsavedChanges';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { QuickSearch, type QuickSearchPage } from '@/components/admin/QuickSearch';
 import { SECTION_ICONS, sectionAccent } from '@/components/admin/section-icons';
@@ -112,6 +113,12 @@ const BackendNavbar: React.FC = () => {
         setMobileGroup(null);
     };
 
+    // Same gesture as the button on « Mon compte »: ask first if a form is unsaved.
+    const handleSignOut = async () => {
+        closeAll();
+        if (await confirmLeavingPage()) void signOut({ callbackUrl: '/auth/signin' });
+    };
+
     return (
         // id : cible du lien d'évitement « Aller à la navigation » (components/SkipLinks.tsx).
         // Surtout pas « navigation-principale » : c'est la marque du site public
@@ -202,6 +209,17 @@ const BackendNavbar: React.FC = () => {
                         >
                             Mon Compte
                         </IntentLink>
+                        {/* Le libellé reste lu par les lecteurs d'écran quand la
+                            place manque (lg) et que seule l'icône s'affiche. */}
+                        <button
+                            type="button"
+                            onClick={handleSignOut}
+                            title="Déconnexion"
+                            className="flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-md border border-border text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
+                        >
+                            <LogOut className="h-4 w-4" aria-hidden="true" />
+                            <span className="sr-only xl:not-sr-only">Déconnexion</span>
+                        </button>
                         <IntentLink
                             href="/"
                             onClick={closeAll}
@@ -276,6 +294,14 @@ const BackendNavbar: React.FC = () => {
                         >
                             Mon Compte
                         </IntentLink>
+                        <button
+                            type="button"
+                            onClick={handleSignOut}
+                            className="w-full flex items-center gap-2 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-100"
+                        >
+                            <LogOut className="h-4 w-4" aria-hidden="true" />
+                            Déconnexion
+                        </button>
                         <IntentLink
                             href="/"
                             onClick={closeAll}
