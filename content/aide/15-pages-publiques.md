@@ -6,7 +6,7 @@ order: 15
 
 # Pages publiques
 
-Le groupe « Pages » de la barre de navigation permet de modifier ce que voient les visiteurs du site public. Tout ce que vous enregistrez ici est **immédiatement en ligne** : relisez-vous avant d'enregistrer.
+Le groupe « Pages » de la barre de navigation permet de modifier ce que voient les visiteurs du site public. Tout ce que vous enregistrez ici est **immédiatement en ligne** : relisez-vous avant d'enregistrer. En tête de ce menu, sous « Voir le site », le lien « Site principal » ouvre le site public pour vérifier le résultat.
 
 Seuls les Super Admins voient l'ensemble de ce groupe. Un permanent n'y trouve que « Dernières infos ».
 

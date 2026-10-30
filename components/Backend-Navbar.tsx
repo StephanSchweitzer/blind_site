@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { IntentLink } from '@/components/admin/IntentLink';
 import Image from 'next/image';
-import { Menu, X, ChevronDown, HelpCircle, LogOut } from 'lucide-react';
+import { Menu, X, ChevronDown, HelpCircle, LogOut, ArrowUpRight } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 import { confirmLeavingPage } from '@/components/userWarnIfUnsavedChanges';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -14,6 +14,12 @@ interface NavItem {
     href: string;
     // Also the key of its icon in SECTION_ICONS.
     label: string;
+    // Small heading the item sits under inside its menu; consecutive items share it.
+    section?: string;
+    // One line under the label, for a link that doesn't do what its neighbours do.
+    hint?: string;
+    // Leaves the back office (the public site): drawn with an outgoing arrow.
+    leavesAdmin?: boolean;
 }
 
 interface NavGroup {
@@ -56,14 +62,20 @@ const navGroups: NavGroup[] = [
     {
         label: 'Pages',
         items: [
-            // Le site public lui-même, sorti de la barre faute de place.
-            { href: '/', label: 'Site principal' },
-            { href: '/admin/news', label: 'Dernières infos' },
-            { href: '/admin/site-contact', label: 'Contact' },
-            { href: '/admin/team', label: 'Équipe' },
-            { href: '/admin/historique', label: 'Historique' },
-            { href: '/admin/informations-pratiques', label: 'Infos pratiques' },
-            { href: '/admin/nous-rejoindre', label: 'Nous rejoindre' },
+            // Le site public lui-même : on le regarde, on ne le modifie pas ici.
+            {
+                href: '/',
+                label: 'Site principal',
+                section: 'Voir le site',
+                hint: 'Ce que voient les visiteurs',
+                leavesAdmin: true,
+            },
+            { href: '/admin/news', label: 'Dernières infos', section: 'Modifier les pages' },
+            { href: '/admin/site-contact', label: 'Contact', section: 'Modifier les pages' },
+            { href: '/admin/team', label: 'Équipe', section: 'Modifier les pages' },
+            { href: '/admin/historique', label: 'Historique', section: 'Modifier les pages' },
+            { href: '/admin/informations-pratiques', label: 'Infos pratiques', section: 'Modifier les pages' },
+            { href: '/admin/nous-rejoindre', label: 'Nous rejoindre', section: 'Modifier les pages' },
         ],
     },
 ];
@@ -77,6 +89,55 @@ function NavIcon({ label }: { label: string }) {
         <span aria-hidden="true" className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${colors.bg}`}>
             <Icon className={`h-4 w-4 ${colors.text}`} />
         </span>
+    );
+}
+
+/**
+ * A menu's links, split under small headings where the items carry a
+ * `section` (Pages: « Voir le site » apart from « Modifier les pages »).
+ * Each block is a labelled group, so a screen reader announces it too.
+ */
+function MenuLinks({ items, onNavigate, linkClassName }: {
+    items: NavItem[];
+    onNavigate: () => void;
+    linkClassName: string;
+}) {
+    const blocks: { section?: string; items: NavItem[] }[] = [];
+    for (const item of items) {
+        const last = blocks[blocks.length - 1];
+        if (last && last.section === item.section) last.items.push(item);
+        else blocks.push({ section: item.section, items: [item] });
+    }
+
+    return (
+        <>
+            {blocks.map((block, index) => (
+                <div
+                    key={block.section ?? index}
+                    role={block.section ? 'group' : undefined}
+                    aria-label={block.section}
+                    className={index > 0 ? 'border-t border-border pt-1 mt-1' : undefined}
+                >
+                    {block.section && (
+                        <div aria-hidden="true" className="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            {block.section}
+                        </div>
+                    )}
+                    {block.items.map((item) => (
+                        <IntentLink key={item.href} href={item.href} onClick={onNavigate} className={linkClassName}>
+                            <NavIcon label={item.label} />
+                            <span className="flex flex-col">
+                                <span>{item.label}</span>
+                                {item.hint && <span className="text-xs text-muted-foreground">{item.hint}</span>}
+                            </span>
+                            {item.leavesAdmin && (
+                                <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
+                            )}
+                        </IntentLink>
+                    ))}
+                </div>
+            ))}
+        </>
     );
 }
 
@@ -147,6 +208,10 @@ const BackendNavbar: React.FC = () => {
                         </span>
                     </IntentLink>
 
+                    {/* The full bar needs ~1280 px (menus, search, Aide, Mon Compte,
+                        Déconnexion, theme): below xl it switches to the ☰ menu
+                        rather than overflowing. Measured, not guessed — re-check
+                        at 1280 px before adding anything to it. */}
                     {/* Desktop navigation — hover-triggered dropdowns.
                         Every panel stays mounted, hidden by CSS only, so Next
                         counts all ~25 links as visible and would prefetch each
@@ -155,10 +220,10 @@ const BackendNavbar: React.FC = () => {
                         IntentLink instead, as in the dashboard and the lists:
                         it prefetches only once the pointer rests on it
                         (components/admin/IntentLink.tsx). */}
-                    <div className="hidden lg:flex items-center gap-1 flex-1">
+                    <div className="hidden xl:flex items-center gap-1 flex-1">
                         {visibleGroups.map((group) => (
                             <div key={group.label} className="relative group">
-                                <span className="flex items-center gap-2 px-4 py-2 rounded-md text-foreground/80 font-medium cursor-pointer select-none hover:text-foreground hover:bg-accent transition-colors duration-100">
+                                <span className="flex items-center gap-2 px-3 py-2 rounded-md text-foreground/80 font-medium cursor-pointer select-none hover:text-foreground hover:bg-accent transition-colors duration-100">
                                     {group.label}
                                     <ChevronDown
                                         size={14}
@@ -171,17 +236,11 @@ const BackendNavbar: React.FC = () => {
                                 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0
                                 transition-[opacity,transform] duration-100 ease-out">
                                     <div className="min-w-[220px] bg-popover border border-border rounded-lg shadow-xl overflow-hidden">
-                                        {group.items.map((item) => (
-                                            <IntentLink
-                                                key={item.href}
-                                                href={item.href}
-                                                onClick={closeAll}
-                                                className="flex items-center gap-3 px-4 py-3 text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
-                                            >
-                                                <NavIcon label={item.label} />
-                                                {item.label}
-                                            </IntentLink>
-                                        ))}
+                                        <MenuLinks
+                                            items={group.items}
+                                            onNavigate={closeAll}
+                                            linkClassName="flex items-center gap-3 px-4 py-3 text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -190,12 +249,12 @@ const BackendNavbar: React.FC = () => {
 
                     {/* Rendered ONCE, at every width: it owns the Ctrl+K listener,
                         and two copies would each toggle the box — open, then shut. */}
-                    <div className="ml-auto lg:ml-0">
+                    <div className="ml-auto xl:ml-0">
                         <QuickSearch pages={searchablePages} />
                     </div>
 
                     {/* Desktop right-aligned actions */}
-                    <div className="hidden lg:flex items-center gap-3">
+                    <div className="hidden xl:flex items-center gap-3">
                         <IntentLink
                             href="/admin/aide"
                             onClick={closeAll}
@@ -223,7 +282,7 @@ const BackendNavbar: React.FC = () => {
                     </div>
 
                     {/* Mobile actions */}
-                    <div className="flex items-center gap-2 lg:hidden">
+                    <div className="flex items-center gap-2 xl:hidden">
                         <ThemeToggle />
                         <button
                             type="button"
@@ -239,7 +298,7 @@ const BackendNavbar: React.FC = () => {
 
                 {/* Mobile menu — click-toggled dropdowns */}
                 {isMenuOpen && (
-                    <div className="lg:hidden pb-4 space-y-1">
+                    <div className="xl:hidden pb-4 space-y-1">
                         {visibleGroups.map((group, index) => (
                             <div key={group.label}>
                                 <button
@@ -256,17 +315,11 @@ const BackendNavbar: React.FC = () => {
                                 </button>
                                 {mobileGroup === index && (
                                     <div className="pl-4 mt-1 mb-2 space-y-1 border-l-2 border-border ml-3">
-                                        {group.items.map((item) => (
-                                            <IntentLink
-                                                key={item.href}
-                                                href={item.href}
-                                                onClick={closeAll}
-                                                className="flex items-center gap-3 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
-                                            >
-                                                <NavIcon label={item.label} />
-                                                {item.label}
-                                            </IntentLink>
-                                        ))}
+                                        <MenuLinks
+                                            items={group.items}
+                                            onNavigate={closeAll}
+                                            linkClassName="flex items-center gap-3 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
+                                        />
                                     </div>
                                 )}
                             </div>
