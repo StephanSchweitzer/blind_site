@@ -21,6 +21,7 @@ import {
     Handshake,
     BarChart3,
     Trash2,
+    Globe,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -54,6 +55,7 @@ export const SECTION_ICONS: Record<string, LucideIcon> = {
     'Infos pratiques': Info,
     'Nous rejoindre': Handshake,
     'Statistiques': BarChart3,
+    'Site principal': Globe,
 };
 
 export type SectionAccent =

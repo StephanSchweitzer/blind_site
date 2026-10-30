@@ -24,7 +24,7 @@ Dans la barre de navigation, vous pouvez basculer le site entre le mode clair et
 
 ![Page principale - capture 2](/admin/aide/images/page-principale-02.jpg)
 
-Si vous cliquez sur le bouton « site principal », vous serez redirigé vers la partie publique de notre site web / Arbre Rose.
+Le lien « Site principal », en tête du menu « Pages », vous amène vers la partie publique de notre site web.
 
 ![Page principale - capture 3](/admin/aide/images/page-principale-03.jpg)
 
@@ -32,7 +32,7 @@ Enfin, si vous cliquez sur le bouton « Mon Compte », vous serez redirigé vers
 
 ![Page principale - capture 4](/admin/aide/images/page-principale-04.jpg)
 
-Pour quitter Arbre Rose, cliquez sur le bouton « Déconnexion », juste à côté de « Mon Compte » (sur un écran étroit, il n'affiche que son icône, une porte avec une flèche ; sur téléphone, il se trouve dans le menu). Si un formulaire n'a pas été enregistré, Arbre Rose vous demande d'abord confirmation.
+Pour quitter Arbre Rose, cliquez sur le bouton « Déconnexion », juste à côté de « Mon Compte » (sur téléphone, il se trouve dans le menu). Si un formulaire n'a pas été enregistré, Arbre Rose vous demande d'abord confirmation.
 
 La barre de navigation comporte aussi un lien « Aide », qui ouvre ce mode d'emploi dans un nouvel onglet, à la page qui correspond à celle où vous vous trouvez.
 

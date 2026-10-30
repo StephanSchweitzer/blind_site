@@ -56,6 +56,8 @@ const navGroups: NavGroup[] = [
     {
         label: 'Pages',
         items: [
+            // Le site public lui-même, sorti de la barre faute de place.
+            { href: '/', label: 'Site principal' },
             { href: '/admin/news', label: 'Dernières infos' },
             { href: '/admin/site-contact', label: 'Contact' },
             { href: '/admin/team', label: 'Équipe' },
@@ -84,11 +86,11 @@ const BackendNavbar: React.FC = () => {
     const { data: session } = useSession();
     const isSuper = session?.user.accessLevel === 'super_admin';
 
-    // Non-super-admins only see "Dernières infos" (news) in the Pages group,
-    // and never the super-admin-only Statistiques entry.
+    // Non-super-admins only see "Site principal" and "Dernières infos" (news) in
+    // the Pages group, and never the super-admin-only Statistiques entry.
     const visibleGroups = navGroups
         .map((g) => g.label === 'Pages' && !isSuper
-            ? { ...g, items: g.items.filter((i) => i.href === '/admin/news') }
+            ? { ...g, items: g.items.filter((i) => i.href === '/' || i.href === '/admin/news') }
             : g)
         .map((g) => isSuper
             ? g
@@ -209,24 +211,14 @@ const BackendNavbar: React.FC = () => {
                         >
                             Mon Compte
                         </IntentLink>
-                        {/* Le libellé reste lu par les lecteurs d'écran quand la
-                            place manque (lg) et que seule l'icône s'affiche. */}
                         <button
                             type="button"
                             onClick={handleSignOut}
-                            title="Déconnexion"
                             className="flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-md border border-border text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
                         >
                             <LogOut className="h-4 w-4" aria-hidden="true" />
-                            <span className="sr-only xl:not-sr-only">Déconnexion</span>
+                            Déconnexion
                         </button>
-                        <IntentLink
-                            href="/"
-                            onClick={closeAll}
-                            className="whitespace-nowrap px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold shadow-sm hover:opacity-90 transition-opacity duration-100"
-                        >
-                            Site principal
-                        </IntentLink>
                         <ThemeToggle />
                     </div>
 
@@ -302,13 +294,6 @@ const BackendNavbar: React.FC = () => {
                             <LogOut className="h-4 w-4" aria-hidden="true" />
                             Déconnexion
                         </button>
-                        <IntentLink
-                            href="/"
-                            onClick={closeAll}
-                            className="flex items-center justify-center min-h-11 px-4 py-2.5 mt-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity duration-100"
-                        >
-                            Site principal
-                        </IntentLink>
                     </div>
                 )}
             </div>
