@@ -1,3 +1,5 @@
+> *Réalisé pour Catherine Porte, et à sa mémoire. Lectrice pour les ECA de 2013 à 2022 et présidente des ECA de mai 2022 à son décès, le 27 octobre 2026.*
+
 # ECA — Site & portail d'administration
 
 Web application for **ECA — Enregistrements à la Carte pour les Aveugles**, a French nonprofit (a délégation of the *Auxiliaires des Aveugles*) that records books and documents on demand for blind and visually impaired listeners, pairing them with trained volunteer readers.
