@@ -166,6 +166,12 @@ export const assignmentIncludeConfigs = {
             select: {
                 id: true,
                 requestReceivedDate: true,
+                // Non nul = une revue : le formulaire d'attribution (EditAssignmentModal)
+                // s'en sert pour proposer « Terminé » sans audio, sur confirmation, au
+                // lieu de le refuser lui-même. Ajouté en septembre au seul include
+                // `order` ci-dessus, pas ici — le formulaire ne voyait donc jamais de
+                // revue, et refusait « Terminé » quand l'audio du livre manquait.
+                pages: true,
                 aveugle: {
                     select: {
                         // id: the attribution form prints the auditeur's étiquette
