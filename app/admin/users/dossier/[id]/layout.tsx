@@ -5,11 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import DossierTabs from './dossier-tabs';
 import DossierHeaderName from './dossier-header-name';
 import DossierDeletedNotice from './dossier-deleted-notice';
+import DossierStatusButton from './dossier-status-button';
 import { MEMBER_TYPE_LABELS, getMemberTypeColor } from '@/lib/user-enums';
 import { formatPhone } from '@/lib/utils';
 import { resolveEffectiveActivityStatus } from '@/lib/users/activityStatus';
-import { getUserActivityStatusColor, getUserActivityStatusLabel } from '@/lib/user-activity-enums';
-import { computeCotisationStatus, formatCotisationDate, isCotisationExempt } from '@/lib/cotisation';
+import { computeCotisationStatus } from '@/lib/cotisation';
+import { CotisationPill } from '@/components/ui/admin/CotisationStatusPill';
 import { getCurrentUser, isAdmin, isSuperAdmin } from '@/lib/auth/guards';
 import { MailingLabelButton } from '@/admin/MailingLabelButton';
 
@@ -106,7 +107,7 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                 <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                                 <DossierHeaderName userId={user.id} fullName={fullName} currentUserAccessLevel={me?.accessLevel} />
                                 <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getMemberTypeColor(user.memberType)}`}>
                                     {MEMBER_TYPE_LABELS[user.memberType]}
@@ -116,24 +117,12 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                                         Supprimé
                                     </span>
                                 )}
-                                {activityStatus !== 'ACTIVE' && (
-                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getUserActivityStatusColor(activityStatus)}`}>
-                                        {getUserActivityStatusLabel(activityStatus)}
-                                    </span>
-                                )}
-                                {cotisation.isPaid && (
-                                    <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 px-2.5 py-1 text-xs font-medium">
-                                        Cotisation à jour · expire le {formatCotisationDate(cotisation.expiresAt)}
-                                    </span>
-                                )}
-                                {/* A Donateur owes no cotisation — never badge them as unpaid or expired. */}
-                                {!cotisation.isPaid && !isCotisationExempt(user.memberType) && (
-                                    <span className="inline-flex items-center rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 px-2.5 py-1 text-xs font-medium">
-                                        {cotisation.expiresAt
-                                            ? `Cotisation expirée le ${formatCotisationDate(cotisation.expiresAt)}`
-                                            : 'Cotisation non payée'}
-                                    </span>
-                                )}
+                                <DossierStatusButton userId={user.id} activityStatus={activityStatus} />
+                                <CotisationPill
+                                    isPaid={cotisation.isPaid}
+                                    expiresAt={cotisation.expiresAt}
+                                    memberType={user.memberType}
+                                />
                             </div>
                             <div className="mt-2 text-sm text-muted-foreground space-y-0.5">
                                 {user.email && <div>{user.email}</div>}

@@ -10,14 +10,12 @@ export function EditUserFormBackend({
                                         onSuccess,
                                         currentUserAccessLevel,
                                         userType,
-                                        showCotisation = true,
                                     }: {
     userId: string;
     initialData: UserFormData;
     onSuccess?: (userId: number, isDeleted?: boolean) => void;
     currentUserAccessLevel?: string;
     userType: UserType;
-    showCotisation?: boolean;
 }) {
     const { toast } = useToast();
 
@@ -112,7 +110,6 @@ export function EditUserFormBackend({
             currentUserAccessLevel={currentUserAccessLevel}
             userType={userType}
             userId={userId}
-            showCotisation={showCotisation}
         />
     );
 }

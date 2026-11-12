@@ -128,15 +128,24 @@ export function EditUserModal({
                             <>
                                 {/* Le statut d'abord : c'est là qu'il se change, et
                                     sous les boutons Enregistrer / Supprimer on ne le
-                                    trouvait qu'en faisant défiler toute la fiche. */}
-                                <UserActivityHistory userId={userId} />
+                                    trouvait qu'en faisant défiler toute la fiche.
+                                    Une seule ligne, cotisation comprise, l'historique
+                                    replié. Ouverte depuis le dossier, la fiche n'en a
+                                    pas besoin : l'en-tête du dossier porte déjà le
+                                    statut (qui s'y change) et la cotisation. */}
+                                {!fromDossier && (
+                                    <UserActivityHistory
+                                        userId={userId}
+                                        memberType={user.data.memberType}
+                                        showCotisation
+                                    />
+                                )}
                                 <EditUserFormBackend
                                     userId={userId}
                                     initialData={user.data}
                                     onSuccess={handleSuccess}
                                     currentUserAccessLevel={currentUserAccessLevel}
                                     userType={userType ?? user.userType}
-                                    showCotisation={!fromDossier}
                                 />
                             </>
                         )}

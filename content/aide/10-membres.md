@@ -96,11 +96,11 @@ Cela ouvrira le modal « Modifier un membre ».
 
 ![Membres - capture 11](/admin/aide/images/membres-11.jpg)
 
-Tout ici est identique à le modal « Ajouter un membre », à l'exception de trois éléments en haut : (1) la bannière qui affiche le statut de la cotisation, (2) le bouton « Voir le dossier », et (3) la section « Statut ». Ouverte depuis le dossier lui-même (en cliquant sur le nom), la fiche n'affiche ni la bannière ni « Voir le dossier » : l'en-tête du dossier indique déjà la cotisation, et le dossier est la page ouverte derrière.
+Tout ici est identique à le modal « Ajouter un membre », à l'exception de deux éléments en haut : (1) le bouton « Voir le dossier », et (2) la ligne « Statut », qui donne sur une seule ligne le statut de la personne et celui de sa cotisation. Ouverte depuis le dossier lui-même (en cliquant sur le nom), la fiche n'affiche ni l'une ni l'autre : l'en-tête du dossier indique déjà le statut et la cotisation, et le statut s'y change (voir la section « statut » plus bas).
 
 ![Membres - capture 12](/admin/aide/images/membres-12.jpg)
 
-La section « Statut » se trouve en haut du modal, au-dessus des champs de la fiche. Sur la capture ci-dessous, antérieure à ce changement, elle figure encore en bas, sous les boutons.
+La ligne « Statut » se trouve en haut du modal, au-dessus des champs de la fiche ; l'historique des changements y est replié. Sur la capture ci-dessous, antérieure à ce changement, la section figure encore en bas, sous les boutons.
 
 ![Membres - capture 13](/admin/aide/images/membres-13.jpg)
 
@@ -144,7 +144,7 @@ Comme indiqué précédemment, la page du dossier peut être ouverte en cliquant
 
 ![Membres - capture 19](/admin/aide/images/membres-19.jpg)
 
-Lorsque vous cliquez dessus, vous accédez au dossier de ce membre.
+Lorsque vous cliquez dessus, vous accédez au dossier de ce membre. À côté du nom, l'en-tête affiche le type de membre, le statut et la cotisation. Cliquez sur le statut pour le changer ou consulter son historique.
 
 ![Membres - capture 20](/admin/aide/images/membres-20.jpg)
 
@@ -160,7 +160,7 @@ Vous pouvez aussi ouvrir un dossier en cliquant sur le nom d'une personne dans l
 
 ![Membres - capture 22](/admin/aide/images/membres-22.jpg)
 
-La section « Statut » vous permet de modifier la disponibilité et le statut d'une personne au sein de l'ECA. Elle affiche le statut actuel ; cliquez sur « **Changer le statut** » pour ouvrir le formulaire (« Annuler » le referme sans rien changer). Quatre statuts peuvent être attribués à une personne.
+La ligne « Statut » vous permet de modifier la disponibilité et le statut d'une personne aux ECA. On la trouve en haut du modal de modification et, dans le dossier, en cliquant sur le statut affiché dans l'en-tête. Elle affiche le statut actuel ; cliquez sur « **Changer le statut** » pour ouvrir le formulaire (« Annuler » le referme sans rien changer). Quatre statuts peuvent être attribués à une personne.
 
 (1) Actif : la personne est en situation normale et disponible
 
@@ -182,6 +182,6 @@ Une personne qui n'est pas active ne peut pas être marquée « disponible » : 
 
 ![Membres - capture 24](/admin/aide/images/membres-24.jpg)
 
-La modification du statut d'un utilisateur est un événement enregistré, et l'historique de cet utilisateur peut être consulté en haut de leur modal de modification, sous la section « Statut ».
+La modification du statut d'un utilisateur est un événement enregistré. Sous la ligne « Statut », « Historique du statut » indique le nombre de changements et la date du dernier ; cliquez dessus pour déplier l'historique complet. Dans le dossier, il s'affiche déplié dès que l'on clique sur le statut de l'en-tête.
 
 ![Membres - capture 25](/admin/aide/images/membres-25.jpg)

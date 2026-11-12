@@ -20,7 +20,6 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { CotisationStatusBanner } from '@/components/ui/admin/CotisationStatusBanner';
 import { AddressFormData, UserFormData, UserType } from '@/types';
 import { formatPhone } from '@/lib/utils';
 import {
@@ -50,8 +49,6 @@ interface UserFormBackendBaseProps {
     userId?: string;
     /** When true (create flow), warn if an existing user shares first+last name. */
     warnOnDuplicateName?: boolean;
-    /** False when the dossier behind the fiche already shows the cotisation. */
-    showCotisation?: boolean;
 }
 
 const emptyAddress: AddressFormData = {
@@ -133,7 +130,6 @@ export function UserFormBackendBase({
                                         userType,
                                         userId,
                                         warnOnDuplicateName = false,
-                                        showCotisation = true,
                                     }: UserFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
@@ -393,11 +389,6 @@ export function UserFormBackendBase({
 
     return (
         <div>
-                {userId && showCotisation && (
-                    <CotisationStatusBanner userId={userId} memberType={formData.memberType} />
-                )}
-
-
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Basic Information */}
                     <div className="space-y-4">

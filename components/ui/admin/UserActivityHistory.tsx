@@ -19,7 +19,9 @@ import {
     resolveEffectiveActivityStatus,
 } from '@/lib/users/activityStatus';
 import { parisDate } from '@/lib/paris-day';
-import { InlineLoading, useDelayedFlag } from '@/components/ui/inline-loading';
+import { useDelayedFlag } from '@/components/ui/inline-loading';
+import { CotisationStatusPill } from '@/components/ui/admin/CotisationStatusPill';
+import { ChevronRight } from 'lucide-react';
 
 interface ActivityEvent {
     id: number;
@@ -40,7 +42,25 @@ interface CurrentActivity {
     unavailableUntil: string | null;
 }
 
-export function UserActivityHistory({ userId }: { userId: string | number }) {
+export function UserActivityHistory({
+    userId,
+    memberType,
+    showCotisation = false,
+    framed = true,
+    defaultHistoryOpen = false,
+    onChanged,
+}: {
+    userId: string | number;
+    /** Only for the cotisation pill: a Donateur owes none. */
+    memberType?: string | null;
+    /** Put the cotisation pill on the status line (the edit window, outside the dossier). */
+    showCotisation?: boolean;
+    /** The section's own rule and spacing; off inside the dossier header's popover. */
+    framed?: boolean;
+    defaultHistoryOpen?: boolean;
+    /** After a status change is saved, e.g. to refresh the dossier header. */
+    onChanged?: () => void;
+}) {
     const [events, setEvents] = useState<ActivityEvent[]>([]);
     const [current, setCurrent] = useState<CurrentActivity | null>(null);
     const [loading, setLoading] = useState(true);
@@ -56,6 +76,11 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
     // the top of the fiche, its select, comment box and second « Enregistrer »
     // were the first thing anyone read about the person.
     const [changing, setChanging] = useState(false);
+    // The history is reference, not the fiche: folded behind its count, with
+    // the last change summed up on one line. Opened, every change was a card
+    // of its own, and a member whose status had moved a few times pushed
+    // « Informations de base » below the fold.
+    const [historyOpen, setHistoryOpen] = useState(defaultHistoryOpen);
     const showBadgePlaceholder = useDelayedFlag(loading);
 
     useEffect(() => {
@@ -121,6 +146,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
             draft.reset();
             setComment('');
             setChanging(false);
+            onChanged?.();
         } catch (err: unknown) {
             setSaveError(err instanceof Error ? err.message : 'Erreur');
         } finally {
@@ -149,49 +175,56 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
     };
 
     return (
-        <div className="mb-6 border-b border-border pb-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className={framed ? 'mb-6 border-b border-border pb-3' : ''}>
+            {/* One line: what the person is today, and the cotisation beside it.
+                It used to be a section with its own heading row, a banner above
+                it and the whole history under it — half a screen before the
+                first field of the fiche. */}
+            <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-semibold text-foreground">Statut</h3>
                 {/* Until the route answers there is no status to show: the
                     fallback would read « Actif » for everyone. A pill-sized
-                    placeholder keeps the header from shifting. */}
+                    placeholder keeps the line from shifting. */}
                 {loading ? (
                     <span
                         aria-hidden
                         className={`inline-block h-6 w-16 shrink-0 rounded-full ${showBadgePlaceholder ? 'bg-muted animate-pulse' : ''}`}
                     />
                 ) : (
-                    <div className="flex items-center gap-2 min-w-0">
-                        {effectiveDetail && (
-                            <span className="text-xs text-muted-foreground truncate">{effectiveDetail}</span>
-                        )}
-                        <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-1 text-xs font-medium ${getUserActivityStatusColor(effectiveStatus)}`}>
+                    <>
+                        <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${getUserActivityStatusColor(effectiveStatus)}`}>
                             {getUserActivityStatusLabel(effectiveStatus)}
                         </span>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2.5 text-xs"
-                            aria-expanded={changing}
-                            onClick={() => {
-                                if (changing) {
-                                    draft.reset();
-                                    setComment('');
-                                    setSaveError(null);
-                                }
-                                setChanging(!changing);
-                            }}
-                        >
-                            {changing ? 'Annuler' : 'Changer le statut'}
-                        </Button>
-                    </div>
+                        {effectiveDetail && (
+                            <span className="text-xs text-muted-foreground">{effectiveDetail}</span>
+                        )}
+                    </>
+                )}
+                {showCotisation && <CotisationStatusPill userId={userId} memberType={memberType} />}
+                {!loading && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto h-7 px-2.5 text-xs"
+                        aria-expanded={changing}
+                        onClick={() => {
+                            if (changing) {
+                                draft.reset();
+                                setComment('');
+                                setSaveError(null);
+                            }
+                            setChanging(!changing);
+                        }}
+                    >
+                        {changing ? 'Annuler' : 'Changer le statut'}
+                    </Button>
                 )}
             </div>
 
             {/* Change status */}
             {changing && (
-            <div className="rounded-lg border border-border bg-card/60 p-3 mb-4 space-y-2">
+            <div className="rounded-lg border border-border bg-card/60 p-3 mt-3 space-y-2">
                 <ActivityStatusFields
                     draft={draft}
                     currentStatus={currentStatus}
@@ -214,7 +247,7 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
                         variant="save"
                         size="sm"
                     >
-                        {saving ? 'Enregistrement\u2026' : 'Enregistrer le statut'}
+                        {saving ? 'Enregistrement…' : 'Enregistrer le statut'}
                     </Button>
                 </div>
             </div>
@@ -227,17 +260,35 @@ export function UserActivityHistory({ userId }: { userId: string | number }) {
             />
 
             {/* History */}
-            {loading && <p className="flex"><InlineLoading label="Chargement…" /></p>}
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
 
-            {!loading && !error && events.length > 0 && (
-                <ol className="space-y-3">
+            {!loading && !error && latest && (
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <button
+                        type="button"
+                        onClick={() => setHistoryOpen(!historyOpen)}
+                        aria-expanded={historyOpen}
+                        className="inline-flex items-center gap-1 rounded hover:text-foreground hover:underline underline-offset-4"
+                    >
+                        <ChevronRight className={`h-3.5 w-3.5 transition-transform ${historyOpen ? 'rotate-90' : ''}`} aria-hidden />
+                        Historique du statut ({events.length})
+                    </button>
+                    {!historyOpen && (
+                        <span>
+                            · dernier changement le {fmtDate(latest.changedAt)}, par {who(latest)}
+                        </span>
+                    )}
+                </div>
+            )}
+
+            {historyOpen && !loading && !error && events.length > 0 && (
+                <ol className="mt-2 space-y-2">
                     {events.map((e) => (
                         <li key={e.id} className="rounded border border-border bg-card p-3 text-sm">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="font-medium text-foreground">
                                     {e.fromStatus
-                                        ? `${getUserActivityStatusLabel(e.fromStatus)} \u2192 ${getUserActivityStatusLabel(e.toStatus)}`
+                                        ? `${getUserActivityStatusLabel(e.fromStatus)} → ${getUserActivityStatusLabel(e.toStatus)}`
                                         : getUserActivityStatusLabel(e.toStatus)}
                                 </span>
                                 <span className="text-muted-foreground whitespace-nowrap">{fmtDate(e.changedAt)}</span>
