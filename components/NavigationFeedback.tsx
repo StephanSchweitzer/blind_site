@@ -177,5 +177,12 @@ export function NavigationFeedback() {
         controllerRef.current?.finish();
     }, [pathname, searchParams]);
 
-    return <div ref={barRef} aria-hidden="true" className="barre-navigation" />;
+    // suppressHydrationWarning : les attributs de cette barre ne sont pas à React.
+    // Une fenêtre Radix ouverte au chargement (la facture de /admin/bills?bill=…)
+    // pose `data-aria-hidden` sur tout ce qui l'entoure — `hideOthers` — et cette
+    // barre, dans son propre <Suspense>, s'hydrate parfois après : React y trouvait
+    // un attribut qu'il n'avait pas rendu et le signalait en erreur. `data-etat`
+    // est posé à la main de la même façon (createController). Ne vaut que pour les
+    // attributs de ce seul élément, qui n'a pas d'enfants.
+    return <div ref={barRef} aria-hidden="true" className="barre-navigation" suppressHydrationWarning />;
 }
