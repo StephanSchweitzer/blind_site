@@ -84,3 +84,7 @@ audio-audit/
 /user_guide/
 
 .vercel
+
+# Sauvegardes écrites par scripts/merge-users.ts : fiches complètes de personnes
+# réelles, à garder en local pour annuler une fusion, jamais dans l’historique.
+/merged-users-*.json
