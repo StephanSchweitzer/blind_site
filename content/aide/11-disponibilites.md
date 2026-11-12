@@ -38,7 +38,7 @@ Une indisponibilité se referme d'elle-même à la fin de sa période : la perso
 
 « Prend des attributions » est indépendant du statut : une personne active peut être retirée des sélecteurs de lecteur sans être indisponible. Le retour automatique au statut « Actif », à la fin d'une indisponibilité, ne réactive pas cet interrupteur.
 
-C'est ici seulement que se modifient « Prend des attributions », les notes de disponibilité et le maximum d'attributions simultanées d'un lecteur : sa fiche n'a plus ces champs, mais un lien « Disponibilités » qui ouvre directement cette fenêtre.
+C'est ici seulement que se modifient « Prend des attributions » et les notes de disponibilité d'un lecteur : sa fiche n'a plus ces champs, mais un lien « Disponibilités » qui ouvre directement cette fenêtre. Le maximum d'attributions simultanées et les langues se modifient ici ou sur la fiche, au choix.
 
 Rien n'est enregistré avant d'avoir cliqué sur « Enregistrer ». Si l'on ferme la fenêtre avec des modifications en cours, elle demande confirmation avant de les abandonner.
 

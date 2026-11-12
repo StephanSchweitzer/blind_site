@@ -116,13 +116,13 @@ Cette section est pratiquement identique à celle consacrée à l'ajout d'un aud
 
 Si vous attribuez à quelqu'un le niveau d'accès « permanent » ou « super-administrateur », vous devez indiquer son adresse e-mail pour qu'il puisse se connecter. Soyez prudent lorsque vous effectuez cette opération, car toute personne capable de se connecter peut accéder à la section /admin, qui contient de nombreuses informations confidentielles que nous ne souhaitons pas rendre accessibles à n'importe qui.
 
-Vous disposez également des compétences des lecteurs, ainsi que de certaines préférences et remarques. La disponibilité d'un lecteur pour de nouvelles attributions, ses notes de disponibilité et le nombre maximal d'attributions simultanées ne se modifient plus sur la fiche, mais uniquement sur la page [Disponibilités](/admin/aide/disponibilites) : la ligne « Disponibilité et charge : à gérer dans Disponibilités » y mène et ouvre directement la fenêtre de ce lecteur.
+Vous disposez également des compétences des lecteurs, ainsi que de certaines préférences et remarques. La disponibilité d'un lecteur pour de nouvelles attributions et ses notes de disponibilité ne se modifient plus sur la fiche, mais uniquement sur la page [Disponibilités](/admin/aide/disponibilites) : la ligne « Disponibilité : à gérer dans Disponibilités » y mène et ouvre directement la fenêtre de ce lecteur. Le nombre maximal d'attributions simultanées se règle aux deux endroits : dans « Paramètres de lecture » sur la fiche (3 si on le laisse vide), ou dans les « Réglages du lecteur » de cette fenêtre.
 
 Si vous mettez à jour les préférences, ces options seront renseignées automatiquement lorsque vous les associez à des attributions.
 
 ![Membres - capture 16](/admin/aide/images/membres-16.jpg)
 
-Dans « Paramètres de lecture », vous pouvez également préciser les langues que le lecteur maîtrise, afin que nous puissions filtrer les lecteurs disponibles par langue si un livre nécessite une autre langue que le français pour être lu. Les captures ci-dessous, antérieures à ce changement, montrent encore les champs « Disponibilité (attributions) », « Nombre maximum d'attributions simultanées » et « Logiciel d'enregistrement », qui ne figurent plus sur la fiche.
+Dans « Paramètres de lecture », vous pouvez également préciser les langues que le lecteur maîtrise, afin que nous puissions filtrer les lecteurs disponibles par langue si un livre nécessite une autre langue que le français pour être lu. Les captures ci-dessous, antérieures à ce changement, montrent encore les champs « Disponibilité (attributions) » et « Logiciel d'enregistrement », qui ne figurent plus sur la fiche ; le champ du nombre maximum d'attributions s'y appelle désormais « Attributions simultanées max ».
 
 ![Membres - capture 17](/admin/aide/images/membres-17.jpg)
 

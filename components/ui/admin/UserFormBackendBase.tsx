@@ -87,6 +87,7 @@ function sanitizeInitialData(
         availabilityNotes: data.availabilityNotes || '',
         languages: data.languages ?? [],
         saveType: data.saveType || '',
+        maxConcurrentAssignments: data.maxConcurrentAssignments ?? null,
         notes: data.notes || '',
         addresses: (data.addresses || []).map(addr => ({
             ...addr,
@@ -100,21 +101,37 @@ function sanitizeInitialData(
     };
 }
 
+function sameLanguages(a: string[], b: string[]): boolean {
+    return a.length === b.length && [...a].sort().join() === [...b].sort().join();
+}
+
 /**
- * Columns this form loads but no longer shows: a lecteur's availability, its
- * notes and the attribution cap belong to the Disponibilités panel; the
- * affiliation and the recording software are import leftovers. They stay out
- * of the save so it never writes back the values it loaded over a change made
- * in the panel meanwhile — the API reads an absent field as « unchanged », and
- * on creation falls back to its own defaults (disponible, 3 attributions).
+ * What the save sends. The API reads an absent field as « unchanged », and on
+ * creation falls back to its own defaults (disponible, 3 attributions).
+ *
+ * - Hidden columns never leave: a lecteur's « Prend des attributions » and its
+ *   notes belong to the Disponibilités panel (the switch is tied to the activity
+ *   status, which clears it on deactivation); the affiliation and the recording
+ *   software are import leftovers.
+ * - The attribution cap and the languages are edited here AND in the panel. On
+ *   edit they leave only when changed in this form: sending back the value it
+ *   loaded would undo a change made in the panel while the fiche was open —
+ *   which is why the cap was once taken off the fiche altogether (96190fd).
  */
-function withoutHiddenFields(data: UserFormData): UserFormData {
+function buildSavePayload(data: UserFormData, loaded: UserFormData | null): UserFormData {
     const payload: Partial<UserFormData> = { ...data };
     delete payload.isAvailable;
     delete payload.availabilityNotes;
-    delete payload.maxConcurrentAssignments;
     delete payload.nonProfitAffiliation;
     delete payload.saveType;
+    if (loaded) {
+        if (data.maxConcurrentAssignments === loaded.maxConcurrentAssignments) {
+            delete payload.maxConcurrentAssignments;
+        }
+        if (sameLanguages(data.languages, loaded.languages)) {
+            delete payload.languages;
+        }
+    }
     return payload as UserFormData;
 }
 
@@ -226,7 +243,10 @@ export function UserFormBackendBase({
     const doSubmit = async () => {
         setIsLoading(true);
         try {
-            const newUserId = await onSubmit(withoutHiddenFields(formData));
+            const loaded = prevInitialData
+                ? sanitizeInitialData(prevInitialData, defaultMemberType, defaultAccessLevel)
+                : null;
+            const newUserId = await onSubmit(buildSavePayload(formData, loaded));
             if (onSuccess) {
                 onSuccess(newUserId);
             }
@@ -758,9 +778,10 @@ export function UserFormBackendBase({
                     </div>
 
                     {/* Reader-specific fields - Only for Lecteurs. Availability (the
-                        « disponible » switch, its notes) and the attribution cap are
-                        edited in the Disponibilités panel only — two editors for the
-                        same three columns drifted apart. The languages stay here. */}
+                        « Prend des attributions » switch, its notes) is edited in the
+                        Disponibilités panel only. The cap and the languages are
+                        editable in both places; buildSavePayload sends them only when
+                        changed here, so the fiche never overwrites the panel. */}
                     {formData.memberType === 'lecteur' && (
                         <div className="space-y-4">
                             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
@@ -776,8 +797,30 @@ export function UserFormBackendBase({
                                     />
                                 </div>
 
+                                <div className="space-y-2">
+                                    <label htmlFor="user-max-concurrent" className="text-sm font-medium text-foreground">
+                                        Attributions simultanées max
+                                    </label>
+                                    <Input
+                                        id="user-max-concurrent"
+                                        type="number"
+                                        min={0}
+                                        step={1}
+                                        value={formData.maxConcurrentAssignments ?? ''}
+                                        onChange={(e) => {
+                                            const parsed = parseInt(e.target.value, 10);
+                                            setFormData({
+                                                ...formData,
+                                                maxConcurrentAssignments: Number.isNaN(parsed) ? null : Math.max(0, parsed),
+                                            });
+                                        }}
+                                        placeholder="3 par défaut"
+                                        className="bg-field border-border text-foreground"
+                                    />
+                                </div>
+
                                 <p className="text-sm text-muted-foreground md:col-span-2">
-                                    Disponibilité et charge : à gérer dans{' '}
+                                    Disponibilité : à gérer dans{' '}
                                     <IntentLink
                                         href={userId ? `/admin/disponibilites?person=${userId}` : '/admin/disponibilites'}
                                         target="_blank"
