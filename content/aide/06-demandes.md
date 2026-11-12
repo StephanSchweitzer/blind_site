@@ -157,7 +157,7 @@ Le coût de la demande se calcule tout seul, sous les champs : *pages comptées 
 
 Une duplication ne peut pas être tarifée à la page : elle n'a pas de lecture à compter. Si le choix du livre bascule l'ouvrage en « Duplication » (le livre a déjà un fichier audio), ce que vous aviez saisi n'est pas effacé : c'est simplement masqué et non envoyé, et tout réapparaît si vous repassez sur « Enregistrement ». Et une fois la demande rattachée à une facture, on ne peut plus la faire passer d'une tarification au poids à une tarification à la page (ni l'inverse) : détachez-la d'abord.
 
-Quand la demande passe à « Terminé », sa **facture pro-forma** est créée et émise d'office — voir [Les factures pro-forma](/admin/aide/factures#les-factures-pro-forma).
+Quand la demande passe à « Terminé », sa facture est créée **en brouillon** : c'est sa **pro-forma**, à envoyer au client, qui devient une facture ordinaire une fois émise — voir [Les factures pro-forma](/admin/aide/factures#les-factures-pro-forma).
 
 ## Modification des demandes
 
@@ -199,7 +199,7 @@ Si la demande figure sur un brouillon de facture, elle en est retirée et y revi
 
 Tant que la demande figure sur une facture, même un brouillon, son auditeur est verrouillé : c'est lui qui décide à qui la facture est adressée. Pour un brouillon, la note sous le champ donne le numéro de la facture, avec un lien pour l'ouvrir dans un nouvel onglet ; pour une facture émise, c'est le bandeau en haut du modal. Retirez-y la demande (« Retirer de la facture »), après avoir rouvert la facture si elle est émise, puis revenez corriger l'auditeur.
 
-Si la demande est déjà « Terminé », elle ne rejoindra plus de brouillon toute seule, puisque c'est le **passage** à « Terminé » qui l'y fait entrer. Dès que vous choisissez le nouvel auditeur, une case « **Facturer cette demande à …** » apparaît, cochée par défaut : à l'enregistrement, la demande est ajoutée au brouillon du nouvel auditeur (un brouillon est ouvert s'il n'en a pas), et une fenêtre vous indique lequel. Si ce brouillon atteint alors le seuil de facturation, il est émis, comme pour une demande qui vient d'être terminée. Une demande tarifée à la page reçoit sa facture pro-forma.
+Si la demande est déjà « Terminé », elle ne rejoindra plus de brouillon toute seule, puisque c'est le **passage** à « Terminé » qui l'y fait entrer. Dès que vous choisissez le nouvel auditeur, une case « **Facturer cette demande à …** » apparaît, cochée par défaut : à l'enregistrement, la demande est ajoutée au brouillon du nouvel auditeur (un brouillon est ouvert s'il n'en a pas), et une fenêtre vous indique lequel. Si ce brouillon atteint alors le seuil de facturation, il est émis, comme pour une demande qui vient d'être terminée. Une demande tarifée à la page reçoit sa propre facture, au stade pro-forma.
 
 Décochez la case si la demande ne doit pas être facturée, par exemple une ancienne demande déjà réglée que vous corrigez seulement pour l'historique : elle reste « Terminé » sans facture. La case n'apparaît pas pour une demande « Non facturable ».
 

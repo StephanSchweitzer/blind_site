@@ -255,7 +255,7 @@ export function BillFormBackendBase({
     const revueSelected = selected.some((o) => o.pagePriced);
     const lockedReason = (o: EligibleOrder): string | null => {
         if (selectedOrderIds.has(o.id) || selected.length === 0) return null;
-        if (revueSelected) return 'Une revue est cochée : elle se facture seule, sur sa propre facture pro-forma';
+        if (revueSelected) return 'Une revue est cochée : elle se facture seule, sur sa propre facture';
         return o.pagePriced ? REVUE_ALONE : null;
     };
     // …et le compte des grisées ne la compte plus : sinon « 1 autre demande n'est
@@ -505,7 +505,7 @@ export function BillFormBackendBase({
                     </div>
                     {revueSelected && (
                         <p className="-mt-2 text-xs text-muted-foreground">
-                            Une revue est cochée : la facture créée sera sa facture pro-forma.
+                            Une revue est cochée : la facture créée sera la sienne, au stade pro-forma tant qu’elle reste en brouillon.
                         </p>
                     )}
 

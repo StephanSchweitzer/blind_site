@@ -59,8 +59,8 @@ type BillNotice =
     | { billId: number; billState: BillingStatus; kind: 'COST'; newTotal: string | null }
     | { billId: number; billState: BillingStatus; kind: 'VISIBLE' }
     | { billId: number; billState: BillingStatus; kind: 'ISSUED'; total: string; trigger?: 'CLIENT_CHANGE' }
-    // PROFORMA = the demande is priced by the page, so completing it created its own
-    // pro-forma, issued on the spot (no brouillon, no seuil).
+    // PROFORMA = the demande is priced by the page, so completing it opened its own
+    // facture, a DRAFT that prints as the pro-forma sent to the client (no seuil).
     | { billId: number; billState: BillingStatus; kind: 'PROFORMA'; total: string; trigger?: 'CLIENT_CHANGE' }
     | { billId: number; billState: BillingStatus; kind: 'DETACHED'; newTotal: string | null }
     | { billId: number; billState: BillingStatus; kind: 'ATTACHED' };
@@ -754,7 +754,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
                 existingOrder.statusId !== STATUS.TERMINE &&
                 resultingStatusId === STATUS.TERMINE;
             // Une demande tarifée à la page ne rejoint pas un brouillon : accrueOrderToOpenDraft
-            // lui crée sa pro-forma, émise d'emblée, et le dit par `proforma`. Elle n'est
+            // lui ouvre sa propre facture, en brouillon (la pro-forma), et le dit par `proforma`. Elle n'est
             // donc soumise ni au seuil (branche suivante) ni au brouillon de l'auditeur.
             let proforma: { billId: number; total: number } | null = null;
             // Brouillon rejoint sans être émis dans la foulée : rien à imprimer, mais
@@ -824,7 +824,7 @@ export const PUT = withAdmin(async (request, { me, params }) => {
         } else if (proforma) {
             billNotice = {
                 billId: proforma.billId,
-                billState: BillingStatus.BILLED,
+                billState: BillingStatus.DRAFT,
                 kind: 'PROFORMA',
                 total: proforma.total.toString(),
                 ...(billToNewClient ? { trigger: 'CLIENT_CHANGE' as const } : {}),

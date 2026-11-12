@@ -80,12 +80,32 @@ export function CloseOrderTodayButton({
             const notice = data?.billNotice as BillNotice | null | undefined;
             // Le seuil vient d'émettre la facture : la boîte qui porte le bouton
             // d'impression, pas un toast qui s'efface (voir BillPrintNoticeDialog).
-            if (notice && (notice.kind === 'ISSUED' || notice.kind === 'PROFORMA') && 'total' in notice) {
+            // Une revue, elle, ouvre sa facture en brouillon : la pro-forma à envoyer.
+            if (notice && notice.kind === 'PROFORMA' && 'total' in notice) {
                 setPrintNotice({
                     billId: notice.billId,
-                    title: notice.kind === 'PROFORMA'
-                        ? `Facture pro-forma n° ${notice.billId} émise`
-                        : `Facture #${notice.billId} émise`,
+                    title: `Facture pro-forma n° ${notice.billId} prête`,
+                    description: (
+                        <>
+                            En clôturant la demande n°{order.id}, sa facture n° {notice.billId} a été créée en
+                            brouillon, c&apos;est-à-dire au stade pro-forma (total : {formatEuro2(notice.total)} €).
+                        </>
+                    ),
+                    printLabel: 'Imprimer la pro-forma',
+                    footnote: (
+                        <>
+                            La pro-forma est à imprimer et à envoyer au client. Rien n&apos;est perdu si vous
+                            fermez : elle vous attend dans les factures, au statut « Brouillon ». Émettez-la
+                            ensuite pour en faire la facture.
+                        </>
+                    ),
+                });
+                return;
+            }
+            if (notice && notice.kind === 'ISSUED' && 'total' in notice) {
+                setPrintNotice({
+                    billId: notice.billId,
+                    title: `Facture #${notice.billId} émise`,
                     description: (
                         <>
                             En clôturant la demande n°{order.id}, elle a été rattachée à la facture

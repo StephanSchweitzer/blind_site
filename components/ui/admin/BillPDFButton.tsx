@@ -49,7 +49,10 @@ const FULL_TEXT = 'Imprimer la facture';
 
 /** Only used by the download fallback in printPdfBlob — see lib/print-pdf.ts. */
 const fileNameFor = (data: BillPDFData, draft: boolean) =>
-    `${data.kind === 'PROFORMA' ? 'facture-proforma' : 'facture'}-${data.id}${draft ? '-BROUILLON' : ''}.pdf`;
+    data.kind === 'PROFORMA'
+        // Le brouillon d'une revue EST sa pro-forma ; émise, c'est une facture comme une autre.
+        ? `${draft ? 'facture-proforma' : 'facture'}-${data.id}.pdf`
+        : `facture-${data.id}${draft ? '-BROUILLON' : ''}.pdf`;
 
 export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
     bill,
@@ -76,11 +79,12 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
                 import('./ProformaPDF'),
             ]),
         );
-        // Une pro-forma n'a pas la mise en page d'une facture : un seul titre, sa
-        // ligne de lecture, ses frais d'envoi. Le type de la facture choisit le document.
+        // Une revue n'a pas la mise en page d'une facture standard : un seul titre, sa
+        // ligne de lecture, ses frais d'envoi. Le type de la facture choisit le document ;
+        // son état, le titre (pro-forma en brouillon, facture une fois émise).
         const document =
             data.kind === 'PROFORMA'
-                ? <ProformaPDF bill={data} draft={draft} />
+                ? <ProformaPDF bill={data} />
                 : <BillPDF bill={data} draft={draft} />;
         const blob = await pdf(document).toBlob();
         // Straight to the print dialog. Nothing is lost by skipping the
@@ -169,6 +173,11 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
 
     const busy = isPrinting || isIssuing;
     const disabled = busy || (!bill && billId == null);
+    // Le brouillon d'une revue n'est pas un document interne : c'est la pro-forma
+    // qu'on envoie au client, une étape normale. Son impression passe donc en
+    // premier, et la boîte ne parle pas de « brouillon » au sens de la facture
+    // standard (filigrane, document provisoire).
+    const draftIsProforma = draftBill?.kind === 'PROFORMA';
 
     return (
         <>
@@ -211,10 +220,22 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
             >
                 <DialogContent className="max-w-md bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-foreground">Cette facture est un brouillon</DialogTitle>
+                        <DialogTitle className="text-foreground">
+                            {draftIsProforma ? 'Cette revue est au stade pro-forma' : 'Cette facture est un brouillon'}
+                        </DialogTitle>
                         <DialogDescription className="text-muted-foreground">
-                            Imprimer une facture officielle l&apos;émettra et changera son statut en « Émise ».
-                            Une fois émise, elle ne pourra plus être modifiée librement.
+                            {draftIsProforma ? (
+                                <>
+                                    Son brouillon s&apos;imprime comme une facture pro-forma, à envoyer au client.
+                                    L&apos;émettre en fait la facture : elle s&apos;imprimera « Facture », passera au
+                                    statut « Émise » et ne pourra plus être modifiée librement.
+                                </>
+                            ) : (
+                                <>
+                                    Imprimer une facture officielle l&apos;émettra et changera son statut en « Émise ».
+                                    Une fois émise, elle ne pourra plus être modifiée librement.
+                                </>
+                            )}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -225,25 +246,43 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
                     )}
 
                     <div className="flex flex-col gap-2 pt-1">
+                        {draftIsProforma && (
+                            <Button
+                                type="button"
+                                onClick={handlePrintDraft}
+                                disabled={busy}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2"
+                            >
+                                {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                                Imprimer la pro-forma
+                            </Button>
+                        )}
                         <Button
                             type="button"
+                            variant={draftIsProforma ? 'outline' : 'default'}
                             onClick={handleIssueAndPrint}
                             disabled={busy}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2"
+                            className={
+                                draftIsProforma
+                                    ? 'border-border bg-card text-foreground hover:bg-muted hover:text-white flex items-center justify-center gap-2'
+                                    : 'bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2'
+                            }
                         >
                             {isIssuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
                             Émettre la facture et imprimer
                         </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handlePrintDraft}
-                            disabled={busy}
-                            className="border-border bg-card text-foreground hover:bg-muted hover:text-white flex items-center justify-center gap-2"
-                        >
-                            {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                            Imprimer le brouillon (sans émettre)
-                        </Button>
+                        {!draftIsProforma && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handlePrintDraft}
+                                disabled={busy}
+                                className="border-border bg-card text-foreground hover:bg-muted hover:text-white flex items-center justify-center gap-2"
+                            >
+                                {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                                Imprimer le brouillon (sans émettre)
+                            </Button>
+                        )}
                         <Button
                             type="button"
                             variant="ghost"

@@ -505,9 +505,10 @@ enum BillingStatus {
 }
 
 /// STANDARD : la facture d'un auditeur, alimentée par le brouillon et son seuil.
-/// PROFORMA : une facture pro-forma, une demande à page tarifée, émise d'office
-/// à la clôture de cette demande — jamais rattachée à un brouillon, jamais soumise
-/// au seuil. Voir accrueOrderToProforma (lib/billing.ts).
+/// PROFORMA : la facture d'une revue, une demande à page tarifée, ouverte en
+/// brouillon à la clôture de cette demande — ce brouillon est la pro-forma envoyée
+/// au client ; émise, c'est une facture. Jamais le brouillon de l'auditeur, jamais
+/// soumise au seuil. Voir accrueOrderToProforma (lib/billing.ts).
 enum BillKind {
   STANDARD
   PROFORMA

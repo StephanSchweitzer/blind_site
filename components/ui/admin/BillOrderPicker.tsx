@@ -56,7 +56,7 @@ export function OrderNotFinishedNote({ statusId }: { statusId: number }) {
  * cours grise : les revues dès qu'une demande est cochée, tout le reste dès
  * qu'une revue l'est.
  */
-export const REVUE_ALONE = 'Une revue se facture seule, sur sa propre facture pro-forma';
+export const REVUE_ALONE = 'Une revue se facture seule, sur sa propre facture';
 
 const linkClass =
     'text-blue-700 dark:text-blue-400 underline underline-offset-2 hover:text-blue-800 dark:hover:text-blue-300';
@@ -68,7 +68,7 @@ function UnavailableReason({ order }: { order: UnavailableOrder }) {
             const bill = order.bill!;
             return (
                 <a href={`/admin/bills?bill=${bill.id}`} target="_blank" rel="noopener noreferrer" className={linkClass}>
-                    Sur la facture {bill.kind === 'PROFORMA' ? 'pro-forma ' : ''}#{bill.id} ({getBillingStatusLabel(bill.state)})
+                    Sur la facture {bill.kind === 'PROFORMA' ? 'de revue ' : ''}#{bill.id} ({getBillingStatusLabel(bill.state)})
                 </a>
             );
         }
@@ -77,20 +77,20 @@ function UnavailableReason({ order }: { order: UnavailableOrder }) {
         case 'NOT_FINISHED':
             return <>Prestation pas encore terminée : clôturez la demande, elle sera alors facturée toute seule</>;
         case 'KIND_MISMATCH':
-            if (!order.pagePriced) return <>Tarifée au poids : elle ne va pas sur une facture pro-forma</>;
+            if (!order.pagePriced) return <>Tarifée au poids : elle ne va pas sur une facture de revue</>;
             if (order.statusId === ATTENTE_AUDITEUR_STATUS_ID) {
-                return <>Tarifée à la page, pas encore expédiée : renseignez sa date de clôture, sa facture pro-forma sera alors émise</>;
+                return <>Tarifée à la page, pas encore expédiée : renseignez sa date de clôture, sa facture sera alors ouverte, en pro-forma</>;
             }
             if (order.statusId === TERMINE_STATUS_ID) {
                 // Terminée mais sur aucune facture : sa pro-forma a été supprimée, elle
                 // ne se recrée pas toute seule — mais « Ajouter une facture » la crée.
                 return <>{REVUE_ALONE} : créez-la avec « Ajouter une facture »</>;
             }
-            return <>Tarifée à la page : elle aura sa propre facture pro-forma, émise à sa clôture</>;
+            return <>Tarifée à la page : elle aura sa propre facture, ouverte en pro-forma à sa clôture</>;
         case 'UNBILLABLE':
             return <>Marquée « Non facturable »</>;
         case 'PROFORMA_FULL':
-            return <>Cette facture pro-forma a déjà sa revue : une pro-forma n&apos;en porte qu&apos;une</>;
+            return <>Cette facture porte déjà sa revue : une facture de revue n&apos;en porte qu&apos;une</>;
     }
 }
 

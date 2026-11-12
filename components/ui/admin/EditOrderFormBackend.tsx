@@ -97,21 +97,23 @@ export function EditOrderFormBackend({
             case 'PROFORMA':
                 return {
                     billId: notice.billId,
-                    title: `Facture pro-forma n° ${notice.billId} émise`,
+                    title: `Facture pro-forma n° ${notice.billId} prête`,
                     description: (
                         <>
                             Cette demande est tarifée à la page :{' '}
                             {notice.trigger === 'CLIENT_CHANGE'
                                 ? 'en la facturant à son nouvel auditeur'
                                 : 'en la passant à « Terminé »'}
-                            , sa facture pro-forma (n° {notice.billId}) a été créée et émise d&apos;office
-                            (total : {formatEuro2(notice.total)} €).
+                            , sa facture n° {notice.billId} a été créée en brouillon, c&apos;est-à-dire au stade
+                            pro-forma (total : {formatEuro2(notice.total)} €).
                         </>
                     ),
+                    printLabel: 'Imprimer la pro-forma',
                     footnote: (
                         <>
-                            Elle est à imprimer et à envoyer au client. Rien n&apos;est perdu si vous fermez :
-                            elle vous attend dans les factures, au statut « Émise ».
+                            La pro-forma est à imprimer et à envoyer au client. Rien n&apos;est perdu si vous
+                            fermez : elle vous attend dans les factures, au statut « Brouillon ». Émettez-la
+                            ensuite pour en faire la facture.
                         </>
                     ),
                 };

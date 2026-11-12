@@ -7,7 +7,7 @@ export const BillingStatus = {
 
 export type BillingStatus = typeof BillingStatus[keyof typeof BillingStatus];
 
-/** Le type d'une facture — `Bill.kind`. Une pro-forma naît émise, à la clôture d'une demande à la page. */
+/** Le type d'une facture — `Bill.kind`. PROFORMA = une revue : sa facture s'ouvre en brouillon (la pro-forma) à la clôture de sa demande à la page. */
 export const BillKind = {
     STANDARD: 'STANDARD',
     PROFORMA: 'PROFORMA',

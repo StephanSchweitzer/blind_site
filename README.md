@@ -91,7 +91,7 @@ Isolated from the public layout via its own `layout.tsx` + `Backend-Navbar`, gro
 |---|---|
 | `/admin/orders` | **Demandes** — listeners' recording requests: book, media format (required per ouvrage), delivery method, status, billing status, tarif. |
 | `/admin/assignments` | **Attributions** — the work of recording a demanded book, tracked through a status state machine, with reader assignment/history and reception/sent/returned dates. |
-| `/admin/bills` | **Factures** — invoices grouping billable demandes per client, with issue/payment tracking and a `BillEvent` audit trail. Pro-forma factures (one per demande priced by the page, §6) carry a badge. |
+| `/admin/bills` | **Factures** — invoices grouping billable demandes per client, with issue/payment tracking and a `BillEvent` audit trail. Revue factures (one per demande priced by the page, §6; their DRAFT prints as the pro-forma) carry a badge. |
 | `/admin/payments` | **Paiements** — payments recorded against clients/bills (cotisations, enregistrements, dons, divers). The list exports to CSV with exactly the search, filters and sort on screen (`payments/export`). |
 | `/admin/stats` | **Super-admin only.** Trend cards, a per-staff heatmap, a members chart and the 14-day audit journal, with a click-through detail drawer. Day/time maths is pinned to Europe/Paris. |
 
@@ -253,7 +253,7 @@ The `-core` files omit `server-only` **on purpose**: the maintenance scripts run
 
 `repriceOpenOrdersForBook` (`lib/pricing-sync.ts`) is called from `refreshBookAudioState`, i.e. the one function every path that can change the weight already goes through (upload, delete, restore, orphan relink, fusion). It only touches demandes that are still adjustable — `ADJUSTABLE_ORDER_WHERE`: unbilled, not priced by the page, and on no facture or on a `DRAFT` one. An issued facture has been printed and sent; a paid or soldée one is locked.
 
-**A demande can instead be priced by the page** (`PagePricingFields`, `lib/orders/pagePricing.ts`): pages read, pages counted, price per page (3 € suggested, `PRICE_PER_PAGE_EUR`) and an optional transfer fee. Its cost is derived by `pageCostEuros` — counted pages, or read pages when none are entered, × price, + fee; there is no fixed « 3 pages for 1 » rule, because the ratio varies from document to document. Such a demande leaves weight-based repricing, and when it reaches « Terminé » it gets its **own pro-forma facture** (`BillKind.PROFORMA`, `ProformaPDF`), issued at once with no draft and no threshold. The draft and threshold accruals only look at standard factures, and attaching a demande by hand refuses to mix the two kinds.
+**A demande can instead be priced by the page** (`PagePricingFields`, `lib/orders/pagePricing.ts`): pages read, pages counted, price per page (3 € suggested, `PRICE_PER_PAGE_EUR`) and an optional transfer fee. Its cost is derived by `pageCostEuros` — counted pages, or read pages when none are entered, × price, + fee; there is no fixed « 3 pages for 1 » rule, because the ratio varies from document to document. Such a demande leaves weight-based repricing, and when it reaches « Terminé » it gets its **own facture** (`BillKind.PROFORMA`, `ProformaPDF`), opened as a DRAFT with no threshold: that draft prints as the « FACTURE PRO-FORMA » sent to the client, and once issued the same bill prints as a plain « FACTURE ». The draft and threshold accruals only look at standard factures, and attaching a demande by hand refuses to mix the two kinds.
 
 The chain, in order:
 

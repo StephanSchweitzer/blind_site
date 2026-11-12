@@ -395,9 +395,10 @@ export async function accrueOrderToOpenDraft(
     if (!order || !order.isActive || order.billId != null) return null;
     if (order.billingStatus === OrderBillingStatus.UNBILLABLE) return null;
 
-    // Une demande tarifée à la page ne rejoint jamais un brouillon : elle a sa
-    // propre facture, une pro-forma, émise d'emblée. `proforma` sert à l'appelant à
-    // annoncer l'émission, comme le fait issueDraftIfOverThreshold.
+    // Une demande tarifée à la page ne rejoint jamais le brouillon de l'auditeur :
+    // elle a sa propre facture, ouverte au stade pro-forma. `proforma` sert à
+    // l'appelant à l'annoncer, avec le bouton d'impression : la pro-forma part chez
+    // le client.
     if (order.pages != null) {
         const proforma = await accrueOrderToProforma(tx, order.id, performedById, reason);
         return proforma ? { billId: proforma.billId, proformaTotal: proforma.total } : null;
@@ -420,23 +421,33 @@ export async function accrueOrderToOpenDraft(
 
 /**
  * Une demande tarifée à la page passe « Terminé » : elle reçoit sa propre facture
- * pro-forma, créée directement ÉMISE (BILLED) — jamais de brouillon, jamais de
- * seuil. C'est le pendant de accrueOrderToOpenDraft pour ce genre de demande, et
- * le même moment : la clôture de la demande, c'est-à-dire l'envoi des fichiers.
+ * « Revue » (BillKind.PROFORMA), ouverte en BROUILLON — jamais de seuil. C'est le
+ * pendant de accrueOrderToOpenDraft pour ce genre de demande, et le même moment :
+ * la clôture de la demande, c'est-à-dire l'envoi des fichiers.
  *
- * Une pro-forma = une demande. Deux demandes du même client donnent deux
- * pro-formas.
+ * Le brouillon d'une revue n'est pas un document interne : c'est la PRO-FORMA,
+ * qui part chez le client (les revues la réclament pour engager leur règlement).
+ * Émise, elle devient une facture ordinaire — titre « FACTURE », en attente de
+ * paiement — puis « Payée » comme les autres. ProformaPDF lit l'état pour choisir
+ * le titre. Jusqu'en novembre 2026 la revue naissait émise et s'imprimait
+ * « pro-forma » jusqu'au bout : c'était un contresens sur le mot — une pro-forma
+ * est justement ce qui précède la facture.
  *
- * Son numéro est Bill.id, comme celui d'une facture standard : une pro-forma
- * n'a aucune valeur comptable, donc pas de suite continue à tenir, et un seul
- * numéro dans l'application comme sur le papier — celui que le client reporte
- * sur son chèque ou son virement se retrouve tel quel dans la liste des factures.
+ * Une revue = une demande. Deux demandes du même client donnent deux factures.
+ *
+ * Son numéro est Bill.id, comme celui d'une facture standard, et il ne change pas
+ * à l'émission : la facture porte le numéro de la pro-forma que le client a déjà
+ * reçue, et c'est celui qu'il reporte sur son chèque ou son virement.
+ *
+ * Une revue qui revient de « Terminé » quitte son brouillon (le miroir de
+ * l'accrual, voir PUT /api/orders/[id]) et le laisse vide. À sa nouvelle clôture,
+ * elle y revient plutôt que d'en ouvrir un second : la pro-forma déjà envoyée garde
+ * son numéro, et aucun brouillon vide ne traîne dans la liste.
  *
  * La facture NAÎT au bon montant (comme POST /api/bills) : invoiceAmount est un
  * DERIVED_FIELD, la seule ligne que le journal verra jamais est celle de la
- * création. La demande passe « Facturé » d'emblée, et elle est donc verrouillée
- * comme toute facture émise (hors ADJUSTABLE_ORDER_WHERE de toute façon, ses pages
- * l'en excluaient déjà).
+ * création. La demande reste « Non facturé » tant que la facture est un brouillon,
+ * et passe « Facturé » à l'émission, comme sur une facture standard.
  *
  * Sans effet si la demande est déjà rattachée, inactive, « Non facturable » ou
  * sans pages — les mêmes sorties que l'accrual au brouillon.
@@ -454,30 +465,45 @@ export async function accrueOrderToProforma(
     if (!order || !order.isActive || order.billId != null || order.pages == null) return null;
     if (order.billingStatus === OrderBillingStatus.UNBILLABLE) return null;
 
-    const now = new Date();
-    const bill = await tx.bill.create({
-        data: {
+    // Le brouillon vide qu'elle a laissé en revenant de « Terminé » — voir l'en-tête.
+    const emptyDraft = await tx.bill.findFirst({
+        where: {
             clientId: order.aveugleId,
             kind: BillKind.PROFORMA,
-            state: BillingStatus.BILLED,
-            creationDate: now,
-            issueDate: now,
-            invoiceAmount: order.cost ?? new Prisma.Decimal(0),
+            state: BillingStatus.DRAFT,
             isActive: true,
+            orders: { none: { isActive: true } },
         },
+        orderBy: { creationDate: 'desc' },
         select: { id: true },
     });
-    await logBillEvent(tx, {
-        billId: bill.id,
-        type: BillEventType.CREATED,
-        toState: BillingStatus.BILLED,
-        payload: { reason: 'proforma' },
-        performedById,
-    });
+    let bill: { id: number };
+    if (emptyDraft) {
+        bill = emptyDraft;
+    } else {
+        bill = await tx.bill.create({
+            data: {
+                clientId: order.aveugleId,
+                kind: BillKind.PROFORMA,
+                state: BillingStatus.DRAFT,
+                creationDate: new Date(),
+                invoiceAmount: order.cost ?? new Prisma.Decimal(0),
+                isActive: true,
+            },
+            select: { id: true },
+        });
+        await logBillEvent(tx, {
+            billId: bill.id,
+            type: BillEventType.CREATED,
+            toState: BillingStatus.DRAFT,
+            payload: { reason: 'proforma' },
+            performedById,
+        });
+    }
 
     await tx.orders.update({
         where: { id: order.id },
-        data: { billId: bill.id, billingStatus: OrderBillingStatus.BILLED },
+        data: { billId: bill.id, billingStatus: OrderBillingStatus.UNBILLED },
     });
     // AVANT l'événement : logBillEvent relit invoiceAmount pour tamponner amountAtEvent.
     const total = await recomputeBillTotal(tx, bill.id);
@@ -506,8 +532,8 @@ export function guardOrderMatchesBillKind(args: {
     return billFail(
         409,
         orderIsPageBased
-            ? 'Cette demande est tarifée à la page : elle relève d’une facture pro-forma, émise à sa clôture, et ne se rattache pas à une facture standard.'
-            : 'Cette demande est tarifée au poids : elle ne peut pas être rattachée à une facture pro-forma.'
+            ? 'Cette demande est tarifée à la page : elle relève de sa propre facture de revue, ouverte à sa clôture, et ne se rattache pas à une facture standard.'
+            : 'Cette demande est tarifée au poids : elle ne peut pas être rattachée à une facture de revue.'
     );
 }
 

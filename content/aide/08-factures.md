@@ -17,7 +17,7 @@ Une facture porte l'un de ces quatre états :
 - **Payée** — un paiement couvre la facture. Elle passe « Payée » toute seule dès que le paiement est enregistré.
 - **Soldée** — on ne réclame plus rien, sans qu'un paiement ait été reçu.
 
-Sur la page principale des factures, on trouve (1) un tableau présentant les factures existantes, (2) la barre de recherche et (3) quelques filtres que l'on peut appliquer à la recherche et au tableau. Vous pouvez filtrer les résultats par état, par type (« Factures standard » ou « Revue », les factures [pro-forma](#les-factures-pro-forma)) et/ou par « Factures à relancer ». Les trois se combinent, sauf « Factures à relancer » qui remplace le filtre d'état. Le bouton « Effacer les filtres » les retire tous d'un coup. Une facture à relancer est une facture « Émise » depuis **plus de 30 jours** et pas encore réglée : elle apparaît sur fond orange clair, avec une petite horloge à côté de son état, et la page principale la compte « à relancer ».
+Sur la page principale des factures, on trouve (1) un tableau présentant les factures existantes, (2) la barre de recherche et (3) quelques filtres que l'on peut appliquer à la recherche et au tableau. Vous pouvez filtrer les résultats par état, par type (« Factures standard » ou « Revue », les factures des revues, au stade [pro-forma](#les-factures-pro-forma) tant qu'elles sont en brouillon) et/ou par « Factures à relancer ». Les trois se combinent, sauf « Factures à relancer » qui remplace le filtre d'état. Le bouton « Effacer les filtres » les retire tous d'un coup. Une facture à relancer est une facture « Émise » depuis **plus de 30 jours** et pas encore réglée : elle apparaît sur fond orange clair, avec une petite horloge à côté de son état, et la page principale la compte « à relancer ».
 
 L'URL de cette page est https://eca-aveugles.fr/admin/bills
 
@@ -39,7 +39,7 @@ Cela affichera alors les demandes de l'auditeur que vous pouvez facturer. Cochez
 
 ![Factures - capture 4](/admin/aide/images/factures-04.jpg)
 
-Vous n'avez pas à choisir le type de la facture : il se déduit de ce que vous cochez. Une revue (demande tarifée à la page) se facture **seule**, sur sa propre facture [pro-forma](#les-factures-pro-forma) : dès que vous cochez une revue, les autres demandes se grisent ; dès que vous cochez une autre demande, ce sont les revues qui se grisent. Une note sous chaque ligne grisée le rappelle, et tout décocher rend tout cochable. Une revue n'est jamais cochée d'avance.
+Vous n'avez pas à choisir le type de la facture : il se déduit de ce que vous cochez. Une revue (demande tarifée à la page) se facture **seule**, sur sa propre facture ([pro-forma](#les-factures-pro-forma) tant qu'elle est en brouillon) : dès que vous cochez une revue, les autres demandes se grisent ; dès que vous cochez une autre demande, ce sont les revues qui se grisent. Une note sous chaque ligne grisée le rappelle, et tout décocher rend tout cochable. Une revue n'est jamais cochée d'avance.
 
 ![Factures - capture 5](/admin/aide/images/factures-05.jpg)
 
@@ -47,11 +47,11 @@ Vous n'avez pas à choisir le type de la facture : il se déduit de ce que vous 
 
 Sous la liste viennent, grisées, les autres demandes de l'auditeur, chacune avec la raison qui l'empêche d'être ajoutée :
 
-- **déjà sur une facture** : le lien bleu « Sur la facture #… » ouvre cette facture dans un nouvel onglet, et indique son état (brouillon, émise…). Une facture pro-forma y figure comme les autres ;
+- **déjà sur une facture** : le lien bleu « Sur la facture #… » ouvre cette facture dans un nouvel onglet, et indique son état (brouillon, émise…). La facture d'une revue y figure comme les autres ;
 - **pas encore expédiée** (« Attente envoi vers auditeur ») : l'enregistrement est revenu du lecteur, mais n'est pas encore parti chez l'auditeur. Ouvrez la demande (l'icône à droite de la ligne) et renseignez sa date de clôture le jour de l'expédition : elle sera alors facturée toute seule. Sans date de clôture, elle resterait ouverte, et finirait « à suivre » ;
 - **prestation pas encore terminée** (« À faire » pour une duplication, « Attente envoi vers lecteur », « En cours ») : l'enregistrement n'est pas fait, donc pas pesé, donc pas tarifé. Clôturez la demande : elle sera alors facturée toute seule. Une facture émise ne se retarife plus, c'est pourquoi on ne facture pas avant ;
-- **tarifée à la page**, dans la liste d'un brouillon : elle ne va pas sur une facture standard, elle aura sa propre facture [pro-forma](#les-factures-pro-forma) ;
-- **pro-forma déjà remplie**, dans la liste d'une pro-forma remise en brouillon : une pro-forma ne porte qu'une revue ;
+- **tarifée à la page**, dans la liste d'un brouillon : elle ne va pas sur une facture standard, elle aura sa propre facture, au stade [pro-forma](#les-factures-pro-forma) ;
+- **facture de revue déjà remplie**, dans la liste d'une revue en brouillon : elle ne porte qu'une revue ;
 - **non facturable**.
 
 Les demandes à clôturer viennent en premier, puis celles des factures en cours, et la liste s'arrête à dix. Pour en retrouver une autre, tapez son titre, son auteur ou son numéro dans la barre de recherche au-dessus de la liste : elle apparaît, cochable ou grisée, avec sa raison. Le lien « voyez toutes ses factures », sous la liste, ouvre la page des factures sur le nom de l'auditeur.
@@ -152,21 +152,29 @@ Une facture supprimée quitte la liste, mais son numéro reste valable : en l'ou
 
 ## Les factures pro-forma
 
-Une pro-forma est la facture des demandes **pour les revues** : celles que l'on coche « Tarifer à la page (pour les revues) » dans le formulaire de la [demande](/admin/aide/demandes#une-demande-tarifee-a-la-page-pour-les-revues), parce que la revue réclame une pro-forma pour régler.
+La facture d'une demande **pour les revues** — celles que l'on coche « Tarifer à la page (pour les revues) » dans le formulaire de la [demande](/admin/aide/demandes#une-demande-tarifee-a-la-page-pour-les-revues) — passe par une étape de plus : la **pro-forma**, que la revue réclame avant de régler.
 
-Une demande **tarifée à la page** ne rejoint jamais le brouillon de l'auditeur et n'attend pas son seuil de facturation. Quand elle passe à « Terminé », elle reçoit **sa propre facture pro-forma**, créée et **émise d'office**. Son numéro est celui de la facture dans l'application : le « n° » imprimé sur le PDF est le même que dans le tableau, et c'est celui que le client reporte sur son chèque ou son virement. Une pro-forma porte une seule demande ; deux demandes donnent deux pro-formas.
+Une demande **tarifée à la page** ne rejoint jamais le brouillon de l'auditeur et n'attend pas son seuil de facturation. Quand elle passe à « Terminé », elle reçoit **sa propre facture**, créée **en brouillon**. Pour une revue, ce brouillon n'est pas un document interne : c'est la pro-forma, à imprimer et à envoyer au client. Son cycle est donc :
 
-Dans le tableau, une pro-forma se reconnaît à la mention « Revue » sous son numéro, et la même pastille « Revue » figure à côté du titre dans la fenêtre de la facture. Elle suit ensuite le même chemin que les autres factures : paiement, « Payée », « Soldée », historique.
+- **Brouillon** : la facture s'imprime « FACTURE PRO-FORMA », sans le filigrane « BROUILLON » des factures standard ;
+- **Émise** : elle s'imprime « FACTURE », comme toutes les autres, et attend son paiement ;
+- **Payée** (ou **Soldée**) : elle s'imprime « FACTURE » avec l'encadré « Facture acquittée », la date et la référence du paiement.
 
-Le PDF reprend la mise en page d'une facture standard — logotype, titre « FACTURE PRO-FORMA », bande « Facturé à » avec le numéro et la date d'émission, tableau, totaux, encadré de règlement. Le tableau porte le titre de l'ouvrage, l'adresse d'envoi WeTransfer (celle du client), la ligne de lecture (« Lecture de 42 pages, comptées comme 14 pages à 3,00 € ») et les frais d'envoi s'il y en a ; viennent ensuite le total et les modalités de règlement.
+Son numéro est celui de la facture dans l'application, et il ne change pas à l'émission : le « n° » imprimé sur la pro-forma est celui de la facture qui la suit, le même que dans le tableau, et c'est celui que le client reporte sur son chèque ou son virement. Une revue porte une seule demande ; deux demandes donnent deux factures.
 
-Quelques règles propres aux pro-formas :
+Dans le tableau, la facture d'une revue se reconnaît à la mention « Revue » sous son numéro, et la même pastille « Revue » figure à côté du titre dans la fenêtre de la facture. Elle suit ensuite le même chemin que les autres factures : émission, paiement, « Payée », « Soldée », historique.
 
-- une demande à la page ne se rattache qu'à une pro-forma, et une demande au poids qu'à une facture standard : le rattachement à la main l'interdit ;
-- une pro-forma porte **une seule** revue : remise en brouillon, elle n'en accepte pas une seconde ;
-- une pro-forma se crée aussi à la main, depuis « Ajouter une facture » : cochez la revue seule, la facture créée est sa pro-forma ;
-- la pro-forma étant déjà émise, on ne peut plus faire revenir la demande en arrière depuis « Terminé » : remettez d'abord la facture en brouillon ;
-- une pro-forma remise en brouillon puis supprimée n'est pas recréée toute seule : recréez-la depuis « Ajouter une facture », en cochant la revue.
+Quand vous imprimez une revue en brouillon, la fenêtre propose d'abord « **Imprimer la pro-forma** », qui ne change pas son statut, puis « Émettre la facture et imprimer ».
+
+Le PDF reprend la mise en page d'une facture standard — logotype, titre, bande « Facturé à » avec le numéro et la date (celle de la création de la pro-forma, puis la date d'émission une fois la facture émise), tableau, totaux, encadré de règlement. Le tableau porte le titre de l'ouvrage, l'adresse d'envoi WeTransfer (celle du client), la ligne de lecture (« Lecture de 42 pages, comptées comme 14 pages à 3,00 € ») et les frais d'envoi s'il y en a ; viennent ensuite le total et les modalités de règlement.
+
+Quelques règles propres aux revues :
+
+- une demande à la page ne se rattache qu'à la facture d'une revue, et une demande au poids qu'à une facture standard : le rattachement à la main l'interdit ;
+- la facture d'une revue porte **une seule** revue : elle n'en accepte pas une seconde ;
+- elle se crée aussi à la main, depuis « Ajouter une facture » : cochez la revue seule, la facture créée est la sienne ;
+- tant que la facture est en brouillon (pro-forma), la demande peut revenir en arrière depuis « Terminé » : elle quitte alors sa facture, et la retrouve, avec le même numéro, quand elle repasse « Terminé ». Une fois la facture émise, remettez-la d'abord en brouillon ;
+- une facture de revue supprimée n'est pas recréée toute seule : recréez-la depuis « Ajouter une facture », en cochant la revue.
 
 ## L'avis d'impression
 

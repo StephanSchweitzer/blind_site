@@ -544,11 +544,11 @@ export const POST = withAdmin(async (request, { me }) => {
             ORDER_ALREADY_BILLED: ['Une des demandes sélectionnées est déjà rattachée à une facture', 400],
             ORDER_UNBILLABLE: ['Une des demandes sélectionnées est marquée non-facturable', 400],
             ORDER_PAGE_PRICED: [
-                'Une des demandes sélectionnées est tarifée à la page : elle a sa propre facture pro-forma, émise quand la demande passe « Terminé »',
+                'Une des demandes sélectionnées est tarifée à la page : elle a sa propre facture, ouverte en pro-forma quand la demande passe « Terminé »',
                 409,
             ],
             PROFORMA_NOT_ALONE: [
-                'Une revue se facture seule, sur sa propre facture pro-forma : décochez les autres demandes',
+                'Une revue se facture seule, sur sa propre facture : décochez les autres demandes',
                 409,
             ],
             ORDER_AWAITING_SHIPMENT: [

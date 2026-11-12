@@ -736,7 +736,7 @@ export function OrderFormBackendBase({
                                         </span>
                                         <span className="block text-xs text-muted-foreground mt-1">
                                             {pagePricingActive
-                                                ? 'Elle est terminée et ne figure sur aucune facture : sa facture pro-forma sera créée et émise à l’enregistrement.'
+                                                ? 'Elle est terminée et ne figure sur aucune facture : sa facture sera créée à l’enregistrement, au stade pro-forma.'
                                                 : 'Elle est terminée et ne figure sur aucune facture : elle sera ajoutée à son brouillon, ou un brouillon sera ouvert.'}{' '}
                                             Décochez si elle ne doit pas être facturée (ancienne demande déjà réglée,
                                             correction d&apos;historique) : elle restera « Terminé » sans facture.

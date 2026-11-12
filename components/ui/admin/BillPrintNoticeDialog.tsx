@@ -48,9 +48,11 @@ interface BillPrintNoticeDialogProps {
  *
  * Le bouton d'impression est *dans* la boîte, et non un lien vers /admin/bills
  * où il faudrait retrouver la ligne : c'est l'action qui suit l'annonce, dans
- * la quasi-totalité des cas. Ces factures sont émises (jamais DRAFT — l'API ne
- * prévient que pour un document déjà sorti), donc BillPDFButton imprime d'un
- * clic, sans sa confirmation « ceci est un brouillon ».
+ * la quasi-totalité des cas. Ces factures sont émises — l'API ne prévient que
+ * pour un document déjà sorti —, donc BillPDFButton imprime d'un clic, sans sa
+ * confirmation « ceci est un brouillon ». Une exception : la facture d'une revue,
+ * qui s'ouvre en brouillon parce que ce brouillon EST la pro-forma à envoyer ;
+ * BillPDFButton propose alors « Imprimer la pro-forma » en premier.
  *
  * L'impression referme la boîte (`onPrinted`) : le geste demandé est fait, et
  * sans ça on retrouve l'avis derrière la boîte d'impression du navigateur, à

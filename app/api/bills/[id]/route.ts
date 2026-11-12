@@ -573,11 +573,11 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             CLIENT_MISMATCH: ['Cette demande n\'appartient pas au client de cette facture', 400],
             ORDER_UNBILLABLE: ['Cette demande est marquée « Non facturable » et ne peut pas être rattachée à une facture', 400],
             BILL_KIND_MISMATCH: [
-                'Une demande tarifée à la page ne se rattache qu’à une facture pro-forma, et une demande au poids qu’à une facture standard',
+                'Une demande tarifée à la page ne se rattache qu’à une facture de revue, et une demande au poids qu’à une facture standard',
                 409,
             ],
             PROFORMA_FULL: [
-                'Une facture pro-forma porte une seule revue, et celle-ci a déjà la sienne',
+                'Cette facture porte déjà sa revue : une facture de revue n’en porte qu’une',
                 409,
             ],
             FORCE_NEEDS_PRICE: [

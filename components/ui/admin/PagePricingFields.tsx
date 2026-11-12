@@ -72,7 +72,7 @@ export function PagePricingFields({
                     <p className="text-xs text-muted-foreground">
                         {toggleDisabledReason
                             ? toggleDisabledReason
-                            : 'Cette demande aura sa propre facture pro-forma, émise d’office quand elle passe « Terminé ».'}
+                            : 'Cette demande aura sa propre facture, ouverte en pro-forma quand elle passe « Terminé ».'}
                     </p>
                 </div>
             </div>

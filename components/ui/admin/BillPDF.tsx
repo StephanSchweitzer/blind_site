@@ -69,6 +69,8 @@ export interface BillPDFData {
     /** Choisit le document : BillPDF pour STANDARD, ProformaPDF pour PROFORMA. */
     kind: 'STANDARD' | 'PROFORMA';
     state: BillingStatus;
+    /** Imprimée sur la pro-forma d'une revue, qui n'a pas encore de date d'émission. */
+    creationDate?: string | null;
     issueDate: string | null;
     paymentDate: string | null;
     paymentReference: string | null;

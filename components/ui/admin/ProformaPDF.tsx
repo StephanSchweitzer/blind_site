@@ -15,6 +15,13 @@ import type { BillPDFData } from './BillPDF';
 // Une seule page, sans densité adaptative : une pro-forma porte UNE demande, donc
 // une longueur presque constante. BillPDF, lui, a besoin de sa densité pour tenir
 // jusqu'à sept titres sur une feuille.
+//
+// Le titre suit l'état de la facture, pas son type. En brouillon, la revue est au
+// stade PRO-FORMA : le document part chez le client, sans filigrane « BROUILLON »
+// (ce n'est pas un brouillon au sens d'une facture standard, c'est une étape
+// normale). Émise, c'est une FACTURE, en attente de paiement ; payée, elle le dit
+// comme BillPDF, avec la date et la référence du règlement. Voir
+// accrueOrderToProforma (lib/billing.ts).
 
 const NAVY = '#15366b';
 // Même remarque que BillPDF : la graisse se demande par la police, pas par
@@ -70,18 +77,21 @@ const styles = StyleSheet.create({
 
     settledBox: { marginTop: 13, borderWidth: 1.5, borderColor: NAVY, borderRadius: 4, padding: 10 },
     settledTitle: { fontSize: 11, fontFamily: BOLD, color: NAVY, letterSpacing: 1, textTransform: 'uppercase' },
+    payRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+    payLabel: { fontSize: 8, color: '#4b5563', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3, fontFamily: BOLD },
+    payValue: { fontSize: 10, color: '#111827' },
 
     legal: { marginTop: 12, fontSize: 9, color: '#374151' },
-    draftNote: { marginTop: 12, fontSize: 9, color: '#92400e', fontFamily: BOLD },
 
     payInfoBox: { marginTop: 13, borderWidth: 1, borderColor: NAVY, borderRadius: 4, padding: 11, alignItems: 'center' },
     payInfoLine: { fontSize: 9.5, color: '#111827', textAlign: 'center', marginBottom: 3 },
-
-    watermark: { position: 'absolute', top: '42%', left: 0, right: 0, textAlign: 'center', fontSize: 96, fontFamily: BOLD, color: NAVY, opacity: 0.06, transform: 'rotate(-24deg)' },
 });
 
-export const ProformaPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?: boolean }) => {
+export const ProformaPDF = ({ bill }: { bill: BillPDFData }) => {
     if (!bill) return null;
+
+    // Brouillon = pro-forma ; émise, payée ou soldée = facture.
+    const proforma = bill.state === BillingStatus.DRAFT;
 
     const order = bill.orders[0] ?? null;
     const settled = bill.state === BillingStatus.PAID || bill.state === BillingStatus.SOLDE;
@@ -111,10 +121,8 @@ export const ProformaPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?
     const number = bill.id;
 
     return (
-        <Document title={`${draft ? 'Brouillon — ' : ''}Facture pro-forma n°${number} — ${clientName}`}>
+        <Document title={`${proforma ? 'Facture pro-forma' : 'Facture'} n°${number} — ${clientName}`}>
             <Page size="A4" style={styles.page}>
-                {draft && <Text style={styles.watermark} fixed>BROUILLON</Text>}
-
                 <Text style={styles.footer} fixed>
                     {ORG.addr.join(' — ')} — Tél. {ORG.phone} — {ORG.email}
                 </Text>
@@ -125,7 +133,7 @@ export const ProformaPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?
                     {/* jsx-a11y voit un <img> ; l'Image de react-pdf n'accepte pas d'attribut alt. */}
                     {/* eslint-disable-next-line jsx-a11y/alt-text */}
                     <Image src={LOGO_SRC} style={styles.logo} />
-                    <Text style={styles.docTitle}>FACTURE PRO-FORMA</Text>
+                    <Text style={styles.docTitle}>{proforma ? 'FACTURE PRO-FORMA' : 'FACTURE'}</Text>
                 </View>
 
                 {/* Facturé à (gauche) + numéro et date (droite) sur une même bande */}
@@ -137,13 +145,20 @@ export const ProformaPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?
                     </View>
                     <View style={styles.billMetaCol}>
                         <View style={styles.metaItem}>
-                            <Text style={[styles.metaLabel, styles.alignRight]}>Pro-forma n°</Text>
+                            <Text style={[styles.metaLabel, styles.alignRight]}>{proforma ? 'Pro-forma n°' : 'Facture n°'}</Text>
                             <Text style={[styles.metaNumber, styles.alignRight]}>{number}</Text>
                         </View>
                         <View>
-                            <Text style={[styles.metaLabel, styles.alignRight]}>Date d&apos;émission</Text>
+                            {/* Une pro-forma n'est pas encore émise : elle porte le jour de son
+                                ouverture, à la clôture de la demande. */}
+                            <Text style={[styles.metaLabel, styles.alignRight]}>
+                                {proforma ? 'Date' : 'Date d’émission'}
+                            </Text>
                             <Text style={[styles.metaLine, styles.alignRight]}>
-                                {bill.issueDate ? parisDate(bill.issueDate) : '—'}
+                                {(() => {
+                                    const date = proforma ? bill.creationDate : bill.issueDate;
+                                    return date ? parisDate(date) : '—';
+                                })()}
                             </Text>
                         </View>
                     </View>
@@ -206,17 +221,30 @@ export const ProformaPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?
                     </View>
                 </View>
 
-                {draft ? (
-                    <Text style={styles.draftNote}>Document provisoire — non valable comme facture.</Text>
-                ) : (
-                    <Text style={styles.legal}>TVA non applicable, art. 293 B du CGI.</Text>
-                )}
+                <Text style={styles.legal}>TVA non applicable, art. 293 B du CGI.</Text>
 
                 {settled ? (
                     <View style={styles.settledBox} wrap={false}>
                         <Text style={styles.settledTitle}>
                             {bill.state === BillingStatus.PAID ? 'Facture acquittée' : 'Facture soldée'}
                         </Text>
+                        {/* Comme BillPDF : la date et la référence du règlement, sur une ligne. */}
+                        {(bill.paymentDate || bill.paymentReference) && (
+                            <View style={styles.payRow}>
+                                {bill.paymentDate && (
+                                    <View>
+                                        <Text style={styles.payLabel}>Date de paiement</Text>
+                                        <Text style={styles.payValue}>{parisDate(bill.paymentDate)}</Text>
+                                    </View>
+                                )}
+                                {bill.paymentReference && (
+                                    <View>
+                                        <Text style={[styles.payLabel, styles.alignRight]}>Référence de paiement</Text>
+                                        <Text style={[styles.payValue, styles.alignRight]}>{bill.paymentReference}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
                     </View>
                 ) : (
                     <View style={styles.payInfoBox} wrap={false}>
@@ -227,7 +255,7 @@ export const ProformaPDF = ({ bill, draft = false }: { bill: BillPDFData; draft?
                         <Text style={styles.payInfoLine}>IBAN : {ORG.iban}</Text>
                         <Text style={styles.payInfoLine}>BIC : {ORG.bic}</Text>
                         <Text style={styles.payInfoLine}>
-                            Merci de reporter le numéro de la pro-forma (n° {number}) au dos du chèque ou en référence du virement.
+                            Merci de reporter le numéro de la {proforma ? 'pro-forma' : 'facture'} (n° {number}) au dos du chèque ou en référence du virement.
                         </Text>
                     </View>
                 )}
