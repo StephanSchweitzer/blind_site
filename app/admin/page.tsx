@@ -238,7 +238,7 @@ export default async function Dashboard() {
                 les raccourcis restent à leur place. */}
             <section className="mb-10" aria-labelledby="dashboard-maintenant">
                 <h2 id="dashboard-maintenant" className="text-lg font-semibold text-foreground mb-4 px-1">En ce moment</h2>
-                <div className="space-y-3">
+                <div className="space-y-6">
                     <DashboardTodoBand groups={todoGroups} />
                     <ul className={GRID}>
                         <li><AdminDashboardCard emphasis title="Doublons" count={reviewCount} countLabel="à réviser" href="/admin/review" /></li>

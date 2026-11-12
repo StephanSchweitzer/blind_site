@@ -38,6 +38,16 @@ const countFormat = new Intl.NumberFormat('fr-FR');
  * are drawn as a bar in the list's own colour, with its icon — the same as its
  * card below — so they read as « Demandes », « Factures »… and not as one
  * more line: grey small capitals on a grey wash blended into the rows.
+ *
+ * Opened, it is a grey tray under the white summary, with each list as its own
+ * small card in it, side by side on a wide screen like the cards below. The
+ * first version opened into one long stack of full-width colour bars and rows,
+ * flush against the Doublons cards: it read as one crowded block, with nothing
+ * to show where the band ended and the shortcuts began. The tray gives that
+ * edge, the extra margin when open gives the cards room (32px rather than the
+ * 24px folded; it collapses with the parent's space-y-6, so a margin under
+ * 24px changes nothing), and the columns keep
+ * the opened band short (four rows tall at most, not eight plus three bars).
  */
 export function DashboardTodoBand({ groups }: { groups: DashboardTodoGroup[] }) {
     const ref = useRef<HTMLDetailsElement>(null);
@@ -73,8 +83,8 @@ export function DashboardTodoBand({ groups }: { groups: DashboardTodoGroup[] }) 
     }
 
     return (
-        <details ref={ref} onToggle={remember} className="group overflow-hidden rounded-lg border border-border bg-card">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+        <details ref={ref} onToggle={remember} className="group overflow-hidden rounded-lg border border-border bg-card open:mb-8 open:bg-muted">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 bg-card px-5 py-3 text-sm hover:bg-muted group-open:border-b group-open:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
                 <span>
                     <span className="font-semibold text-foreground">À traiter</span>
                     {waiting.map((group) => (
@@ -87,15 +97,20 @@ export function DashboardTodoBand({ groups }: { groups: DashboardTodoGroup[] }) 
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
-            <div className="-mb-px">
+            <div className="grid gap-3 p-3 sm:p-4 lg:grid-cols-3 lg:items-start">
                 {waiting.map((group) => {
                     const colors = sectionAccent(group.title);
                     const Icon = SECTION_ICONS[group.title];
                     return (
-                        <div key={group.title} role="group" aria-label={group.title}>
+                        <div
+                            key={group.title}
+                            role="group"
+                            aria-label={group.title}
+                            className={`overflow-hidden rounded-md border bg-card ${colors.border}`}
+                        >
                             <p
                                 aria-hidden="true"
-                                className={`flex items-center gap-2 border-y px-5 py-2 text-sm font-bold ${colors.bg} ${colors.border} ${colors.text}`}
+                                className={`flex items-center gap-2 border-b px-5 py-2 text-sm font-bold ${colors.bg} ${colors.border} ${colors.text}`}
                             >
                                 {Icon && <Icon className="h-4 w-4" />}
                                 {group.title}
