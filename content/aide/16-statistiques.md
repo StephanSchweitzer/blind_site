@@ -44,7 +44,7 @@ Le filtre « Suppression » montre toutes les suppressions, y compris celles des
 
 Cliquez sur une ligne (ou sur la flèche à sa gauche) pour voir le détail des champs modifiés. Certaines suppressions définitives peuvent être annulées depuis le journal. Un livre supprimé, lui, se restaure depuis sa propre fiche : voir [Restaurer un livre supprimé](/admin/aide/catalogue#restaurer-un-livre-supprime).
 
-Pour une liste de livres, le détail indique les livres ajoutés et les livres retirés, pas la liste entière. Une liste supprimée puis restaurée depuis le journal revient avec ses livres, sauf ceux qui ont été supprimés entre-temps.
+Pour une liste de livres, le détail indique les livres ajoutés et les livres retirés, pas la liste entière, ainsi que les notes modifiées : pour chaque livre dont la note a été ajoutée, changée ou effacée, l'ancienne note et la nouvelle. Une liste supprimée puis restaurée depuis le journal revient avec ses livres, sauf ceux qui ont été supprimés entre-temps.
 
 Le journal ne conserve pas tout indéfiniment : l'en-tête indique jusqu'à quelle date il remonte.
 

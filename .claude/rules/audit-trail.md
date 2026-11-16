@@ -15,7 +15,9 @@ paths:
   to them produce no event of their own, but one `UPDATE` on the `User` that owns them,
   naming the whole collection before and after. Add the next such table there, not above.
   `CoupsDeCoeurBooks` (a liste's books) is one too, with two options: `delta` (the diff
-  carries only `booksAdded` / `booksRemoved`, folded per burst in `audit-grouping.ts`) and
+  carries only `booksAdded` / `booksRemoved`, plus `booksNoted` for a book whose note in the
+  liste changed — so a note edit must go through the delegate, never raw SQL — all folded per
+  burst in `audit-grouping.ts`) and
   `restorable` (the rows ride in the owner's DELETE snapshot under `_owned`, and the restore
   route puts them back). `restorable` needs the owner's delete to remove them by **cascade**:
   a route that empties the collection first leaves the snapshot nothing to see.

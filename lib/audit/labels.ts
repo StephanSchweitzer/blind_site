@@ -176,6 +176,7 @@ const FIELD_LABELS: Record<string, string> = {
     // by difference — see COLLECTION_DELTAS below.
     booksAdded: 'Livres ajoutés',
     booksRemoved: 'Livres retirés',
+    booksNoted: 'Notes modifiées',
 
     // books
     title: 'Titre',
@@ -314,17 +315,42 @@ export const isReservedField = (field: string): boolean => field in RESERVED_FIE
  * The diff lines of an owned collection traced by difference
  * (`delta` in lib/audit/owned-collections.ts), per collection field. Each side
  * holds a JSON array of names: `added` on the « après » side, `removed` on the
- * « avant » side. Declared here rather than derived from OWNED_COLLECTIONS,
- * because the journal's client code reads it and that module has no business
- * in the browser bundle.
+ * « avant » side. `noted`, for a collection whose entries carry a remark
+ * (`delta.note`), holds `[name, remark]` pairs on both sides, aligned: the
+ * remark before, the remark after. Declared here rather than derived from
+ * OWNED_COLLECTIONS, because the journal's client code reads it and that
+ * module has no business in the browser bundle.
  */
-export const COLLECTION_DELTAS: Record<string, { added: string; removed: string }> = {
-    books: { added: 'booksAdded', removed: 'booksRemoved' },
+export interface CollectionDeltaFields {
+    added: string;
+    removed: string;
+    noted?: string;
+}
+
+export const COLLECTION_DELTAS: Record<string, CollectionDeltaFields> = {
+    books: { added: 'booksAdded', removed: 'booksRemoved', noted: 'booksNoted' },
 };
 
 const DELTA_FIELDS = new Set(Object.values(COLLECTION_DELTAS).flatMap(({ added, removed }) => [added, removed]));
+const NOTED_FIELDS = new Set(Object.values(COLLECTION_DELTAS).flatMap(({ noted }) => (noted ? [noted] : [])));
 
 export const isCollectionDeltaField = (field: string): boolean => DELTA_FIELDS.has(field);
+
+/** One side of a `noted` line: each entry's name and its remark on that side, or null when it isn't one. */
+export function parseDeltaNotes(value: string | number | boolean | null): Array<[string, string | null]> | null {
+    if (typeof value !== 'string') return null;
+    try {
+        const parsed: unknown = JSON.parse(value);
+        const isPair = (pair: unknown): pair is [string, string | null] =>
+            Array.isArray(pair) &&
+            pair.length === 2 &&
+            typeof pair[0] === 'string' &&
+            (pair[1] === null || typeof pair[1] === 'string');
+        return Array.isArray(parsed) && parsed.every(isPair) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
 
 /** The names one side of a delta line holds, or null when it isn't one. */
 export function parseDeltaNames(value: string | number | boolean | null): string[] | null {
@@ -446,6 +472,14 @@ export function formatAuditValue(
     if (field && isCollectionDeltaField(field)) {
         const names = parseDeltaNames(value);
         if (names) return names.length === 0 ? '—' : names.join(' · ');
+    }
+    if (field && NOTED_FIELDS.has(field)) {
+        const notes = parseDeltaNotes(value);
+        if (notes) {
+            return notes.length === 0
+                ? '—'
+                : notes.map(([name, note]) => `${name} : ${note ?? '(aucune note)'}`).join(' · ');
+        }
     }
 
     const asEnum = enumValueLabel(model, field, value);

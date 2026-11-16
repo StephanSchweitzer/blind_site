@@ -48,6 +48,14 @@ export interface OwnedCollection {
     delta?: {
         /** Which rows are the same entry, before and after — not its wording. */
         identify: (row: Record<string, unknown>) => string;
+        /**
+         * A remark the entry carries in this collection — a book's note in one
+         * liste. An entry present on both sides whose remark reads differently
+         * adds a third line, `<field>Noted`: each side a JSON array of
+         * `[name, remark]` pairs, aligned (see COLLECTION_DELTAS in ./labels).
+         * An entry just added says its remark nowhere: being added is the fact.
+         */
+        note?: (row: Record<string, unknown>) => string | null;
     };
     /**
      * Keep the collection in the owner's DELETE snapshot, so restoring the owner
@@ -92,8 +100,9 @@ export const OWNED_COLLECTIONS: Record<string, OwnedCollection> = {
 
     // The books of a liste. A join row has no life of its own — adding a book to
     // a liste is an edit of the liste — so it is traced on the CoupsDeCoeur row,
-    // as « Livres ajoutés » / « Livres retirés ». Identified by bookId, not by
-    // title: two doublons can carry the same one.
+    // as « Livres ajoutés » / « Livres retirés », and a book's note in this
+    // liste as « Notes modifiées ». Identified by bookId, not by title: two
+    // doublons can carry the same one.
     CoupsDeCoeurBooks: {
         owner: 'CoupsDeCoeur',
         ownerKey: 'coupsDeCoeurId',
@@ -106,7 +115,7 @@ export const OWNED_COLLECTIONS: Record<string, OwnedCollection> = {
             return typeof row.bookId === 'number' ? `Livre n°${row.bookId}` : null;
         },
         separator: ' · ',
-        delta: { identify: (row) => String(row.bookId) },
+        delta: { identify: (row) => String(row.bookId), note: (row) => text(row.note) },
         restorable: { noun: ['livre', 'livres'] },
     },
 };
@@ -126,9 +135,10 @@ export function restorableCollectionsOf(owner: string): Array<[string, OwnedColl
 export const OWNED_SNAPSHOT_KEY = '_owned';
 
 /**
- * What changed between two states of a delta-traced collection, as the two
- * diff lines it produces. Names are sorted; an entry is matched on
- * `delta.identify`, so a book retitled in between is neither added nor removed.
+ * What changed between two states of a delta-traced collection, as the diff
+ * lines it produces — added, removed, and (with `delta.note`) re-noted. Names
+ * are sorted; an entry is matched on `delta.identify`, so a book retitled in
+ * between is neither added nor removed.
  */
 export function collectionDelta(
     spec: OwnedCollection,
@@ -150,6 +160,27 @@ export function collectionDelta(
     const changes: Record<string, [string | null, string | null]> = {};
     if (removed.length > 0) changes[`${spec.field}Removed`] = [JSON.stringify(removed), null];
     if (added.length > 0) changes[`${spec.field}Added`] = [null, JSON.stringify(added)];
+
+    const note = spec.delta?.note;
+    if (note) {
+        const previous = new Map(before.map((row) => [identify(row), row]));
+        const noted = after
+            .flatMap((row): Array<[string, string | null, string | null]> => {
+                const was = previous.get(identify(row));
+                if (!was) return [];
+                const from = note(was);
+                const to = note(row);
+                const name = spec.describe(row);
+                return from === to || name === null ? [] : [[name, from, to]];
+            })
+            .sort(([a], [b]) => a.localeCompare(b, 'fr'));
+        if (noted.length > 0) {
+            changes[`${spec.field}Noted`] = [
+                JSON.stringify(noted.map(([name, from]) => [name, from])),
+                JSON.stringify(noted.map(([name, , to]) => [name, to])),
+            ];
+        }
+    }
     return changes;
 }
 

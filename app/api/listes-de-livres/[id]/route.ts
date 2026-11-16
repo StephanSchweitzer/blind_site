@@ -112,22 +112,33 @@ export const PUT = withAdmin(async (req, { params }) => {
                 if (nextNote === row.note && nextPosition === row.position) return [];
                 return [{ bookId, note: nextNote, position: nextPosition }];
             });
-            if (changed.length > 0) {
-                // One statement, not one update per row: reordering a list of
-                // forty books changes forty ranks, and each Prisma update on an
-                // owned collection costs the audit extension three more reads
-                // for an event that cannot exist — the trail identifies a
-                // liste's books by bookId (lib/audit/owned-collections.ts), so
-                // a note or a rank never shows in it. Raw SQL is outside the
-                // trail; that is all it loses.
+            // A changed note is a decision the journal reports (« Notes
+            // modifiées », lib/audit/owned-collections.ts), so it goes through
+            // the delegate, one row at a time: the audit extension cannot see
+            // raw SQL. Notes are typed by hand, a few per save at most, and
+            // the journal folds the events of one save into one row.
+            const renoted = changed.filter(row => row.note !== present.get(row.bookId)?.note);
+            for (const { bookId, note, position } of renoted) {
+                await tx.coupsDeCoeurBooks.update({
+                    where: { coupsDeCoeurId_bookId: { coupsDeCoeurId: coupId, bookId } },
+                    data: { note, position },
+                });
+            }
+
+            // Ranks alone: one statement, not one update per row. Reordering a
+            // list of forty books changes forty ranks, each Prisma update on an
+            // owned collection costs the audit extension three more reads, and
+            // a rank never shows in the journal anyway. Raw SQL is outside the
+            // trail; that is all it loses.
+            const reranked = changed.filter(row => row.note === present.get(row.bookId)?.note);
+            if (reranked.length > 0) {
                 await tx.$executeRaw`
                     UPDATE "CoupsDeCoeurBooks" AS c
-                    SET "note" = v.note, "position" = v.position
+                    SET "position" = v.position
                     FROM UNNEST(
-                        ${changed.map(row => row.bookId)}::int[],
-                        ${changed.map(row => row.note)}::text[],
-                        ${changed.map(row => row.position)}::int[]
-                    ) AS v(book_id, note, position)
+                        ${reranked.map(row => row.bookId)}::int[],
+                        ${reranked.map(row => row.position)}::int[]
+                    ) AS v(book_id, position)
                     WHERE c."coupsDeCoeurId" = ${coupId} AND c."bookId" = v.book_id`;
             }
 

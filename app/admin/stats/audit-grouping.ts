@@ -1,5 +1,11 @@
 import { BULK_RECORD_ID } from '@/lib/audit/config';
-import { COLLECTION_DELTAS, isReservedField, parseDeltaNames } from '@/lib/audit/labels';
+import {
+    COLLECTION_DELTAS,
+    isReservedField,
+    parseDeltaNames,
+    parseDeltaNotes,
+    type CollectionDeltaFields,
+} from '@/lib/audit/labels';
 import type { AuditChangeMap, AuditEventItem, AuditFieldLabelEntry } from '@/types';
 
 /**
@@ -55,7 +61,10 @@ export function netChanges(events: AuditEventItem[]): AuditChangeMap {
     for (const [field, [before, after]] of Object.entries(net)) {
         if (before === after && !isReservedField(field)) delete net[field];
     }
-    for (const delta of Object.values(COLLECTION_DELTAS)) netCollectionDelta(events, net, delta);
+    for (const delta of Object.values(COLLECTION_DELTAS)) {
+        netCollectionDelta(events, net, delta);
+        if (delta.noted) netCollectionNotes(events, net, delta.noted);
+    }
     return net;
 }
 
@@ -69,7 +78,7 @@ export function netChanges(events: AuditEventItem[]): AuditChangeMap {
 function netCollectionDelta(
     events: AuditEventItem[],
     net: AuditChangeMap,
-    { added, removed }: { added: string; removed: string }
+    { added, removed }: CollectionDeltaFields
 ): void {
     if (!events.some((event) => added in event.changes || removed in event.changes)) return;
 
@@ -91,6 +100,39 @@ function netCollectionDelta(
     delete net[removed];
     if (minus.size > 0) net[removed] = [sorted(minus), null];
     if (plus.size > 0) net[added] = [null, sorted(plus)];
+}
+
+/**
+ * The remarks of a delta-traced collection, netted per entry: each event names
+ * only the entries whose remark IT changed, so the generic fold would keep the
+ * last event's books and lose the others. Replayed instead, per name — the
+ * remark before the burst, the remark after it — and a remark written back to
+ * what it was drops out, like a field that came back to its value.
+ */
+function netCollectionNotes(events: AuditEventItem[], net: AuditChangeMap, noted: string): void {
+    if (!events.some((event) => noted in event.changes)) return;
+
+    const notes = new Map<string, [string | null, string | null]>();
+    for (const event of [...events].reverse()) {
+        const [before, after] = event.changes[noted] ?? [null, null];
+        const from = parseDeltaNotes(before) ?? [];
+        const to = new Map(parseDeltaNotes(after) ?? []);
+        for (const [name, note] of from) {
+            const seen = notes.get(name);
+            notes.set(name, [seen ? seen[0] : note, to.get(name) ?? null]);
+        }
+    }
+
+    const kept = [...notes.entries()]
+        .filter(([, [from, to]]) => from !== to)
+        .sort(([a], [b]) => a.localeCompare(b, 'fr'));
+    delete net[noted];
+    if (kept.length > 0) {
+        net[noted] = [
+            JSON.stringify(kept.map(([name, [from]]) => [name, from])),
+            JSON.stringify(kept.map(([name, [, to]]) => [name, to])),
+        ];
+    }
 }
 
 /**
