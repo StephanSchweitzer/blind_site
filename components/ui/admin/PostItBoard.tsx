@@ -34,9 +34,10 @@ import {
  * dépend de qui a rangé en dernier. Ici l'ordre est celui du serveur — rappels
  * arrivés en tête, puis du plus récent au plus ancien (lib/post-its/postIts.ts).
  *
- * Le jaune est celui des post-its de bureau, sous leur propre titre — le même
- * emprunt de teinte que les cartes « Pages du site » (section-icons.ts). Pas de
- * rouge, pas de priorité : un rappel arrivé passe en tête, en bleu, sans plus.
+ * Le rose est une couleur de post-it de bureau, et celle de leur carte et de leur
+ * icône dans le menu (section-icons.ts) : un post-it se reconnaît partout de la
+ * même teinte. Pas de rouge, pas de priorité : un rappel arrivé passe en tête,
+ * en bleu, sans plus.
  */
 
 type Mode = 'dashboard' | PostItState;
@@ -222,7 +223,7 @@ function PostItCard({
                 'flex h-full flex-col gap-3 rounded-lg border p-4 text-foreground',
                 done
                     ? 'border-border bg-card'
-                    : 'border-yellow-700 bg-yellow-50 dark:border-yellow-500 dark:bg-yellow-900/20',
+                    : 'border-pink-600 bg-pink-50 dark:border-pink-500 dark:bg-pink-900/20',
             )}
         >
             <Heading id={headingId} className="sr-only">
@@ -381,7 +382,7 @@ function PostItForm({
         <form onSubmit={submit} className="space-y-5">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-foreground">
-                    <StickyNote className="h-5 w-5 text-yellow-700 dark:text-yellow-400" aria-hidden="true" />
+                    <StickyNote className="h-5 w-5 text-pink-700 dark:text-pink-400" aria-hidden="true" />
                     {item ? 'Modifier le post-it' : 'Ajouter un post-it'}
                 </DialogTitle>
                 <DialogDescription>Tous les permanents le verront sur le tableau de bord.</DialogDescription>
@@ -538,13 +539,13 @@ export function LinkedPostIts({
     return (
         <section
             aria-labelledby={headingId}
-            className={cn('rounded-lg border border-yellow-700 bg-yellow-50 px-4 py-3 dark:border-yellow-500 dark:bg-yellow-900/20', className)}
+            className={cn('rounded-lg border border-pink-600 bg-pink-50 px-4 py-3 dark:border-pink-500 dark:bg-pink-900/20', className)}
         >
             <Heading id={headingId} className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <StickyNote className="h-4 w-4 text-yellow-700 dark:text-yellow-400" aria-hidden="true" />
+                <StickyNote className="h-4 w-4 text-pink-700 dark:text-pink-400" aria-hidden="true" />
                 {items.length > 1 ? `${items.length} post-its` : 'Post-it'}
             </Heading>
-            <ul className="mt-2 divide-y divide-yellow-700/30 dark:divide-yellow-500/30">
+            <ul className="mt-2 divide-y divide-pink-600/30 dark:divide-pink-500/30">
                 {items.map((item) => (
                     <li key={item.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-2">
                         <div className="min-w-0 flex-1 space-y-1">

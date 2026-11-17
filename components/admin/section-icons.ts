@@ -102,9 +102,10 @@ export const SECTION_ACCENT: Record<string, SectionAccent> = {
     'Historique': 'violet',
     'Infos pratiques': 'teal',
     'Nous rejoindre': 'orange',
-    // Le jaune des post-its de bureau, emprunté aux Demandes : c'est la couleur
-    // que l'on reconnaît d'abord, et ils ont leur propre titre au tableau de bord.
-    'Post-its': 'yellow',
+    // Rose, une couleur de post-it de bureau, empruntée aux Listes de livres :
+    // le jaune des Demandes les mettait côte à côte dans la grille Gestion du
+    // tableau de bord, et les Listes de livres sont seules dans la section Livres.
+    'Post-its': 'pink',
 };
 
 // Static class strings, so Tailwind's JIT keeps them (they live in source).

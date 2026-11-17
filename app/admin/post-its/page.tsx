@@ -46,8 +46,8 @@ export default async function PostItsPage({ searchParams }: PageProps) {
         <AdminCard className="p-6 md:p-8 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h1 className="flex items-center gap-3 text-2xl font-semibold text-foreground">
-                    <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-md bg-yellow-100 dark:bg-yellow-900/40">
-                        <StickyNote className="h-5 w-5 text-yellow-800 dark:text-yellow-300" />
+                    <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-md bg-pink-100 dark:bg-pink-900/40">
+                        <StickyNote className="h-5 w-5 text-pink-800 dark:text-pink-300" />
                     </span>
                     Post-its
                 </h1>
@@ -63,7 +63,7 @@ export default async function PostItsPage({ searchParams }: PageProps) {
                         className={cn(
                             '-mb-px border-b-2 px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                             etat === tab.key
-                                ? 'border-yellow-700 text-foreground dark:border-yellow-500'
+                                ? 'border-pink-600 text-foreground dark:border-pink-500'
                                 : 'border-transparent text-muted-foreground hover:text-foreground',
                         )}
                     >
