@@ -16,7 +16,7 @@ La barre de navigation en haut de la page reprend les mêmes liens que les carte
 
 En haut, la partie « **En ce moment** » réunit ce que le tableau de bord est seul à dire : le bandeau « À traiter » (voir plus bas) et les trois files d'attente du catalogue, « Doublons », « Audio orphelin » et « Corbeille audio », dont le nombre, en gras, dit s'il reste du travail. Juste en dessous, les [post-its](#post-its) de l'équipe. Viennent ensuite les cartes des sections Livres, Gestion, Membres et Pages du site.
 
-Chaque carte des sections Livres et Membres donne, sous son nom, le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours. Les cartes de la section Gestion (Demandes, Attributions, Factures, Paiements, Statistiques) et celles des Pages du site n'affichent aucun nombre : ce qui reste à faire s'y lit dans le bandeau « À traiter ». Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…).
+Chaque carte des sections Livres et Membres donne, sous son nom, le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours. Les cartes de la section Gestion (Demandes, Attributions, Factures, Paiements, Post-its, Statistiques) et celles des Pages du site n'affichent aucun nombre : ce qui reste à faire s'y lit dans le bandeau « À traiter ». Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…).
 
 ![Page principale - capture 1](/admin/aide/images/page-principale-01.jpg)
 
@@ -77,7 +77,7 @@ Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur c
 
 ## Post-its
 
-Sous « En ce moment », la partie « **Post-its** » réunit les notes de l'équipe : ce qu'il faut garder en tête et qu'aucune page ne dit — « studio fermé jeudi », « rappeler l'imprimeur lundi ». Tous les permanents voient les mêmes post-its. On les retrouve aussi dans le menu Gestion, sous « Post-its ».
+Sous « En ce moment », la partie « **Post-its** » réunit les notes de l'équipe : ce qu'il faut garder en tête et qu'aucune page ne dit — « studio fermé jeudi », « rappeler l'imprimeur lundi ». Tous les permanents voient les mêmes post-its. On les retrouve aussi sur la page Post-its, par la carte « Post-its » de la section Gestion ou par le menu Gestion.
 
 Pour en écrire un, cliquez sur « **Ajouter un post-it** ». Seul le texte est obligatoire (1 000 caractères au plus). Deux champs facultatifs le complètent :
 

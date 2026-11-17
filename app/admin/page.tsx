@@ -284,6 +284,7 @@ export default async function Dashboard() {
                     <li><AdminDashboardCard title="Attributions" href="/admin/assignments" /></li>
                     <li><AdminDashboardCard title="Factures" href="/admin/bills" /></li>
                     <li><AdminDashboardCard title="Paiements" href="/admin/payments" /></li>
+                    <li><AdminDashboardCard title="Post-its" href="/admin/post-its" /></li>
                     {isSuper && (
                         <li><AdminDashboardCard title="Statistiques" href="/admin/stats" /></li>
                     )}
