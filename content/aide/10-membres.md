@@ -146,6 +146,8 @@ Comme indiqué précédemment, la page du dossier peut être ouverte en cliquant
 
 Lorsque vous cliquez dessus, vous accédez au dossier de ce membre. À côté du nom, l'en-tête affiche le type de membre, le statut et la cotisation. Cliquez sur le statut pour le changer ou consulter son historique.
 
+Si des [post-its](/admin/aide/page-principale#post-its) sont liés à cette personne, ils s'affichent sous l'en-tête, quel que soit l'onglet ouvert, avec leur bouton « Fait ».
+
 ![Membres - capture 20](/admin/aide/images/membres-20.jpg)
 
 Les onglets situés au milieu de la page dépendent du type de membre. Un auditeur en a quatre : (1) toutes les demandes qu'il a jamais effectuées, (2) toutes ses factures, (3) tous ses paiements, et (4) les attributions qui lui ont été lues. Un lecteur n'a que ses attributions et ses paiements, et un donateur que ses paiements. Les autres types de membres (permanents, trésorière…) gardent les quatre onglets.

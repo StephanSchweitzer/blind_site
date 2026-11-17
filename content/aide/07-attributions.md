@@ -80,7 +80,7 @@ Pour l'enregistrer, cliquez sur le bouton « Créer l'attribution » situé tout
 
 ## Modification des attributions
 
-Pour modifier une attribution, cliquez sur la ligne correspondante dans le tableau des attributions.
+Pour modifier une attribution, cliquez sur la ligne correspondante dans le tableau des attributions. Si des [post-its](/admin/aide/page-principale#post-its) sont liés à l'attribution, ils s'affichent en haut du modal, avec leur bouton « Fait ».
 
 ![Attributions - capture 12](/admin/aide/images/attributions-12.jpg)
 

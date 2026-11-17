@@ -165,7 +165,7 @@ Pour modifier une demande, cliquez sur la ligne correspondante.
 
 ![Demandes - capture 10](/admin/aide/images/demandes-10.jpg)
 
-Cela ouvrira le modal de la demande.
+Cela ouvrira le modal de la demande. Si des [post-its](/admin/aide/page-principale#post-its) sont liés à la demande, ils s'affichent en haut du modal, avec leur bouton « Fait ».
 
 En haut de la page, on peut voir les informations générales que nous avons ajoutées lors de la création de la demande.
 

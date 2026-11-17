@@ -21,6 +21,7 @@ import { PaymentMethod, getPaymentMethodLabel } from '@/lib/payment-enums';
 import { AddPaymentFormBackend } from './PaymentFormBackendBase';
 import { BillPDFButton } from './BillPDFButton';
 import { CopyableId } from './CopyableId';
+import { LinkedPostIts } from './PostItBoard';
 import { BillHistory, BillEventDTO } from './BillHistory';
 import { BillDeletedNotice } from './BillDeletedNotice';
 import { parisDate } from '@/lib/paris-day';
@@ -477,6 +478,7 @@ export function EditBillModal({
 
                 {bill && !isLoading && (
                     <div className="space-y-5">
+                        {!isDeleted && <LinkedPostIts kind="bill" id={bill.id} />}
                         {isDeleted && (
                             <BillDeletedNotice
                                 billId={bill.id}

@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { EditOrderFormBackend } from '@/admin/EditOrderFormBackend';
 import { CopyableId } from '@/admin/CopyableId';
+import { LinkedPostIts } from '@/admin/PostItBoard';
 import type { OrderAssignment, OrderFormData, User, Book } from '@/admin/OrderFormBackendBase';
 import { FormLoadingGate } from '@/components/ui/form-skeleton';
 import { pagePricingFromRow } from '@/lib/orders/pagePricingForm';
@@ -93,6 +94,7 @@ export function EditOrderModal({
                         {orderId && <CopyableId id={orderId} label="de la demande" />}
                     </DialogTitle>
                 </DialogHeader>
+                {order && !order.deletedAt && <LinkedPostIts kind="order" id={Number(orderId)} />}
                 <div className="px-1">
                     <FormLoadingGate loading={!order} error={error} fields={8}>
                         {order && (

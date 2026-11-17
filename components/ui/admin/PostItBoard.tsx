@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useId, useState } from 'react';
+import React, { useCallback, useEffect, useId, useState } from 'react';
 import { Check, Link2, Pencil, Plus, RotateCcw, StickyNote, Trash2 } from 'lucide-react';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from '@/components/ui/button';
@@ -467,5 +467,114 @@ function PostItForm({
                 </Button>
             </div>
         </form>
+    );
+}
+
+const FILTER_PARAM: Record<PostItLinkKind, string> = {
+    user: 'userId',
+    order: 'orderId',
+    assignment: 'assignmentId',
+    bill: 'billId',
+};
+
+/**
+ * Les post-its ouverts liés à un dossier, affichés sur ce dossier : la fiche
+ * d'une personne, la fenêtre d'une demande, d'une attribution ou d'une facture.
+ * C'est ce qui garde une note sur un dossier à côté du dossier, plutôt que sur
+ * le seul tableau de bord où l'on ne pense pas à la chercher en l'ouvrant.
+ *
+ * Rien n'est affiché quand il n'y en a pas — pas de « Aucun post-it » dans
+ * chaque fenêtre. On peut les marquer « Fait » d'ici ; le texte se modifie
+ * depuis le tableau de bord, et l'on n'en ajoute pas d'ici non plus : ces
+ * fenêtres sont des formulaires, et un second formulaire dedans se confondrait
+ * avec le premier.
+ *
+ * `initialItems` quand le serveur les a déjà lus (le dossier) ; sinon ils sont
+ * demandés à l'ouverture (les fenêtres d'édition).
+ */
+export function LinkedPostIts({
+    kind,
+    id,
+    initialItems,
+    headingLevel: Heading = 'h3',
+    className,
+}: {
+    kind: PostItLinkKind;
+    id: number;
+    initialItems?: PostItItem[];
+    /** h3 dans une fenêtre, dont le titre est le h2 ; h2 sur le dossier. */
+    headingLevel?: 'h2' | 'h3';
+    className?: string;
+}) {
+    const [items, setItems] = useState<PostItItem[]>(initialItems ?? []);
+    const [busyId, setBusyId] = useState<number | null>(null);
+    const headingId = useId();
+
+    useEffect(() => {
+        if (initialItems) return;
+        const controller = new AbortController();
+        fetch(`/api/post-its?${FILTER_PARAM[kind]}=${id}`, { signal: controller.signal, cache: 'no-store' })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => { if (data) setItems(data.items); })
+            .catch(() => { /* une note manquante ne doit pas gêner l'ouverture du dossier */ });
+        return () => controller.abort();
+    }, [kind, id, initialItems]);
+
+    if (items.length === 0) return null;
+
+    const markDone = async (item: PostItItem) => {
+        setBusyId(item.id);
+        try {
+            await send(`/api/post-its/${item.id}`, { method: 'PATCH', body: JSON.stringify({ done: true }) });
+            setItems((current) => current.filter((i) => i.id !== item.id));
+            toast({ title: 'Post-it marqué comme fait' });
+        } catch (err) {
+            toast(apiErrorToast(err, { title: 'Marquer comme fait impossible', action: `Marquer comme fait — post-it #${item.id}` }));
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    return (
+        <section
+            aria-labelledby={headingId}
+            className={cn('rounded-lg border border-yellow-700 bg-yellow-50 px-4 py-3 dark:border-yellow-500 dark:bg-yellow-900/20', className)}
+        >
+            <Heading id={headingId} className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <StickyNote className="h-4 w-4 text-yellow-700 dark:text-yellow-400" aria-hidden="true" />
+                {items.length > 1 ? `${items.length} post-its` : 'Post-it'}
+            </Heading>
+            <ul className="mt-2 divide-y divide-yellow-700/30 dark:divide-yellow-500/30">
+                {items.map((item) => (
+                    <li key={item.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-2">
+                        <div className="min-w-0 flex-1 space-y-1">
+                            <p className="whitespace-pre-wrap break-words text-sm text-foreground">{item.content}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {item.author?.name ?? 'Auteur inconnu'} · {parisDate(new Date(item.createdAt), PERSON_DAY)}
+                                {item.remindOn && (
+                                    item.due ? (
+                                        <> · <span className="font-semibold text-blue-800 dark:text-blue-300">Rappel le {formatDay(item.remindOn)}</span></>
+                                    ) : (
+                                        <> · Rappel le {formatDay(item.remindOn)}</>
+                                    )
+                                )}
+                            </p>
+                        </div>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void markDone(item)}
+                            disabled={busyId === item.id}
+                            aria-label={`Marquer comme fait : ${excerpt(item.content)}`}
+                            className="gap-1.5 bg-card"
+                        >
+                            <Check className="h-4 w-4" aria-hidden="true" />
+                            Fait
+                        </Button>
+                    </li>
+                ))}
+            </ul>
+        </section>
     );
 }

@@ -13,6 +13,8 @@ import { computeCotisationStatus } from '@/lib/cotisation';
 import { CotisationPill } from '@/components/ui/admin/CotisationStatusPill';
 import { getCurrentUser, isAdmin, isSuperAdmin } from '@/lib/auth/guards';
 import { MailingLabelButton } from '@/admin/MailingLabelButton';
+import { LinkedPostIts } from '@/admin/PostItBoard';
+import { listOpenPostIts } from '@/lib/post-its/postIts';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -74,6 +76,10 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
         select: { cotisationYear: true, paymentDate: true, creationDate: true },
     });
     const cotisation = computeCotisationStatus(cotisationPayments);
+
+    // Les post-its liés à cette fiche, sous l'en-tête et au-dessus des onglets :
+    // visibles quel que soit l'onglet ouvert.
+    const postIts = me ? (await listOpenPostIts(me, { userId })).items : [];
 
     const fullName =
         [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Sans nom';
@@ -143,6 +149,8 @@ export default async function DossierLayout({ children, params }: LayoutProps) {
                     </div>
                 </CardContent>
             </Card>
+
+            {postIts.length > 0 && <LinkedPostIts kind="user" id={user.id} initialItems={postIts} headingLevel="h2" />}
 
             <DossierTabs userId={user.id} memberType={user.memberType} />
 

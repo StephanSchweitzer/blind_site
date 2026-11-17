@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { EditAssignmentFormBackend } from '@/admin/EditAssignmentFormBackend';
 import { CopyableId } from '@/admin/CopyableId';
+import { LinkedPostIts } from '@/admin/PostItBoard';
 import {
     AssignmentFormData,
     AssignmentReaderHistory,
@@ -110,6 +111,7 @@ export function EditAssignmentModal({
                         {assignmentId && <CopyableId id={assignmentId} label="de l'attribution" />}
                     </DialogTitle>
                 </DialogHeader>
+                {assignment && <LinkedPostIts kind="assignment" id={Number(assignmentId)} />}
                 <div className="px-1">
                     <FormLoadingGate loading={!assignment} error={error} fields={7}>
                         {assignment && (

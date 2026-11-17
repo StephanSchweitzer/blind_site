@@ -84,7 +84,9 @@ Pour en écrire un, cliquez sur « **Ajouter un post-it** ». Seul le texte est 
 - **Rappel le** : ce jour-là, le post-it passe en tête du tableau, sa date en bleu. Avant, il reste à sa place, la date affichée en petit.
 - **Lié à** : une fiche, une demande, une attribution ou une facture. Pour une fiche, cherchez la personne par son nom ; pour les trois autres, indiquez leur numéro (celui qu'affichent les listes, « Demande #812 »). Le post-it affiche alors un lien qui ouvre directement ce dossier. Si ce dossier est supprimé plus tard, le lien reste, barré.
 
-Une note qui ne concerne qu'une personne ou qu'une demande a souvent mieux sa place dans le champ « Notes » de sa fiche, de la demande ou de l'attribution : on l'y trouve en ouvrant le dossier, sans passer par le tableau de bord.
+Un post-it lié s'affiche aussi **sur le dossier lui-même**, tant qu'il n'est pas fait : sous l'en-tête du dossier de la personne, ou en haut du modal de la demande, de l'attribution ou de la facture. On l'y voit en ouvrant le dossier, sans passer par le tableau de bord, et le bouton « Fait » y fonctionne de la même façon. Pour modifier son texte, passez par le tableau de bord ou la page Post-its.
+
+Un post-it est fait pour être fermé un jour. Ce qui reste vrai d'une personne ou d'une demande — une préférence, une consigne d'envoi — a sa place dans le champ « Notes » de sa fiche, de la demande ou de l'attribution.
 
 Les post-its arrivés à leur jour de rappel viennent en premier, le plus ancien rappel en tête ; tous les autres suivent, du plus récent au plus ancien. Chaque post-it indique qui l'a écrit et quand.
 

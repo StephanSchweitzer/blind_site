@@ -94,7 +94,7 @@ Si le règlement est déjà arrivé, choisissez « **Payée** » dans « État d
 
 ## Modification et impression des factures
 
-Pour modifier une facture ou télécharger la version PDF à envoyer au client, cliquez sur la ligne correspondante. Cela ouvre le modal de modification de la facture.
+Pour modifier une facture ou télécharger la version PDF à envoyer au client, cliquez sur la ligne correspondante. Cela ouvre le modal de modification de la facture. Si des [post-its](/admin/aide/page-principale#post-its) sont liés à la facture, ils s'affichent en haut du modal, avec leur bouton « Fait ».
 
 ### Un brouillon
 
