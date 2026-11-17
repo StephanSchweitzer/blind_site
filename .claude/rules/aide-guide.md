@@ -37,6 +37,7 @@ Concretely, when a change touches any of these, open the matching file:
 | public site content (news, contact, équipe…) | `15-pages-publiques.md` |
 | stats, journal des modifications | `16-statistiques.md` |
 | profile, own unavailability, own activity | `17-mon-compte.md` |
+| post-its (dashboard, /admin/post-its) | `02-page-principale.md` (`#post-its`) |
 
 Rules that keep it honest:
 

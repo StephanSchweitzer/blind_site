@@ -90,6 +90,9 @@ model User {
   languages                 ReaderLanguage[]
   civility                  Civility?           @relation(fields: [civilityId], references: [id])
   passwordResetTokens       PasswordResetToken[]
+  postItsWritten            PostIt[]            @relation("PostItAuthor")
+  postItsDone               PostIt[]            @relation("PostItDoneBy")
+  postIts                   PostIt[]            @relation("PostItUser")
 
   @@index([deletedAt])
 }
@@ -303,6 +306,7 @@ model Bill {
   orders           Orders[]
   payments         Payment[]
   events           BillEvent[]
+  postIts          PostIt[]
 
   @@index([clientId])
   @@index([kind])
@@ -393,6 +397,7 @@ model Orders {
   updatedAt           DateTime?          @updatedAt
   assignments         Assignment[]
   events              OrderEvent[]
+  postIts             PostIt[]
   aveugle             User               @relation("OrdersAsAveugle", fields: [aveugleId], references: [id])
   bill                Bill?              @relation(fields: [billId], references: [id])
   catalogue           Book               @relation(fields: [catalogueId], references: [id])
@@ -436,6 +441,7 @@ model Assignment {
   status             Status             @relation(fields: [statusId], references: [id])
   readerHistory      AssignmentReader[]
   events             AssignmentEvent[]
+  postIts            PostIt[]
 
   @@index([catalogueId])
   @@index([orderId])
@@ -1111,4 +1117,47 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+/// Les post-its du tableau de bord : des notes partagées entre permanents, pour
+/// ce que les pages structurées ne disent pas (« studio fermé jeudi »,
+/// « rappeler l'imprimeur lundi »). Demandés par l'équipe, qui en avait sur
+/// l'ancienne application.
+///
+/// Délibérément petits : un texte, un auteur, un jour de rappel facultatif, et
+/// au plus UN lien vers une fiche, une demande, une attribution ou une facture —
+/// pour qu'une note sur un dossier se lise à côté de ce dossier plutôt que de
+/// devenir un second suivi à côté des pages. Ni responsable, ni statut, ni
+/// priorité : ce serait une deuxième file d'attributions. « Au plus un lien »
+/// est vérifié par l'API (app/api/post-its), pas par une contrainte CHECK.
+///
+/// Tracés dans le journal (lib/audit/config.ts) : un post-it supprimé se
+/// restaure depuis /admin/stats tant que l'événement survit.
+model PostIt {
+  id           Int         @id @default(autoincrement())
+  content      String
+  authorId     Int?
+  author       User?       @relation("PostItAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  /// Jour de rappel, à minuit UTC comme les autres colonnes « jour » : se relit
+  /// en `timeZone: 'UTC'` (voir .claude/rules/code-style.md).
+  remindOn     DateTime?
+  doneAt       DateTime?
+  doneById     Int?
+  doneBy       User?       @relation("PostItDoneBy", fields: [doneById], references: [id], onDelete: SetNull)
+  userId       Int?
+  user         User?       @relation("PostItUser", fields: [userId], references: [id], onDelete: SetNull)
+  orderId      Int?
+  order        Orders?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  assignmentId Int?
+  assignment   Assignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  billId       Int?
+  bill         Bill?       @relation(fields: [billId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([doneAt])
+  @@index([userId])
+  @@index([orderId])
+  @@index([assignmentId])
+  @@index([billId])
 }

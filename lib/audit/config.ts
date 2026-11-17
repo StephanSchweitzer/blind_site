@@ -54,6 +54,7 @@ export const AUDITED_MODELS = new Set([
     'PracticalInfo',
     'MembershipOption',
     'AudioTrackEvent',
+    'PostIt',
 ]);
 
 export function isAuditedModel(model: string | undefined): boolean {

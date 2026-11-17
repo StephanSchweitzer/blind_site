@@ -80,6 +80,13 @@ const userName = (row: Row, prefix = ''): string =>
 const label = (title: string | null, subtitle: string | null = null): AuditRecordLabel | null =>
     title === null ? null : { title, subtitle };
 
+/** Les premiers mots d'un post-it, sur une ligne — son seul « nom ». */
+function postItExcerpt(value: unknown): string | null {
+    const text = str(value)?.replace(/\s+/g, ' ');
+    if (!text) return null;
+    return text.length > 60 ? `${text.slice(0, 59).trimEnd()}…` : text;
+}
+
 /**
  * A label that names a BOOK the audited row merely refers to, and carries the
  * link to it. Used where the row itself has no name and no screen — an audio
@@ -252,6 +259,14 @@ const SOURCES: Record<string, LabelSource> = {
         fromSnapshot: (snap) => label(str(snap.title)),
     },
 
+    // Un post-it n'a pas de titre : le début de son texte en tient lieu.
+    PostIt: {
+        query: (ids) => Prisma.sql`
+            SELECT id::text AS key, content FROM "PostIt" WHERE id IN (${Prisma.join(ids)})`,
+        build: (row) => label(postItExcerpt(row.content)),
+        fromSnapshot: (snap) => label(postItExcerpt(snap.content)),
+    },
+
     // No fromSnapshot: AudioTrackEvent rows are create-only, so a DELETE
     // snapshot never happens. The live join names a row inserted one at a time
     // (a renommage, a restauration); a batch — a folder upload, « vider le
@@ -329,6 +344,12 @@ const FK_FIELD_TARGETS: Record<string, string> = {
     'Book.addedById': 'User',
     'CoupsDeCoeur.addedById': 'User',
     'News.authorId': 'User',
+    'PostIt.authorId': 'User',
+    'PostIt.doneById': 'User',
+    'PostIt.userId': 'User',
+    'PostIt.orderId': 'Orders',
+    'PostIt.assignmentId': 'Assignment',
+    'PostIt.billId': 'Bill',
     'AudioTrackEvent.performedById': 'User',
     'AudioTrackEvent.bookId': 'Book',
 };

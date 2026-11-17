@@ -68,6 +68,10 @@ export const AIDE_SYNONYMS: Record<string, string[]> = {
     utilisateur: ['membre', 'fiche'],
     adherent: ['membre', 'cotisation'],
 
+    // Les post-its (« postit » tapé d'un trait, « mémo »).
+    postit: ['post'],
+    memo: ['post'],
+
     // L'argent.
     reglement: ['paiement'],
     recu: ['paiement'],

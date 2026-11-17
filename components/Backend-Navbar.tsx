@@ -46,6 +46,7 @@ const navGroups: NavGroup[] = [
             { href: '/admin/assignments', label: 'Attributions' },
             { href: '/admin/bills', label: 'Factures' },
             { href: '/admin/payments', label: 'Paiements' },
+            { href: '/admin/post-its', label: 'Post-its' },
             { href: '/admin/stats', label: 'Statistiques' },
         ],
     },

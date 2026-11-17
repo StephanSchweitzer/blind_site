@@ -33,6 +33,7 @@ these mostly kept their original English names even though the French rename hap
 | availability / planning | Disponibilités | `/admin/disponibilites`; `/api/availability`; `lib/users/availability.ts` |
 | stats / audit log | Statistiques / Journal | `AuditEvent`; `/admin/stats`; `/api/stats/*`; `lib/audit/` |
 | site content pages | Pages | `SiteContact`, `TeamMember`, `HistoryEvent`, `PracticalInfo`, `MembershipOption` |
+| post-its / shared notes | Post-its *(never « pense-bête »)* | `PostIt` model; `/admin/post-its`; `/api/post-its`; dashboard section; `lib/post-its/` |
 
 Enum-to-label maps live in `lib/user-enums.ts` (member types, access levels, save types,
 languages, delivery methods), `lib/user-activity-enums.ts` (activity status),

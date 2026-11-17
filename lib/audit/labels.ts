@@ -52,6 +52,7 @@ export const MODEL_LABELS: Record<string, string> = {
     Bill: 'Facture',
     Payment: 'Paiement',
     News: 'Actualité',
+    PostIt: 'Post-it',
     Status: 'Statut',
     MediaFormat: 'Format de média',
     Civility: 'Civilité',
@@ -85,6 +86,8 @@ export function recordHref(model: string, recordId: string): string | null {
             return `/admin/listes-de-livres`;
         case 'News':
             return `/admin/news?news=${recordId}`;
+        case 'PostIt':
+            return '/admin/post-its';
         // No standalone screen for one AudioTrackEvent row: it is a log line,
         // not a record, and this recordId points at nothing a URL can open. The
         // link comes from its label's `linked` instead, which names the book —
@@ -273,6 +276,9 @@ const FIELD_LABELS: Record<string, string> = {
     question: 'Question',
     publishedAt: 'Publié le',
     authorId: 'Auteur',
+    remindOn: 'Rappel le',
+    doneAt: 'Fait le',
+    doneById: 'Fait par',
     active: 'Actif',
     sortOrder: 'Ordre',
     iconKey: 'Icône',

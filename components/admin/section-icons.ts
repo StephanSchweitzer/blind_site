@@ -22,6 +22,7 @@ import {
     BarChart3,
     Trash2,
     Globe,
+    StickyNote,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -56,6 +57,7 @@ export const SECTION_ICONS: Record<string, LucideIcon> = {
     'Nous rejoindre': Handshake,
     'Statistiques': BarChart3,
     'Site principal': Globe,
+    'Post-its': StickyNote,
 };
 
 export type SectionAccent =
@@ -100,6 +102,9 @@ export const SECTION_ACCENT: Record<string, SectionAccent> = {
     'Historique': 'violet',
     'Infos pratiques': 'teal',
     'Nous rejoindre': 'orange',
+    // Le jaune des post-its de bureau, emprunté aux Demandes : c'est la couleur
+    // que l'on reconnaît d'abord, et ils ont leur propre titre au tableau de bord.
+    'Post-its': 'yellow',
 };
 
 // Static class strings, so Tailwind's JIT keeps them (they live in source).

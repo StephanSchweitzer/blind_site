@@ -19,6 +19,9 @@ import {
 import { lateBillsWhere } from '@/lib/billing';
 import { getOpenAssignmentsWithUploadedAudio } from '@/lib/assignments/audioDeposee';
 import { parisDate } from '@/lib/paris-day';
+import { listOpenPostIts } from '@/lib/post-its/postIts';
+import { PostItBoard } from '@/admin/PostItBoard';
+import { AideLink } from '@/components/ui/admin/AideLink';
 
 /**
  * One line of the « À traiter » band for one stage of the délais (lib/orders/delais.ts):
@@ -132,6 +135,8 @@ export default async function Dashboard() {
         audioDeposeeIds,
         // Le prénom du bonjour en tête du tableau de bord.
         myName,
+        // Les post-its ouverts, rappels arrivés en tête (lib/post-its/postIts.ts).
+        postIts,
     ] = await Promise.all([
         Promise.all([
             prisma.book.count(),
@@ -155,6 +160,7 @@ export default async function Dashboard() {
         prisma.bill.count({ where: { isActive: true, ...lateBillsWhere() } }),
         getOpenAssignmentsWithUploadedAudio(),
         me ? prisma.user.findUnique({ where: { id: me.id }, select: { firstName: true } }) : null,
+        me ? listOpenPostIts(me) : { items: [], total: 0 },
     ]);
     const firstName = myName?.firstName?.trim();
     // La date du jour sous le bonjour, en heure française. Pas d'heure : la
@@ -246,6 +252,17 @@ export default async function Dashboard() {
                         <li><AdminDashboardCard emphasis title="Corbeille audio" count={audioTrashCount} countLabel="restaurables" href="/admin/audio-corbeille" /></li>
                     </ul>
                 </div>
+            </section>
+
+            {/* Les post-its de l'équipe, juste sous ce qui attend : ce qu'aucune
+                page ne dit (« studio fermé jeudi »). Ouverts seulement — les
+                terminés ont leur onglet sur /admin/post-its. */}
+            <section className="mb-10" aria-labelledby="dashboard-post-its">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 px-1">
+                    <h2 id="dashboard-post-its" className="text-lg font-semibold text-foreground">Post-its</h2>
+                    <AideLink section="page-principale" anchor="post-its" />
+                </div>
+                <PostItBoard initialItems={postIts.items} initialTotal={postIts.total} mode="dashboard" />
             </section>
 
             <section className="mb-10" aria-labelledby="dashboard-livres">

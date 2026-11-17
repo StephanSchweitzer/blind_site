@@ -14,7 +14,7 @@ Cette page répertorie les liens et descriptions de toutes les sections disponib
 
 La barre de navigation en haut de la page reprend les mêmes liens que les cartes affichées en dessous — les deux mènent aux mêmes pages au sein d'Arbre Rose, et chaque page y porte la même icône, dans la même couleur, que sa carte.
 
-En haut, la partie « **En ce moment** » réunit ce que le tableau de bord est seul à dire : le bandeau « À traiter » (voir plus bas) et les trois files d'attente du catalogue, « Doublons », « Audio orphelin » et « Corbeille audio », dont le nombre, en gras, dit s'il reste du travail. Viennent ensuite les cartes des sections Livres, Gestion, Membres et Pages du site.
+En haut, la partie « **En ce moment** » réunit ce que le tableau de bord est seul à dire : le bandeau « À traiter » (voir plus bas) et les trois files d'attente du catalogue, « Doublons », « Audio orphelin » et « Corbeille audio », dont le nombre, en gras, dit s'il reste du travail. Juste en dessous, les [post-its](#post-its) de l'équipe. Viennent ensuite les cartes des sections Livres, Gestion, Membres et Pages du site.
 
 Chaque carte des sections Livres et Membres donne, sous son nom, le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours. Les cartes de la section Gestion (Demandes, Attributions, Factures, Paiements, Statistiques) et celles des Pages du site n'affichent aucun nombre : ce qui reste à faire s'y lit dans le bandeau « À traiter ». Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…).
 
@@ -74,6 +74,23 @@ La ligne « Audio déposé » n'a pas de délai : l'enregistrement est déjà au
 Cliquez sur une ligne pour ouvrir la liste correspondante, déjà filtrée sur ces éléments-là ; les cartes en dessous ouvrent la page entière. Les délais de chaque étape sont expliqués dans [Délais et suivi](/admin/aide/demandes#delais-et-suivi).
 
 ![Page principale - capture 6](/admin/aide/images/page-principale-06.jpg)
+
+## Post-its
+
+Sous « En ce moment », la partie « **Post-its** » réunit les notes de l'équipe : ce qu'il faut garder en tête et qu'aucune page ne dit — « studio fermé jeudi », « rappeler l'imprimeur lundi ». Tous les permanents voient les mêmes post-its. On les retrouve aussi dans le menu Gestion, sous « Post-its ».
+
+Pour en écrire un, cliquez sur « **Ajouter un post-it** ». Seul le texte est obligatoire (1 000 caractères au plus). Deux champs facultatifs le complètent :
+
+- **Rappel le** : ce jour-là, le post-it passe en tête du tableau, sa date en bleu. Avant, il reste à sa place, la date affichée en petit.
+- **Lié à** : une fiche, une demande, une attribution ou une facture. Pour une fiche, cherchez la personne par son nom ; pour les trois autres, indiquez leur numéro (celui qu'affichent les listes, « Demande #812 »). Le post-it affiche alors un lien qui ouvre directement ce dossier. Si ce dossier est supprimé plus tard, le lien reste, barré.
+
+Une note qui ne concerne qu'une personne ou qu'une demande a souvent mieux sa place dans le champ « Notes » de sa fiche, de la demande ou de l'attribution : on l'y trouve en ouvrant le dossier, sans passer par le tableau de bord.
+
+Les post-its arrivés à leur jour de rappel viennent en premier, le plus ancien rappel en tête ; tous les autres suivent, du plus récent au plus ancien. Chaque post-it indique qui l'a écrit et quand.
+
+Quand ce qu'il disait est fait, cliquez sur « **Fait** » : le post-it quitte le tableau de bord. N'importe quel permanent peut marquer un post-it comme fait. Les post-its faits se retrouvent sur la page Post-its, onglet « **Terminés** », avec qui les a marqués et quand ; le bouton « Rouvrir » remet un post-it sur le tableau.
+
+Seuls l'auteur d'un post-it et les Super Admins peuvent le **modifier** ou le **supprimer**. Une suppression se fait après confirmation ; pour simplement retirer un post-it du tableau, mieux vaut le marquer comme fait. Comme les autres modifications, l'écriture, la modification et la suppression d'un post-it figurent dans le [journal des modifications](/admin/aide/statistiques).
 
 ## Les listes
 
