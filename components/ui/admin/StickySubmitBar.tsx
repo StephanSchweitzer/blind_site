@@ -23,6 +23,13 @@ import { cn } from '@/lib/utils';
  * formulaire défilait dans ces 24 px sous lui. L'ombre pleine, couleur de la
  * carte, couvre exactement cette bande ; le `mb-6` l'empêche de recouvrir le
  * bouton de suppression qui suit quand il n'est pas collé.
+ *
+ * Attention : dans un formulaire en `space-y-*`, ce `mb-6` est annulé (le
+ * sélecteur de `space-y` est plus spécifique et remet la marge du bas à 0).
+ * L'écart sous la barre est alors celui du parent : il faut 24 px au moins
+ * avant ce qui suit (`space-y-6`, ou un `pt-2` sous un `space-y-4`), sinon
+ * l'ombre mange le haut du bouton suivant — c'est arrivé à « Supprimer le
+ * paiement ».
  */
 export function StickySubmitBar({ children, className }: { children: React.ReactNode; className?: string }) {
     return (

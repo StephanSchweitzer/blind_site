@@ -1280,7 +1280,10 @@ export function OrderFormBackendBase({
                             {isLoading ? loadingText : submitButtonText}
                         </Button>
                     </StickySubmitBar>
-                    <div className="space-y-4">
+                    {/* pt-2 : le fieldset est en space-y-4, il faut 24 px sous la
+                        barre d'enregistrement pour que son ombre ne mange pas le
+                        bouton (voir StickySubmitBar). */}
+                    <div className="space-y-4 pt-2">
                         {showDelete && onDelete && (
                             <Button
                                 type="button"

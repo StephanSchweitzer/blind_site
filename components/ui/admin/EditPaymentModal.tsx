@@ -180,7 +180,10 @@ export function EditPaymentModal({
                             }}
                         />
 
-                        <div className="flex justify-end">
+                        {/* pt-2 : avec le space-y-4, 24 px sous la barre d'enregistrement
+                            — la bande que couvre son ombre (voir StickySubmitBar). À 16 px,
+                            l'ombre mangeait le haut de ce bouton. */}
+                        <div className="flex justify-end pt-2">
                             <Button
                                 type="button"
                                 variant="destructive"
