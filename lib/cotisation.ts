@@ -22,7 +22,16 @@
 // (lib/users/activityStatus.ts), qui sert déjà de frontière de journée aux
 // indisponibilités et aux statistiques. Comparer deux minuits UTC ne dépend
 // d'aucun fuseau.
+//
+// SEULE UNE COTISATION ENCAISSÉE COUVRE
+//
+// Une cotisation sans date de paiement n'est pas encore reçue (lib/payments/
+// status.ts) : un appel de cotisation envoyé ne rend personne « à jour ». Les
+// deux moitiés ci-dessous — computeCotisationStatus et cotisationCoverageWhere —
+// écartent donc les mêmes lignes. Le repli « date de paiement, sinon date de
+// création » qui vivait ici est devenu la migration payment_date_backfill.
 import { parisDayStart } from '@/lib/users/activityStatus';
+import { isPaymentReceived, RECEIVED_PAYMENT_WHERE } from '@/lib/payments/status';
 
 /** The subset of Payment fields this helper needs. Dates may arrive as Date
  *  objects (Prisma, server) or ISO strings (JSON, client). */
@@ -39,8 +48,7 @@ export interface CotisationStatus {
     expiresAt: Date | null;
     /** The year the cotisation covers (from cotisationYear, else the reference year). */
     coverYear: number | null;
-    /** Reference date of the cotisation that grants the current coverage
-     *  (paymentDate ?? creationDate). */
+    /** Payment date of the cotisation that grants the current coverage. */
     latestPaymentDate: Date | null;
 }
 
@@ -65,7 +73,8 @@ function oneYearOn(day: Date): Date {
  *  - When `cotisationYear` is set (the authoritative, admin-entered year), the
  *    cotisation covers that CALENDAR year and expires on 31 Dec of it.
  *  - Legacy rows without a `cotisationYear` keep the old ROLLING rule:
- *    a full year from the reference date (paymentDate ?? creationDate). */
+ *    a full year from the payment date.
+ *  Only called on received payments — see computeCotisationStatus. */
 function paymentCoverage(
     p: CotisationPaymentInput,
 ): { expiresAt: Date; coverYear: number; ref: Date } | null {
@@ -92,10 +101,9 @@ function toDate(value: Date | string | null | undefined): Date | null {
     return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** The date a cotisation is anchored on: the payment date when known, else the
- *  record's creation date. */
+/** The date a cotisation is anchored on: the day it was received. */
 function referenceDate(p: CotisationPaymentInput): Date | null {
-    return toDate(p.paymentDate) ?? toDate(p.creationDate);
+    return toDate(p.paymentDate);
 }
 
 /**
@@ -115,6 +123,7 @@ export function computeCotisationStatus(
     now: Date = new Date(),
 ): CotisationStatus {
     const covered = payments
+        .filter(isPaymentReceived)
         .map(paymentCoverage)
         .filter((x): x is { expiresAt: Date; coverYear: number; ref: Date } => x !== null);
 
@@ -145,22 +154,14 @@ export function computeCotisationStatus(
  * DB-query counterpart of computeCotisationStatus — the parts a caller needs to
  * build the "currently à jour" Prisma filter. Keep the two in sync.
  *
- * A member is à jour iff they have an active COTISATION payment that is EITHER:
+ * A member is à jour iff they have an active, RECEIVED COTISATION payment that
+ * is EITHER:
  *   - calendar-year: `cotisationYear >= currentYear` (covers this year or a
  *     prepaid future year), OR
- *   - legacy (no `cotisationYear`): reference date (paymentDate ?? creationDate)
- *     on or after `legacyCutoff` (now − 1 year), the old rolling rule.
+ *   - legacy (no `cotisationYear`): payment date on or after `legacyCutoff`
+ *     (now − 1 year), the old rolling rule.
  *
- * This module stays Prisma-free, so callers assemble the filter themselves
- * (see app/admin/users/[type]/page.tsx):
- *   const { currentYear, legacyCutoff } = cotisationCoverageQuery();
- *   const match = { type: 'COTISATION', isActive: true, OR: [
- *       { cotisationYear: { gte: currentYear } },
- *       { AND: [{ cotisationYear: null }, { OR: [
- *           { paymentDate: { gte: legacyCutoff } },
- *           { AND: [{ paymentDate: null }, { creationDate: { gte: legacyCutoff } }] },
- *       ] }] },
- *   ] };
+ * The assembled filter is cotisationCoverageWhere, below.
  */
 export function cotisationCoverageQuery(now: Date = new Date()): {
     currentYear: number;
@@ -175,6 +176,31 @@ export function cotisationCoverageQuery(now: Date = new Date()): {
         legacyCutoff: new Date(
             Date.UTC(today.getUTCFullYear() - 1, today.getUTCMonth(), today.getUTCDate())
         ),
+    };
+}
+
+/**
+ * Le `where` Prisma (sur Payment) d'une cotisation qui rend « à jour » aujourd'hui
+ * — la moitié base de données de computeCotisationStatus, à poser sous
+ * `payments: { some: … }` ou `{ none: … }`.
+ *
+ * Un objet nu, parce que ce module reste sans Prisma : l'appelant serveur le
+ * passe tel quel (voir app/admin/users/[type]/page.tsx). Il le recopiait
+ * auparavant à la main, avec le repli sur la date de création que les deux
+ * moitiés devaient abandonner ensemble.
+ */
+export function cotisationCoverageWhere(now: Date = new Date()) {
+    const { currentYear, legacyCutoff } = cotisationCoverageQuery(now);
+    return {
+        type: 'COTISATION' as const,
+        isActive: true,
+        ...RECEIVED_PAYMENT_WHERE,
+        OR: [
+            // Calendar-year: covers the current year or a prepaid future year.
+            { cotisationYear: { gte: currentYear } },
+            // Legacy rows without a cotisationYear: rolling 12 months.
+            { cotisationYear: null, paymentDate: { gte: legacyCutoff } },
+        ],
     };
 }
 

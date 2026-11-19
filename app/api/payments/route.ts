@@ -16,6 +16,7 @@ import {
     buildPaymentListWhere,
     buildPaymentListOrderBy,
 } from '@/lib/payments/list-query';
+import { receivedDateOnSave } from '@/lib/payments/status';
 
 const clientSelect = { id: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
@@ -97,14 +98,16 @@ export const POST = withAdmin(async (request, { me }) => {
         const billId = d.type === PaymentType.ENREGISTREMENT ? (d.billId ?? null) : null;
         const cotisationYear = d.type === PaymentType.COTISATION ? (d.cotisationYear ?? null) : null;
 
+        const creationDate = d.creationDate ? new Date(d.creationDate) : new Date();
         const data: Prisma.PaymentUncheckedCreateInput = {
             clientId: d.clientId ?? null,
             type: d.type,
             amount: new Prisma.Decimal(d.amount),
             paymentMethod: d.paymentMethod ?? null,
-            creationDate: d.creationDate ? new Date(d.creationDate) : new Date(),
+            creationDate,
             issueDate: d.issueDate ? new Date(d.issueDate) : null,
-            paymentDate: d.paymentDate ? new Date(d.paymentDate) : null,
+            // Toujours datée : un paiement saisi est un encaissement (receivedDateOnSave).
+            paymentDate: receivedDateOnSave(d.paymentDate ? new Date(d.paymentDate) : null, creationDate),
             allocationDate: d.allocationDate ? new Date(d.allocationDate) : null,
             paymentReference: d.paymentReference ?? null,
             receiptNumber: d.receiptNumber ?? null,

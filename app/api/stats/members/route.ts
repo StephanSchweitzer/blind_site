@@ -122,6 +122,8 @@ export const GET = withSuperAdmin(async (request) => {
                 FROM "Payment" p
                 LEFT JOIN "User" u ON u.id = p."clientId" AND u."deletedAt" IS NULL
                 WHERE p."isActive" = true
+                  -- Encaissés seulement : RECEIVED_PAYMENT_WHERE (lib/payments/status.ts), en SQL.
+                  AND p."paymentDate" IS NOT NULL
                   AND p."creationDate" >= ${from} AND p."creationDate" < ${to}
                 GROUP BY 1, 2`,
         ]);

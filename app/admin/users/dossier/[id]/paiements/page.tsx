@@ -9,6 +9,7 @@ import {
     buildPaymentListWhere,
     buildPaymentListOrderBy,
 } from '@/lib/payments/list-query';
+import { RECEIVED_PAYMENT_WHERE } from '@/lib/payments/status';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -43,7 +44,8 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
             include: paymentsTableInclude,
         }),
         prisma.payment.count({ where: whereClause }),
-        prisma.payment.aggregate({ where: whereClause, _sum: { amount: true } }),
+        // Ce que la personne a PAYÉ : les paiements encaissés (lib/payments/status.ts).
+        prisma.payment.aggregate({ where: { ...whereClause, ...RECEIVED_PAYMENT_WHERE }, _sum: { amount: true } }),
     ]);
 
     const client = await prisma.user.findUnique({

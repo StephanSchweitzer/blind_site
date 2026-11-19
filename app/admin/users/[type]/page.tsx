@@ -8,7 +8,7 @@ import { UserTypeTabs } from './user-type-tabs';
 import { UserType, USER_TYPE_VALUES, isUserType } from '@/lib/user-enums';
 import { activityStatusFilterWhere } from '@/lib/users/activityStatus';
 import { LANGUAGE_VALUES } from '@/lib/user-enums';
-import { cotisationCoverageQuery } from '@/lib/cotisation';
+import { cotisationCoverageWhere } from '@/lib/cotisation';
 import { pageInfo, pageSkip, parsePageParam, parsePageSizeParam, redirectPastLastPage } from '@/lib/pagination';
 import { buildUserNameSearch } from '@/lib/search';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
@@ -80,30 +80,11 @@ async function getUsers(
 
         // Cotisation filter: "à jour" = has an active cotisation still in coverage;
         // "en retard" = none (covers both lapsed cotisations and no cotisation at all).
-        // Mirrors lib/cotisation.ts computeCotisationStatus: calendar-year coverage via
-        // cotisationYear, with the legacy rolling rule for rows that predate it.
+        // The DB half of lib/cotisation.ts computeCotisationStatus, built there so the
+        // two halves can't drift: calendar-year coverage via cotisationYear, the legacy
+        // rolling rule for rows that predate it, received cotisations only.
         if ((cotisationFilter === 'a_jour' || cotisationFilter === 'en_retard') && !lifted.includes('cotisation')) {
-            const { currentYear, legacyCutoff } = cotisationCoverageQuery();
-            const cotisationMatch: Prisma.PaymentWhereInput = {
-                type: 'COTISATION',
-                isActive: true,
-                OR: [
-                    // Calendar-year: covers the current year or a prepaid future year.
-                    { cotisationYear: { gte: currentYear } },
-                    // Legacy rows without a cotisationYear: rolling 12 months.
-                    {
-                        AND: [
-                            { cotisationYear: null },
-                            {
-                                OR: [
-                                    { paymentDate: { gte: legacyCutoff } },
-                                    { AND: [{ paymentDate: null }, { creationDate: { gte: legacyCutoff } }] },
-                                ],
-                            },
-                        ],
-                    },
-                ],
-            };
+            const cotisationMatch: Prisma.PaymentWhereInput = cotisationCoverageWhere();
             scopedWhere.payments =
                 cotisationFilter === 'a_jour' ? { some: cotisationMatch } : { none: cotisationMatch };
         }

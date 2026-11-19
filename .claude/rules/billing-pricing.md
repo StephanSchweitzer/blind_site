@@ -31,6 +31,12 @@ paths:
   abandonnée, qui n'a par définition pas de règlement à montrer (voir l'en-tête de
   `syncBillPaymentInfo`). « Payée » n'exige pas non plus que les paiements couvrent le total :
   « Marquer comme payée » est justement le geste pour un règlement partiel accepté.
+- **Un paiement est encaissé si et seulement s'il a une `paymentDate`** (`lib/payments/status.ts`).
+  Tout ce qui additionne de l'argent ou dit « à jour » / « payée » filtre sur
+  `RECEIVED_PAYMENT_WHERE` (ou `isPaymentReceived`), jamais sur `isActive` seul — et ne retombe
+  plus sur `creationDate` : ce repli est devenu la migration `payment_date_backfill`. Une liste de
+  paiements, elle, les montre tous. Tant qu'un paiement ne peut pas être *demandé*, les routes de
+  saisie datent un paiement sans date de sa création (`receivedDateOnSave`).
 - Bills **lock** once status is `PAID` or `SOLDE`. Do not mutate a locked bill's line items
   or amounts.
 - Exporting a PDF from a `DRAFT` bill triggers a confirmation dialog before proceeding.

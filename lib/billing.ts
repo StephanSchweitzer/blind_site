@@ -11,6 +11,7 @@ import {
 import { STATUS, type GuardResult } from '@/lib/statusSync';
 // Le jour français, partagé — voir lib/paris-day.ts pour le pourquoi du fuseau.
 import { parisDayKey } from '@/lib/paris-day';
+import { RECEIVED_PAYMENT_WHERE } from '@/lib/payments/status';
 
 type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
@@ -60,9 +61,13 @@ export async function recomputeBillTotal(
  * porte deux paiements, et c'est le cas normal, pas une anomalie. Tout ce qui
  * s'affiche ou se décide à propos du règlement d'une facture se lit donc ici,
  * jamais sur un paiement pris isolément.
+ *
+ * Seuls les paiements ENCAISSÉS comptent (lib/payments/status.ts) : un paiement
+ * sans date de paiement n'est pas encore reçu, et ne doit ni réduire le reste à
+ * payer, ni faire passer la facture « Payée », ni lui prêter une référence.
  */
 export type BillPaymentSummary = {
-    /** Somme des paiements actifs rattachés. */
+    /** Somme des paiements actifs encaissés rattachés. */
     paid: Prisma.Decimal;
     /** invoiceAmount − paid. Négatif = trop-perçu, et c'est une information. */
     outstanding: Prisma.Decimal;
@@ -81,8 +86,8 @@ export async function summarizeBillPayments(
     const [bill, payments] = await Promise.all([
         tx.bill.findUnique({ where: { id: billId }, select: { invoiceAmount: true } }),
         tx.payment.findMany({
-            where: { billId, isActive: true },
-            select: { id: true, amount: true, paymentReference: true, paymentDate: true, creationDate: true },
+            where: { billId, isActive: true, ...RECEIVED_PAYMENT_WHERE },
+            select: { id: true, amount: true, paymentReference: true, paymentDate: true },
             orderBy: { id: 'asc' },
         }),
     ]);
@@ -98,10 +103,10 @@ export async function summarizeBillPayments(
         new Set(payments.map((p) => p.paymentReference).filter((r): r is string => !!r))
     );
 
-    // Une date de règlement manquante retombe sur la date de création du
-    // paiement : la colonne de la facture ne doit pas se vider parce qu'un
-    // paiement a été saisi sans sa date.
-    const dates = payments.map((p) => p.paymentDate ?? p.creationDate);
+    // Tous datés : le filtre ci-dessus ne garde que les paiements encaissés. Le
+    // repli sur la date de création qui vivait ici est devenu la migration
+    // payment_date_backfill — voir lib/payments/status.ts.
+    const dates = payments.flatMap((p) => (p.paymentDate ? [p.paymentDate] : []));
 
     return {
         paid,
@@ -151,7 +156,9 @@ export async function syncBillPaymentInfo(
 
     const bill = await tx.bill.findUnique({ where: { id: billId }, select: { state: true } });
     // PAID seulement — voir l'en-tête : une facture soldée est une créance
-    // abandonnée, elle n'a par définition pas de règlement à montrer.
+    // abandonnée, elle n'a par définition pas de règlement à montrer. Et
+    // `count` ne compte que les paiements encaissés : un paiement attendu ne
+    // suffit pas à justifier « Payée ».
     if (bill?.state === BillingStatus.PAID && summary.count === 0) {
         throw new Error('BILL_SETTLED_NEEDS_PAYMENT');
     }

@@ -11,6 +11,7 @@ import {
     archiveHandTypedSettlement,
     BILL_IS_DRAFT_MESSAGE,
 } from '@/lib/billing';
+import { receivedDateOnSave } from '@/lib/payments/status';
 
 const clientSelect = { id: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
@@ -87,7 +88,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         const updated = await prisma.$transaction(async (tx) => {
             const existing = await tx.payment.findUnique({
                 where: { id: paymentId, isActive: true },
-                select: { id: true, type: true, clientId: true, billId: true, paymentDate: true },
+                select: { id: true, type: true, clientId: true, billId: true, paymentDate: true, creationDate: true },
             });
             if (!existing) throw new Error('PAYMENT_NOT_FOUND');
 
@@ -99,7 +100,17 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             if (p.clientId !== undefined) data.clientId = p.clientId;
             if (p.creationDate !== undefined) data.creationDate = new Date(p.creationDate);
             if (p.issueDate !== undefined) data.issueDate = p.issueDate ? new Date(p.issueDate) : null;
-            if (p.paymentDate !== undefined) data.paymentDate = p.paymentDate ? new Date(p.paymentDate) : null;
+            // Une date effacée retombe sur la date de création (receivedDateOnSave) :
+            // un paiement enregistré reste un encaissement, il ne devient pas attendu
+            // parce qu'on a vidé un champ.
+            const effectiveCreationDate =
+                p.creationDate !== undefined ? new Date(p.creationDate) : existing.creationDate;
+            if (p.paymentDate !== undefined) {
+                data.paymentDate = receivedDateOnSave(
+                    p.paymentDate ? new Date(p.paymentDate) : null,
+                    effectiveCreationDate
+                );
+            }
             if (p.allocationDate !== undefined) data.allocationDate = p.allocationDate ? new Date(p.allocationDate) : null;
             if (p.paymentReference !== undefined) data.paymentReference = p.paymentReference;
             if (p.receiptNumber !== undefined) data.receiptNumber = p.receiptNumber;
@@ -186,7 +197,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             // antérieur à l'émission, le cas même que ce contrôle signale.
             const effectivePaymentDate =
                 p.paymentDate !== undefined
-                    ? (p.paymentDate ? new Date(p.paymentDate) : null)
+                    ? (data.paymentDate as Date)
                     : existing.paymentDate;
             const dateIsChanging =
                 (effectivePaymentDate?.getTime() ?? null) !== (existing.paymentDate?.getTime() ?? null);

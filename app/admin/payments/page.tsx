@@ -10,6 +10,7 @@ import {
     buildPaymentListOrderBy,
     type PaymentListParams,
 } from '@/lib/payments/list-query';
+import { RECEIVED_PAYMENT_WHERE } from '@/lib/payments/status';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { getPaymentMethodLabel, getPaymentTypeLabel } from '@/lib/payment-enums';
@@ -50,7 +51,8 @@ async function getPayments(page: number, pageSize: number, params: PaymentListPa
                 include: paymentsTableInclude,
             }),
             prisma.payment.count({ where: whereClause }),
-            prisma.payment.aggregate({ where: whereClause, _sum: { amount: true } }),
+            // Ce qui a été ENCAISSÉ dans la sélection (lib/payments/status.ts).
+            prisma.payment.aggregate({ where: { ...whereClause, ...RECEIVED_PAYMENT_WHERE }, _sum: { amount: true } }),
         ]);
 
         // Only when the search found nothing — see lib/search-rescue.ts.
