@@ -86,6 +86,20 @@ Un paiement reçu sans avoir été demandé, le cas le plus courant, passe direc
 
 Seul un paiement encaissé compte : dans les montants, pour une cotisation « à jour », pour une facture payée. Une cotisation demandée mais pas reçue ne rend pas l'auditeur à jour. Le statut apparaît dans la liste, en tête de la fenêtre du paiement, et peut servir de filtre.
 
+### Imprimer la pro-forma, la demande ou le reçu
+
+En haut de la fenêtre d'un paiement, un bouton imprime le document qui correspond à son statut. Comme pour une facture, l'impression ouvre directement la fenêtre d'impression du navigateur ; « Enregistrer au format PDF » y est proposé.
+
+- **Pro-forma** : « Imprimer la pro-forma » imprime le montant à régler, sans rien changer au paiement. « Envoyer la demande de paiement » demande une confirmation, date la demande du jour — le paiement passe à « Demandé » — puis l'imprime.
+- **Demandé** : « Réimprimer la demande de paiement ». La date de la demande ne change pas.
+- **Encaissé** : « Émettre le reçu » demande une confirmation, donne au reçu le numéro suivant de l'année (R-2026-0001, R-2026-0002…) et la date du jour, puis l'imprime. Ensuite, « Réimprimer le reçu » le ressort à l'identique.
+
+Les documents portent le numéro du paiement : demandez à la personne de le reporter au dos de son chèque ou en référence de son virement.
+
+Une fois le reçu émis, le montant, le type, la personne, les dates, la méthode et la référence du paiement ne se modifient plus : le reçu est parti, la base doit continuer de dire la même chose. Les observations et les détails comptables restent modifiables. Seul un super admin peut corriger un paiement dont le reçu est émis.
+
+Le reçu atteste un encaissement. Ce n'est pas un reçu fiscal : il ne mentionne aucune réduction d'impôt.
+
 ## Modification des paiements
 
 Pour modifier un paiement, cliquez sur la ligne que vous souhaitez modifier. Cela ouvrira le modal « Modifier le paiement ».

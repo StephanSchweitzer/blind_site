@@ -42,6 +42,14 @@ paths:
   (cotisation, divers) peuvent rester sans date de paiement ; un enregistrement — dont la demande
   est sa facture — ou un don reçoit sa date de création (`paymentDateOnSave`) et perd sa date de
   demande. `issueDate` n'est PAS la date de la demande : c'est celle du reçu (reprise).
+- **Documents d'un paiement** (`lib/payments/documents.ts`, `PaymentPDF`) : seuls deux gestes
+  écrivent, chacun par sa route POST et jamais par PATCH — envoyer la demande (`requestDate`) et
+  émettre le reçu (`receiptNumber` R-AAAA-NNNN tiré de `ReceiptCounter`, `issueDate`). Ils
+  verrouillent la ligne (FOR UPDATE) et ne font rien la deuxième fois : une réimpression ne
+  redate pas, ne renumérote pas. Un reçu émis par le portail (`hasIssuedReceipt`, préfixe `R-`)
+  verrouille `RECEIPT_LOCKED_FIELDS` sauf pour un super admin ; les numéros de la reprise ne
+  verrouillent rien. Le reçu n'est pas un reçu fiscal — n'y ajoute aucune mention fiscale sans
+  l'accord de la trésorière.
 - Bills **lock** once status is `PAID` or `SOLDE`. Do not mutate a locked bill's line items
   or amounts.
 - Exporting a PDF from a `DRAFT` bill triggers a confirmation dialog before proceeding.

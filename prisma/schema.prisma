@@ -362,6 +362,17 @@ model Payment {
   @@index([isActive])
 }
 
+/// Le dernier numéro de reçu attribué, par année : R-2026-0001, R-2026-0002…
+/// (issueReceipt, lib/payments/receipt.ts). Une ligne par année, incrémentée
+/// dans la transaction qui verrouille le paiement, si bien que deux impressions
+/// simultanées ne reçoivent jamais le même numéro et qu'aucun numéro ne se perd.
+/// Une numérotation à part de Payment.receiptNumber de la reprise, qui ne se
+/// prolonge pas : des flottants (« 970.0 »), des doublons, une date en 2103.
+model ReceiptCounter {
+  year Int @id
+  last Int @default(0)
+}
+
 model Orders {
   id                  Int                @id @default(autoincrement())
   aveugleId           Int

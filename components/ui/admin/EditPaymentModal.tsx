@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { markToasted } from '@/hooks/useFormToast';
 import { getPaymentTypeColor, getPaymentTypeLabel } from '@/lib/payment-enums';
 import { derivePaymentStatus, getPaymentStatusColor, getPaymentStatusLabel } from '@/lib/payments/status';
+import { PaymentDocumentActions } from './PaymentDocumentActions';
 import { CopyableId } from './CopyableId';
 import type { SerializedPayment } from '@/types/api/payment.api';
 import {
@@ -157,9 +158,19 @@ export function EditPaymentModal({
 
                 {payment && !isLoading && (
                     <div className="space-y-4">
+                        {/* Les documents d'abord : c'est souvent pour eux qu'on ouvre un
+                            paiement demandé ou encaissé. Une demande envoyée ou un reçu
+                            émis rendent le paiement à jour, et le formulaire se
+                            remonte sur ces nouvelles dates (la clé). */}
+                        <PaymentDocumentActions
+                            payment={payment}
+                            onPaymentChanged={(updated) => { setPayment(updated); onPaymentUpdated?.(); }}
+                        />
+
                         <PaymentFormBackendBase
-                            key={payment.id}
+                            key={`${payment.id}-${payment.requestDate ?? ''}-${payment.receiptNumber ?? ''}`}
                             initialData={toInitialData(payment)}
+                            locked={!payment.canEditLockedFields}
                             onSubmit={handleSubmit}
                             submitButtonText="Enregistrer les modifications"
                             loadingText="Enregistrement..."

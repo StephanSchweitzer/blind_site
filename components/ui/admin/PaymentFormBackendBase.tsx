@@ -30,6 +30,7 @@ import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BillSearchCombobox, type BillSearchResult } from '@/admin/BillSearchCombobox';
 import { PaymentStatusSteps } from '@/admin/PaymentStatusSteps';
 import { isRequestablePaymentType } from '@/lib/payments/status';
+import { parisDateDisplay } from '@/lib/paris-day';
 
 // N3 — required fields, visual top→bottom (client picker, linked bill, amount).
 const FIELD_ORDER = ['client', 'bill', 'amount', 'paymentDate'];
@@ -106,6 +107,12 @@ interface PaymentFormBackendBaseProps {
     initialData?: PaymentFormInitialData;
     initialClient?: User | null;
     preset?: PaymentFormPreset | null;
+    /**
+     * Un reçu a été émis et l'utilisateur n'est pas super admin : ce que le reçu
+     * imprime ne se modifie plus (RECEIPT_LOCKED_FIELDS, lib/payments/status.ts).
+     * La route refuse de toute façon ; le formulaire le montre avant qu'on essaie.
+     */
+    locked?: boolean;
 }
 
 const NONE = 'NONE';
@@ -121,6 +128,7 @@ export function PaymentFormBackendBase({
                                            initialData,
                                            initialClient,
                                            preset = null,
+                                           locked = false,
                                        }: PaymentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const { toastError, toastFailure } = useFormToast();
@@ -283,6 +291,19 @@ export function PaymentFormBackendBase({
     return (
         <div>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {locked && initialData?.receiptNumber && (
+                        <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                            Reçu n° {initialData.receiptNumber}
+                            {initialData.issueDate ? ` émis le ${parisDateDisplay(new Date(initialData.issueDate))}` : ''} :
+                            le montant, le type, la personne, les dates et la référence ne se modifient plus.
+                            Les observations et les détails comptables restent modifiables.
+                        </p>
+                    )}
+
+                    {/* Un fieldset désactivé désactive d'un coup tous les contrôles qu'il
+                        contient — sélecteurs Radix et calendriers compris, qui sont des
+                        boutons. */}
+                    <fieldset disabled={locked} className="space-y-4 min-w-0 disabled:opacity-70">
                     {/* Type */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">
@@ -512,6 +533,8 @@ export function PaymentFormBackendBase({
                         )}
                     </div>
 
+                    </fieldset>
+
                     {/* Observations */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">Observations</label>
@@ -538,6 +561,7 @@ export function PaymentFormBackendBase({
                         {showAdvanced && (
                             <div className="mt-3 space-y-4">
                                 {showReceiptFields && (
+                                <fieldset disabled={locked} className="min-w-0 disabled:opacity-70">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-foreground">N° de reçu</label>
@@ -552,6 +576,7 @@ export function PaymentFormBackendBase({
                                         <DatePickerField value={issueDate} onChange={setIssueDate} />
                                     </div>
                                 </div>
+                                </fieldset>
                                 )}
 
                                 <div className="space-y-2">

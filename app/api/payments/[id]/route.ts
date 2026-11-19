@@ -13,37 +13,11 @@ import {
 } from '@/lib/billing';
 import { paymentDateOnSave, requestDateOnSave } from '@/lib/payments/status';
 import { requestFollowsPayment, REQUEST_AFTER_PAYMENT_MESSAGE } from '@/lib/payments/guards';
+import { paymentDetailInclude, serializePaymentDetail } from '@/lib/payments/serialize';
+import { hasIssuedReceipt, RECEIPT_LOCKED_FIELDS } from '@/lib/payments/status';
+import { isSuperAdmin } from '@/lib/auth/guards';
 
-const clientSelect = { id: true, firstName: true, lastName: true, email: true };
-const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
-
-function serialize(p: {
-    amount: Prisma.Decimal;
-    creationDate: Date;
-    issueDate: Date | null;
-    paymentDate: Date | null;
-    requestDate: Date | null;
-    exportDate: Date | null;
-    importDate: Date | null;
-    allocationDate: Date | null;
-    bill: { invoiceAmount: Prisma.Decimal; creationDate: Date } | null;
-    [k: string]: unknown;
-}) {
-    return {
-        ...p,
-        amount: p.amount.toString(),
-        creationDate: p.creationDate.toISOString(),
-        issueDate: p.issueDate?.toISOString() ?? null,
-        paymentDate: p.paymentDate?.toISOString() ?? null,
-        requestDate: p.requestDate?.toISOString() ?? null,
-        exportDate: p.exportDate?.toISOString() ?? null,
-        importDate: p.importDate?.toISOString() ?? null,
-        allocationDate: p.allocationDate?.toISOString() ?? null,
-        bill: p.bill ? { ...p.bill, invoiceAmount: p.bill.invoiceAmount.toString(), creationDate: p.bill.creationDate.toISOString() } : null,
-    };
-}
-
-export const GET = withAdmin(async (_request, context) => {
+export const GET = withAdmin(async (_request, { me, ...context }) => {
     try {
         const { id } = await context.params!;
         const paymentId = parseInt(id);
@@ -53,14 +27,14 @@ export const GET = withAdmin(async (_request, context) => {
 
         const payment = await prisma.payment.findUnique({
             where: { id: paymentId },
-            include: { client: { select: clientSelect }, bill: { select: billSelect } },
+            include: paymentDetailInclude,
         });
 
         if (!payment) {
             return NextResponse.json({ error: 'Not found', message: 'Paiement introuvable' }, { status: 404 });
         }
 
-        return NextResponse.json({ payment: serialize(payment) });
+        return NextResponse.json({ payment: serializePaymentDetail(payment, me) });
     } catch (error) {
         console.error('Error fetching payment:', error);
         return NextResponse.json(
@@ -91,7 +65,12 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         const updated = await prisma.$transaction(async (tx) => {
             const existing = await tx.payment.findUnique({
                 where: { id: paymentId, isActive: true },
-                select: { id: true, type: true, clientId: true, billId: true, paymentDate: true, requestDate: true, creationDate: true },
+                select: {
+                    id: true, type: true, clientId: true, billId: true, paymentDate: true, requestDate: true, creationDate: true,
+                    // Les champs qu'un reçu émis verrouille (RECEIPT_LOCKED_FIELDS), pour les comparer.
+                    amount: true, paymentMethod: true, paymentReference: true, cotisationYear: true,
+                    receiptNumber: true, issueDate: true,
+                },
             });
             if (!existing) throw new Error('PAYMENT_NOT_FOUND');
 
@@ -228,10 +207,27 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
                 data.cotisationYear = p.cotisationYear;
             }
 
+            // Un reçu émis par le portail est chez la personne : ce qu'il imprime
+            // ne change plus, sauf par un super admin. Comparé sur la VALEUR, pas
+            // sur la présence — le formulaire renvoie tous ses champs, et corriger
+            // une observation doit rester possible.
+            if (hasIssuedReceipt(existing) && !isSuperAdmin(me.accessLevel)) {
+                const same = (a: unknown, b: unknown) =>
+                    a instanceof Prisma.Decimal || b instanceof Prisma.Decimal
+                        ? a != null && b != null && new Prisma.Decimal(String(a)).equals(new Prisma.Decimal(String(b)))
+                        : a instanceof Date || b instanceof Date
+                            ? (a as Date | null)?.getTime() === (b as Date | null)?.getTime()
+                            : a === b;
+                const touched = RECEIPT_LOCKED_FIELDS.filter(
+                    (f) => f in data && !same(data[f], existing[f as keyof typeof existing])
+                );
+                if (touched.length > 0) throw new Error('RECEIPT_LOCKED');
+            }
+
             const saved = await tx.payment.update({
                 where: { id: paymentId },
                 data,
-                include: { client: { select: clientSelect }, bill: { select: billSelect } },
+                include: paymentDetailInclude,
             });
 
             // Les DEUX factures, quand le paiement change de facture : celle qu'il
@@ -250,7 +246,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             return saved;
         });
 
-        return NextResponse.json({ payment: serialize(updated), message: 'Paiement mis à jour avec succès' });
+        return NextResponse.json({ payment: serializePaymentDetail(updated, me), message: 'Paiement mis à jour avec succès' });
     } catch (error) {
         console.error('Error patching payment:', error);
 
@@ -259,6 +255,10 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             PAYMENT_NOT_FOUND: ['Paiement introuvable', 404],
             CLIENT_REQUIRED: ['Ce type de paiement doit être rattaché à une personne', 400],
             REQUEST_AFTER_PAYMENT: [REQUEST_AFTER_PAYMENT_MESSAGE, 400],
+            RECEIPT_LOCKED: [
+                'Un reçu a été émis pour ce paiement : son montant, son type, sa personne, ses dates et sa référence ne se modifient plus. Seul un super admin peut les corriger.',
+                409,
+            ],
             PAYMENT_BEFORE_ISSUE: ['La date de paiement ne peut pas précéder la date d’émission de la facture', 400],
             BILL_SETTLED_NEEDS_PAYMENT: [
                 'La facture que ce paiement réglait est payée : elle doit garder au moins un paiement. Rouvrez la facture avant de détacher son règlement.',

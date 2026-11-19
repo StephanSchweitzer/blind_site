@@ -122,6 +122,18 @@ export interface SerializedPayment {
     observations: string | null;
     billId: number | null;
     isActive: boolean;
-    client: { id: number; firstName: string | null; lastName: string | null; email: string | null } | null;
+    client: {
+        id: number;
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+        /** Pour les documents (pro-forma, demande, reçu) — lib/payments/serialize.ts. */
+        civility: string | null;
+        address: string[];
+    } | null;
     bill: { id: number; invoiceAmount: string; state: string; creationDate: string } | null;
+    /** Un reçu a été émis par le portail : les champs qu'il imprime sont verrouillés. */
+    receiptLocked: boolean;
+    /** Faux quand le reçu verrouille le paiement et que l'utilisateur n'est pas super admin. */
+    canEditLockedFields: boolean;
 }

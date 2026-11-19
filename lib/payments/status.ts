@@ -104,6 +104,51 @@ export function isPaymentReceived(p: { paymentDate: DateLike }): boolean {
     return isSet(p.paymentDate);
 }
 
+// ─── Reçus ───────────────────────────────────────────────────────────────────
+
+/**
+ * Le préfixe des numéros de reçu attribués par le portail (R-2026-0001). C'est
+ * lui qui distingue un reçu ÉMIS ICI des numéros de la reprise (« 970.0 »…),
+ * qu'on réimprime tels quels mais qui ne verrouillent rien : personne ne sait ce
+ * que ces papiers-là portaient.
+ */
+export const RECEIPT_PREFIX = 'R-';
+
+export function formatReceiptNumber(year: number, n: number): string {
+    return `${RECEIPT_PREFIX}${year}-${String(n).padStart(4, '0')}`;
+}
+
+/** Un reçu a été émis par le portail : le paiement est verrouillé. */
+export function hasIssuedReceipt(p: { receiptNumber: string | null }): boolean {
+    return !!p.receiptNumber && p.receiptNumber.startsWith(RECEIPT_PREFIX);
+}
+
+/**
+ * Le numéro tel qu'il s'imprime : ceux de la reprise sont des flottants
+ * (« 970.0 ») que personne n'a jamais écrits ainsi sur un reçu.
+ */
+export function displayReceiptNumber(receiptNumber: string): string {
+    return receiptNumber.replace(/\.0+$/, '');
+}
+
+/**
+ * Ce qu'un reçu imprime, et qui ne doit donc plus changer une fois émis : le
+ * papier est chez la personne, la base doit continuer de dire la même chose.
+ * Les observations, l'affectation, le comptable restent libres — ils ne
+ * figurent pas sur le reçu.
+ */
+export const RECEIPT_LOCKED_FIELDS = [
+    'type',
+    'amount',
+    'clientId',
+    'paymentDate',
+    'paymentMethod',
+    'paymentReference',
+    'cotisationYear',
+    'receiptNumber',
+    'issueDate',
+] as const;
+
 // ─── Qui peut être demandé ───────────────────────────────────────────────────
 
 /**
