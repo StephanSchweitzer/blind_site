@@ -99,6 +99,25 @@ export function resolvePagePricing(args: {
     const wasPageBased = current.pages != null;
     const isPageBased = resultingPages != null;
 
+    // « Tarifer à la page » cochée sans pages lues. La case ne voyage pas : le
+    // formulaire coché envoie toujours un prix par page (pagePricingToPayload),
+    // décoché il envoie quatre `null`. Un prix, des pages comptées ou des frais
+    // sans pages ne peuvent donc venir que d'une case cochée et laissée vide — et
+    // sans ce refus, la demande partait AU POIDS, le reste jeté sans un mot :
+    // une revue facturée au CD, sur le brouillon de l'auditeur, sans pro-forma.
+    // Les formulaires bloquent déjà ce cas (pagePricingError) ; ceci ferme l'API.
+    if (
+        !isPageBased &&
+        (billedPages != null || pricePerPage != null || transferFee != null)
+    ) {
+        return {
+            ok: false,
+            httpStatus: 400,
+            message: 'Renseignez le nombre de pages lues : une demande tarifée à la page en a besoin.',
+            field: 'pages',
+        };
+    }
+
     if (isPageBased && isDuplication) {
         return {
             ok: false,
