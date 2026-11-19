@@ -455,6 +455,9 @@ export function EditBillModal({
                         {bill && !isLoading && !isDeleted && (
                             <BillPDFButton
                                 bill={bill}
+                                // Un statut choisi sous « Changer le statut » mais pas
+                                // confirmé n'est pas sur la facture imprimée.
+                                unsaved={pendingState !== null}
                                 onBillUpdated={async () => {
                                     if (billId !== null) await loadBill(billId);
                                     onBillUpdated?.();

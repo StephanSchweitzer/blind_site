@@ -116,7 +116,7 @@ Un brouillon n'a pas de bloc « Paiements » : il n'a pas encore été envoyé, 
 
 Une fois la facture émise, vous pouvez :
 
-(1) « **Imprimer la facture** », en haut, pour générer le PDF à envoyer à l'auditeur
+(1) « **Imprimer la facture** », en haut, pour générer le PDF à envoyer à l'auditeur. Si vous avez choisi un nouveau statut sans cliquer sur « Confirmer », une fenêtre « Statut non confirmé » vous prévient que la facture s'imprimera dans son statut enregistré
 
 (2) « **Remettre en brouillon** » pour la corriger
 

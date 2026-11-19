@@ -11,7 +11,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { BillingStatus } from '@/lib/billing-enums';
-import { printPdfBlob } from '@/lib/print-pdf';
+import { printPdfBlob, whenPrintDialogClosed } from '@/lib/print-pdf';
+import { useUnsavedPrintGuard } from '@/hooks/useUnsavedPrintGuard';
+import type { ConfirmOptions } from '@/components/ui/confirm-dialog';
 import { loadOnDemand } from '@/lib/load-on-demand';
 import type { BillPDFData } from './BillPDF';
 
@@ -42,10 +44,26 @@ interface BillPDFButtonProps {
      * le dire évite de laisser croire qu'on va en émettre un second.
      */
     label?: string;
+    /**
+     * La fenêtre de la facture a quelque chose de non enregistré (un statut choisi
+     * mais pas confirmé) : l'impression, qui part de la version enregistrée,
+     * prévient d'abord (useUnsavedPrintGuard).
+     */
+    unsaved?: boolean;
     className?: string;
 }
 
 const FULL_TEXT = 'Imprimer la facture';
+
+// Ce qui n'est pas enregistré, sur une facture, c'est un statut choisi sous « Changer le
+// statut » sans « Confirmer » : le dire avec ses mots, pas ceux d'un formulaire.
+const UNCONFIRMED_STATUS_PROMPT: ConfirmOptions = {
+    title: 'Statut non confirmé',
+    description:
+        'Vous avez choisi un nouveau statut sans cliquer sur « Confirmer ». La facture s’imprimera dans son statut enregistré.\n\nPour imprimer le nouveau statut, revenez à la facture, cliquez sur « Confirmer », puis imprimez.',
+    confirmLabel: 'Imprimer sans le nouveau statut',
+    cancelLabel: 'Revenir à la facture',
+};
 
 /** Only used by the download fallback in printPdfBlob — see lib/print-pdf.ts. */
 const fileNameFor = (data: BillPDFData, draft: boolean) =>
@@ -61,8 +79,10 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
     onBillUpdated,
     onPrinted,
     label = FULL_TEXT,
+    unsaved = false,
     className = '',
 }) => {
+    const guardPrint = useUnsavedPrintGuard(unsaved, UNCONFIRMED_STATUS_PROMPT);
     const [isPrinting, setIsPrinting] = useState(false);
     const [isIssuing, setIsIssuing] = useState(false);
     // The facture the draft dialog is about. Held here rather than read from
@@ -102,6 +122,16 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
         return data.bill as BillPDFData;
     };
 
+    /**
+     * Ce qui suit une impression — rafraîchir la liste, fermer l'avis qui
+     * l'appelait — attend que la fenêtre d'impression soit refermée : un
+     * router.refresh() pendant qu'elle est ouverte la fait refermer par Chrome
+     * (lib/print-pdf.ts). La facture émise se relit donc au retour.
+     */
+    const afterPrinting = (then?: () => void) => {
+        if (then) void whenPrintDialogClosed().then(then);
+    };
+
     // Click: drafts open the confirm dialog, everything else prints directly.
     const handleClick = async (event: React.MouseEvent) => {
         // May sit inside a clickable table row — printing must not also open
@@ -109,6 +139,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
         event.stopPropagation();
         event.preventDefault();
         if (isPrinting || isIssuing) return;
+        if (!(await guardPrint())) return;
 
         setError(null);
         setIsPrinting(true);
@@ -121,7 +152,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
                 return;
             }
             await print(data, false);
-            onPrinted?.();
+            afterPrinting(onPrinted);
         } catch (err) {
             console.error('Bill print failed:', err);
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
@@ -137,7 +168,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
         try {
             await print(draftBill, true);
             setDraftBill(null);
-            onPrinted?.();
+            afterPrinting(onPrinted);
         } catch (err) {
             console.error('Bill print failed:', err);
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
@@ -162,8 +193,7 @@ export const BillPDFButton: React.FC<BillPDFButtonProps> = ({
 
             await print(await fetchBill(draftBill.id), false);
             setDraftBill(null);
-            onBillUpdated?.();
-            onPrinted?.();
+            afterPrinting(() => { onBillUpdated?.(); onPrinted?.(); });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Erreur inattendue');
         } finally {

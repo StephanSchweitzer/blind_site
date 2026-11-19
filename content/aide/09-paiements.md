@@ -84,6 +84,8 @@ Le statut d'un paiement se lit sur ses dates, comme celui d'une demande ou d'une
 
 Un paiement reçu sans avoir été demandé, le cas le plus courant, passe directement à « Encaissé ». Pour enregistrer le règlement d'un paiement demandé, ouvrez-le, choisissez « Déjà reçu » et indiquez la date de paiement, la méthode et la référence.
 
+Pour revenir d'une étape, utilisez le bouton « **Revenir à …** » en haut de la fenêtre du paiement plutôt que d'effacer une date : « Revenir à « Pro-forma » » efface la date de la demande, « Revenir à « Demandé » » (ou à « Pro-forma », si le paiement n'avait pas été demandé) efface la date de paiement et la référence. Une confirmation vous est demandée. Un paiement dont le reçu est émis ne revient plus en arrière.
+
 Seul un paiement encaissé compte : dans les montants, pour une cotisation « à jour », pour une facture payée. Une cotisation demandée mais pas reçue ne rend pas l'auditeur à jour. Le statut apparaît dans la liste, en tête de la fenêtre du paiement, et peut servir de filtre.
 
 ### Imprimer la pro-forma, la demande ou le reçu
@@ -91,10 +93,12 @@ Seul un paiement encaissé compte : dans les montants, pour une cotisation « à
 En haut de la fenêtre d'un paiement, un bouton imprime le document qui correspond à son statut. Comme pour une facture, l'impression ouvre directement la fenêtre d'impression du navigateur ; « Enregistrer au format PDF » y est proposé.
 
 - **Pro-forma** : « Imprimer la pro-forma » imprime le montant à régler, sans rien changer au paiement. « Envoyer la demande de paiement » demande une confirmation, date la demande du jour — le paiement passe à « Demandé » — puis l'imprime.
-- **Demandé** : « Réimprimer la demande de paiement ». La date de la demande ne change pas.
+- **Demandé** : « Réimprimer la demande de paiement ». La date de la demande ne change pas. « Revenir à « Pro-forma » » annule l'envoi.
 - **Encaissé** : « Émettre le reçu » demande une confirmation, donne au reçu le numéro suivant de l'année (R-2026-0001, R-2026-0002…) et la date du jour, puis l'imprime. Ensuite, « Réimprimer le reçu » le ressort à l'identique.
 
 Les documents portent le numéro du paiement : demandez à la personne de le reporter au dos de son chèque ou en référence de son virement.
+
+Les documents s'impriment depuis la version **enregistrée** du paiement. Si vous avez modifié le formulaire sans l'enregistrer, une fenêtre « Modifications non enregistrées » vous le signale avant d'imprimer : « Revenir au formulaire » pour enregistrer d'abord, ou « Imprimer sans mes modifications ». Avant un changement de statut (envoyer la demande, émettre le reçu, revenir d'une étape), elle vous prévient que vos modifications seraient perdues.
 
 Une fois le reçu émis, le montant, le type, la personne, les dates, la méthode et la référence du paiement ne se modifient plus : le reçu est parti, la base doit continuer de dire la même chose. Les observations et les détails comptables restent modifiables. Seul un super admin peut corriger un paiement dont le reçu est émis.
 

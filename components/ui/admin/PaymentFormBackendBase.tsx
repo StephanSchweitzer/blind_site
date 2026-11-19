@@ -1,7 +1,7 @@
 'use client';
 
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -113,9 +113,17 @@ interface PaymentFormBackendBaseProps {
      * La route refuse de toute façon ; le formulaire le montre avant qu'on essaie.
      */
     locked?: boolean;
+    /**
+     * Le formulaire diffère-t-il de ce qu'il a reçu ? Pour la fenêtre du paiement,
+     * dont les documents s'impriment depuis la version enregistrée
+     * (PaymentDocumentActions, useUnsavedPrintGuard).
+     */
+    onDirtyChange?: (dirty: boolean) => void;
 }
 
 const NONE = 'NONE';
+
+const dateKey = (d: Date | null) => (d ? d.getTime() : null);
 // « Comptable » used to be a third choice — the field's own label offered as a
 // value — and no payment ever carried it.
 const COMPTABLE_OPTIONS = ['ECA', 'AUXILIAIRES'] as const;
@@ -129,6 +137,7 @@ export function PaymentFormBackendBase({
                                            initialClient,
                                            preset = null,
                                            locked = false,
+                                           onDirtyChange,
                                        }: PaymentFormBackendBaseProps) {
     const [isLoading, setIsLoading] = useState(false);
     const { toastError, toastFailure } = useFormToast();
@@ -215,6 +224,20 @@ export function PaymentFormBackendBase({
     const [selectedBill, setSelectedBill] = useState<BillOption | null>(
         initialData?.bill ?? preset?.bill ?? null
     );
+
+    // Tout ce que le formulaire peut changer, en une chaîne comparable. Celle du
+    // premier rendu sert de référence : la fenêtre remonte le formulaire (sa clé)
+    // chaque fois que le paiement enregistré change.
+    const snapshot = JSON.stringify([
+        type, selectedClient?.id ?? null, amount, paymentMethod, dateKey(creationDate), dateKey(issueDate),
+        received, dateKey(paymentDate), dateKey(requestDate), paymentReference, receiptNumber, cotisationYear,
+        observations, fiscalite, comptable, isAllocated, dateKey(allocationDate), selectedBill?.id ?? null,
+    ]);
+    const [initialSnapshot] = useState(snapshot);
+    const dirty = snapshot !== initialSnapshot;
+    useEffect(() => {
+        onDirtyChange?.(dirty);
+    }, [dirty, onDirtyChange]);
 
     const handleClientSelect = (user: User) => {
         setSelectedClient(user);

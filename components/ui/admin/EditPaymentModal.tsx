@@ -14,6 +14,7 @@ import { markToasted } from '@/hooks/useFormToast';
 import { getPaymentTypeColor, getPaymentTypeLabel } from '@/lib/payment-enums';
 import { derivePaymentStatus, getPaymentStatusColor, getPaymentStatusLabel } from '@/lib/payments/status';
 import { PaymentDocumentActions } from './PaymentDocumentActions';
+import { whenPrintDialogClosed } from '@/lib/print-pdf';
 import { CopyableId } from './CopyableId';
 import type { SerializedPayment } from '@/types/api/payment.api';
 import {
@@ -64,6 +65,9 @@ export function EditPaymentModal({
     const [payment, setPayment] = useState<SerializedPayment | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Le formulaire a des modifications non enregistrées : les documents, eux,
+    // partent de la version enregistrée (PaymentDocumentActions le dit).
+    const [formDirty, setFormDirty] = useState(false);
 
     const loadPayment = useCallback(async (id: number) => {
         setIsLoading(true);
@@ -159,18 +163,28 @@ export function EditPaymentModal({
                 {payment && !isLoading && (
                     <div className="space-y-4">
                         {/* Les documents d'abord : c'est souvent pour eux qu'on ouvre un
-                            paiement demandé ou encaissé. Une demande envoyée ou un reçu
-                            émis rendent le paiement à jour, et le formulaire se
-                            remonte sur ces nouvelles dates (la clé). */}
+                            paiement demandé ou encaissé. Une demande envoyée, un reçu
+                            émis ou un retour à l'étape précédente rendent le paiement à
+                            jour, et le formulaire se remonte sur ces nouvelles dates (la
+                            clé). */}
                         <PaymentDocumentActions
                             payment={payment}
-                            onPaymentChanged={(updated) => { setPayment(updated); onPaymentUpdated?.(); }}
+                            unsaved={formDirty}
+                            onPaymentChanged={(updated) => {
+                                setPayment(updated);
+                                // La liste derrière se rafraîchit (router.refresh) une fois
+                                // la fenêtre d'impression refermée : Chrome la referme
+                                // d'office si la page navigue pendant qu'elle est ouverte
+                                // (lib/print-pdf.ts).
+                                void whenPrintDialogClosed().then(() => onPaymentUpdated?.());
+                            }}
                         />
 
                         <PaymentFormBackendBase
-                            key={`${payment.id}-${payment.requestDate ?? ''}-${payment.receiptNumber ?? ''}`}
+                            key={`${payment.id}-${payment.requestDate ?? ''}-${payment.paymentDate ?? ''}-${payment.receiptNumber ?? ''}`}
                             initialData={toInitialData(payment)}
                             locked={!payment.canEditLockedFields}
+                            onDirtyChange={setFormDirty}
                             onSubmit={handleSubmit}
                             submitButtonText="Enregistrer les modifications"
                             loadingText="Enregistrement..."

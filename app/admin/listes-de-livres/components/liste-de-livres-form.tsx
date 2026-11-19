@@ -295,7 +295,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                                     <span className="sr-only"> (s&apos;ouvre dans un nouvel onglet)</span>
                                 </IntentLink>
                             </Button>
-                            <CoupDeCoeurPDFButton coupDeCoeurId={listId} />
+                            <CoupDeCoeurPDFButton coupDeCoeurId={listId} unsaved={isDirty} />
                             <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                                 <PopoverTrigger asChild>
                                     <Button type="button" variant="outline" size="icon" className="h-9 w-9" aria-label="Plus d'actions">

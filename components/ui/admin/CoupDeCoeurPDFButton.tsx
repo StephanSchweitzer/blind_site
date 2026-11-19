@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { printPdfBlob } from '@/lib/print-pdf';
 import { loadOnDemand } from '@/lib/load-on-demand';
+import { useUnsavedPrintGuard } from '@/hooks/useUnsavedPrintGuard';
 import type { CoupDeCoeur } from '@/types/coups-de-coeur';
 import { visibleListEntries } from '@/lib/books/listEntries';
 
@@ -23,6 +24,11 @@ interface CoupDeCoeurPDFButtonProps {
     coupDeCoeurId: number;
     /** `icon` is the compact form for table rows. */
     variant?: 'button' | 'icon';
+    /**
+     * L'éditeur a des modifications non enregistrées : la liste s'imprime
+     * depuis la base, l'impression prévient d'abord (useUnsavedPrintGuard).
+     */
+    unsaved?: boolean;
     className?: string;
 }
 
@@ -42,8 +48,10 @@ const fileNameFor = (title: string) => {
 export const CoupDeCoeurPDFButton: React.FC<CoupDeCoeurPDFButtonProps> = ({
     coupDeCoeurId,
     variant = 'button',
+    unsaved = false,
     className = '',
 }) => {
+    const guardPrint = useUnsavedPrintGuard(unsaved);
     const [isPrinting, setIsPrinting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +61,7 @@ export const CoupDeCoeurPDFButton: React.FC<CoupDeCoeurPDFButtonProps> = ({
         event.stopPropagation();
         event.preventDefault();
         if (isPrinting) return;
+        if (!(await guardPrint())) return;
 
         setError(null);
         setIsPrinting(true);

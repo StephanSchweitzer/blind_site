@@ -26,6 +26,56 @@ const LOAD_TIMEOUT_MS = 20_000;
 /** Filet de sécurité pour les navigateurs qui n'émettent pas `afterprint`. */
 const CLEANUP_TIMEOUT_MS = 5 * 60_000;
 
+// ─── Tant que la fenêtre d'impression est ouverte ───────────────────────────
+//
+// Chrome FERME sa fenêtre d'impression dès que la page qui l'a ouverte enregistre
+// une navigation — y compris un simple `history.replaceState`. Or un
+// `router.refresh()` de Next se termine justement par un replaceState. Envoyer
+// une demande de paiement puis rafraîchir la liste derrière la fenêtre faisait
+// donc apparaître l'aperçu et le refermait aussitôt — dès que le rafraîchissement
+// arrivait après lui, c'est-à-dire en production, où le serveur répond moins
+// vite qu'en local.
+//
+// `print()` sur l'iframe d'un PDF ne bloque pas : il rend la main pendant que la
+// fenêtre est encore ouverte. Tout ce qui peut naviguer (router.refresh,
+// router.push, fermer un modal qui modifie l'URL) attend donc `whenPrintDialogClosed`.
+//
+// La fermeture se devine : `afterprint` quand le navigateur l'émet ; sinon le
+// premier clic ou la première touche dans la page — la fenêtre d'impression est
+// modale, la page ne reçoit rien tant qu'elle est ouverte ; au pire, le délai
+// de nettoyage.
+
+let pendingDialog: Promise<void> | null = null;
+
+const watchDialog = (win: Window): Promise<void> => {
+    const closed = new Promise<void>((resolve) => {
+        let timer = 0;
+        const done = () => {
+            window.clearTimeout(timer);
+            win.removeEventListener('afterprint', done);
+            window.removeEventListener('pointerdown', done, true);
+            window.removeEventListener('keydown', done, true);
+            resolve();
+        };
+        win.addEventListener('afterprint', done);
+        window.addEventListener('pointerdown', done, true);
+        window.addEventListener('keydown', done, true);
+        timer = window.setTimeout(done, CLEANUP_TIMEOUT_MS);
+    });
+    const tracked = closed.then(() => {
+        if (pendingDialog === tracked) pendingDialog = null;
+    });
+    pendingDialog = tracked;
+    return tracked;
+};
+
+/**
+ * Résout quand aucune fenêtre d'impression ouverte par printPdfBlob n'est plus
+ * à l'écran — tout de suite s'il n'y en a pas. À attendre avant tout
+ * `router.refresh()` (ou autre navigation) qui suit une impression.
+ */
+export const whenPrintDialogClosed = (): Promise<void> => pendingDialog ?? Promise.resolve();
+
 /** iOS et Safari n'impriment pas de manière fiable depuis une iframe. */
 const printsFromIframe = (): boolean => {
     if (typeof navigator === 'undefined') return false;
@@ -77,6 +127,9 @@ const printViaIframe = (url: string) =>
                 if (!win) throw new Error("Fenêtre d'impression indisponible.");
                 win.addEventListener('afterprint', cleanup, { once: true });
                 cleanupTimer = window.setTimeout(cleanup, CLEANUP_TIMEOUT_MS);
+                // Avant print() : là où print() bloque, afterprint part avant
+                // qu'il ne rende la main.
+                watchDialog(win);
                 win.focus();
                 win.print();
                 done = true;

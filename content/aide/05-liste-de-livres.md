@@ -117,7 +117,7 @@ Sur une liste existante, « **Enregistrer** » vous laisse sur la page : un mess
 
 La modification d'une liste s'effectue de la même manière que son ajout. La seule différence réside dans le fait que la liste contient déjà des informations et des livres enregistrés auparavant.
 
-En haut à droite, vous pouvez imprimer la liste, ou la supprimer avec le bouton « ⋯ ». Les livres eux-mêmes restent au catalogue.
+En haut à droite, vous pouvez imprimer la liste, ou la supprimer avec le bouton « ⋯ ». Les livres eux-mêmes restent au catalogue. La liste s'imprime dans sa dernière version enregistrée : avec des modifications non enregistrées, une fenêtre vous propose d'enregistrer d'abord.
 
 ### Aperçu
 
