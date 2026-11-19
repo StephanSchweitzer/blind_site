@@ -37,6 +37,7 @@ export const basicPaymentSelect = {
     paymentMethod: true,
     creationDate: true,
     paymentDate: true,
+    requestDate: true,
     billId: true,
 } as const satisfies Prisma.PaymentSelect;
 
@@ -49,6 +50,7 @@ export const detailedPaymentSelect = {
     creationDate: true,
     issueDate: true,
     paymentDate: true,
+    requestDate: true,
     exportDate: true,
     importDate: true,
     receiptNumber: true,
@@ -142,12 +144,13 @@ type PaymentsTableRowRaw = Prisma.PaymentGetPayload<{ include: typeof paymentsTa
 // JSON-safe row as sent to client components (Date -> ISO string, Decimal -> string)
 export type SerializedPaymentTableRow = Omit<
     PaymentsTableRowRaw,
-    'amount' | 'creationDate' | 'issueDate' | 'paymentDate' | 'exportDate' | 'importDate' | 'allocationDate' | 'deletedAt' | 'bill'
+    'amount' | 'creationDate' | 'issueDate' | 'paymentDate' | 'requestDate' | 'exportDate' | 'importDate' | 'allocationDate' | 'deletedAt' | 'bill'
 > & {
     amount: string;
     creationDate: string;
     issueDate: string | null;
     paymentDate: string | null;
+    requestDate: string | null;
     bill: { id: number; state: string; invoiceAmount: string } | null;
 };
 

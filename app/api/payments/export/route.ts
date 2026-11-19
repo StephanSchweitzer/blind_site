@@ -6,6 +6,7 @@ import {
     buildPaymentListOrderBy,
 } from '@/lib/payments/list-query';
 import { getPaymentTypeLabel, getPaymentMethodLabel } from '@/lib/payment-enums';
+import { derivePaymentStatus, getPaymentStatusLabel } from '@/lib/payments/status';
 import { getBillingStatusLabel, type BillingStatus } from '@/lib/billing-enums';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { parisDayKey, parisDateDisplay } from '@/lib/paris-day';
@@ -26,9 +27,11 @@ const HEADERS = [
     'Client',
     'Email',
     'Type',
+    'Statut',
     'Méthode',
     'Montant',
     'Date de création',
+    'Date de la demande',
     'Date de paiement',
     'Référence de paiement',
     'N° de reçu',
@@ -47,7 +50,7 @@ const HEADERS = [
  * (voir lib/csv.ts). Les dates et les montants sont fabriqués ici et n'en sont
  * pas : les neutraliser mettrait une apostrophe devant chaque montant négatif.
  */
-const UNTRUSTED_COLUMNS = new Set([1, 2, 8, 9, 14, 17]);
+const UNTRUSTED_COLUMNS = new Set([1, 2, 10, 11, 16, 19]);
 
 /** Lu par tranches : le tableau complet n'existe jamais entièrement en mémoire. */
 const CHUNK = 500;
@@ -119,9 +122,11 @@ export const GET = withAdmin(async (request) => {
                                     p.client ? getUserNameOnly(p.client) : '',
                                     p.client?.email ?? '',
                                     getPaymentTypeLabel(p.type),
+                                    getPaymentStatusLabel(derivePaymentStatus(p)),
                                     p.paymentMethod ? getPaymentMethodLabel(p.paymentMethod) : '',
                                     csvNumber(p.amount.toString()),
                                     parisDateDisplay(p.creationDate),
+                                    parisDateDisplay(p.requestDate),
                                     parisDateDisplay(p.paymentDate),
                                     p.paymentReference ?? '',
                                     p.receiptNumber ?? '',

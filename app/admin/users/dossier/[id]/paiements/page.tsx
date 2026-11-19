@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
+import { PaymentType, PaymentMethod } from '@prisma/client';
 
 import PaymentsTable from '@/app/admin/payments/payments-table';
 import { paymentsTableInclude } from '@/types/models/payment.model';
@@ -8,8 +8,8 @@ import {
     parsePaymentListParams,
     buildPaymentListWhere,
     buildPaymentListOrderBy,
+    paymentSelectionTotals,
 } from '@/lib/payments/list-query';
-import { RECEIVED_PAYMENT_WHERE } from '@/lib/payments/status';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -44,8 +44,8 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
             include: paymentsTableInclude,
         }),
         prisma.payment.count({ where: whereClause }),
-        // Ce que la personne a PAYÉ : les paiements encaissés (lib/payments/status.ts).
-        prisma.payment.aggregate({ where: { ...whereClause, ...RECEIVED_PAYMENT_WHERE }, _sum: { amount: true } }),
+        // Ce que la personne a payé, et ce qu'on attend d'elle (paymentSelectionTotals).
+        paymentSelectionTotals(whereClause),
     ]);
 
     const client = await prisma.user.findUnique({
@@ -59,6 +59,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
         creationDate: payment.creationDate.toISOString(),
         issueDate: payment.issueDate?.toISOString() ?? null,
         paymentDate: payment.paymentDate?.toISOString() ?? null,
+        requestDate: payment.requestDate?.toISOString() ?? null,
         bill: payment.bill
             ? { ...payment.bill, invoiceAmount: payment.bill.invoiceAmount.toString() }
             : null,
@@ -74,7 +75,7 @@ export default async function PaiementsTab({ params, searchParams }: PageProps) 
             initialParams={listParams}
             availableTypes={Object.values(PaymentType)}
             availableMethods={Object.values(PaymentMethod)}
-            initialTotalAmount={(totals._sum.amount ?? new Prisma.Decimal(0)).toString()}
+            initialTotals={totals}
             hideSearch
             presetClient={client}
         />

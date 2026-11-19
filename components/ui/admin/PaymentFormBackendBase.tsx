@@ -28,9 +28,11 @@ import { markToasted, useFormToast } from '@/hooks/useFormToast';
 import { useInvalidField } from '@/hooks/useInvalidField';
 import { UserSearchCombobox } from '@/admin/UserSearchCombobox';
 import { BillSearchCombobox, type BillSearchResult } from '@/admin/BillSearchCombobox';
+import { PaymentStatusSteps } from '@/admin/PaymentStatusSteps';
+import { isRequestablePaymentType } from '@/lib/payments/status';
 
 // N3 — required fields, visual top→bottom (client picker, linked bill, amount).
-const FIELD_ORDER = ['client', 'bill', 'amount'];
+const FIELD_ORDER = ['client', 'bill', 'amount', 'paymentDate'];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +53,7 @@ export interface PaymentFormData {
     creationDate: Date;
     issueDate: Date | null;
     paymentDate: Date | null;
+    requestDate: Date | null;
     paymentReference: string | null;
     receiptNumber: string | null;
     fiscalite: string | null;
@@ -69,6 +72,7 @@ export interface PaymentFormInitialData {
     creationDate: string;
     issueDate: string | null;
     paymentDate: string | null;
+    requestDate: string | null;
     paymentReference: string | null;
     receiptNumber: string | null;
     fiscalite: string | null;
@@ -140,9 +144,29 @@ export function PaymentFormBackendBase({
     const [issueDate, setIssueDate] = useState<Date | null>(
         initialData?.issueDate ? new Date(initialData.issueDate) : null
     );
+    // Une saisie neuve est datée du jour : c'est un encaissement tant qu'on ne dit
+    // pas « À demander ». Avant les statuts, le champ partait vide et la date de
+    // création tenait lieu de date de paiement ; une date vide voudrait
+    // maintenant dire « pas encore reçu » (lib/payments/status.ts).
     const [paymentDate, setPaymentDate] = useState<Date | null>(
-        initialData?.paymentDate ? new Date(initialData.paymentDate) : preset ? new Date() : null
+        initialData ? (initialData.paymentDate ? new Date(initialData.paymentDate) : null) : new Date()
     );
+    const [requestDate, setRequestDate] = useState<Date | null>(
+        initialData?.requestDate ? new Date(initialData.requestDate) : null
+    );
+    // « Déjà reçu » ou « À demander » : le seul choix qui ne soit pas une date,
+    // parce qu'une date de paiement vide ne se voit pas — un champ oublié et une
+    // demande de paiement auraient la même tête. Proposé sur les seuls types
+    // qu'on demande (isRequestablePaymentType) ; les autres sont toujours reçus.
+    const [received, setReceived] = useState<boolean>(initialData ? !!initialData.paymentDate : true);
+    const requestable = isRequestablePaymentType(type);
+    const isReceived = !requestable || received;
+
+    const handleReceivedChange = (next: boolean) => {
+        setReceived(next);
+        // Revenir à « Déjà reçu » sans date reprend le jour même, comme une saisie neuve.
+        if (next && !paymentDate) setPaymentDate(new Date());
+    };
     const [paymentReference, setPaymentReference] = useState(initialData?.paymentReference ?? '');
     const [receiptNumber, setReceiptNumber] = useState(initialData?.receiptNumber ?? '');
     // « N° de reçu » et « Date d'émission » ne se proposent plus à la saisie :
@@ -200,12 +224,14 @@ export function PaymentFormBackendBase({
         if (clientRequired && !selectedClient) invalid.push('client');
         if (type === PaymentType.ENREGISTREMENT && selectedClient && !selectedBill) invalid.push('bill');
         if (!Number.isFinite(amt) || amt <= 0) invalid.push('amount');
+        if (isReceived && !paymentDate) invalid.push('paymentDate');
 
         if (invalid.length) {
             const messages: Record<string, string> = {
                 client: `Un ${getPaymentClientFieldLabel(type).toLowerCase()} est requis pour ce type de paiement`,
                 bill: 'Veuillez sélectionner la facture liée à cet enregistrement',
                 amount: 'Veuillez saisir un montant positif',
+                paymentDate: 'Veuillez saisir la date de paiement',
             };
             // First in FIELD_ORDER among the invalid set → topmost message.
             const firstName = FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
@@ -228,8 +254,11 @@ export function PaymentFormBackendBase({
                 paymentMethod: paymentMethod || null,
                 creationDate,
                 issueDate,
-                paymentDate,
-                paymentReference: paymentReference.trim() || null,
+                // À demander : ni date ni référence de règlement — il n'y en a
+                // pas encore. La méthode, elle, peut déjà être connue.
+                paymentDate: isReceived ? paymentDate : null,
+                requestDate: requestable ? requestDate : null,
+                paymentReference: isReceived ? paymentReference.trim() || null : null,
                 receiptNumber: receiptNumber.trim() || null,
                 fiscalite: fiscaliteUntouched ? initialFiscalite : fiscalite ? 'OUI' : null,
                 cotisationYear:
@@ -276,6 +305,40 @@ export function PaymentFormBackendBase({
                             </SelectContent>
                         </Select>
                     </div>
+
+                    {/* Reçu ou à demander — seulement pour les types qu'on demande
+                        (cotisation, divers). Juste sous le type, parce qu'il décide
+                        des champs qui suivent comme le type le fait. */}
+                    {requestable && (
+                        <div className="space-y-2">
+                            <span id="payment-received-label" className="text-sm font-medium text-foreground">Ce paiement est</span>
+                            <div role="group" aria-labelledby="payment-received-label" className="grid grid-cols-2 gap-1 sm:max-w-sm">
+                                {[
+                                    { value: true, label: 'Déjà reçu' },
+                                    { value: false, label: 'À demander' },
+                                ].map((opt) => (
+                                    <button
+                                        key={opt.label}
+                                        type="button"
+                                        aria-pressed={received === opt.value}
+                                        onClick={() => handleReceivedChange(opt.value)}
+                                        className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                                            received === opt.value
+                                                ? 'bg-primary text-primary-foreground border-primary'
+                                                : 'bg-card text-foreground border-border hover:bg-muted'
+                                        }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <PaymentStatusSteps
+                                creationDate={creationDate}
+                                requestDate={requestDate}
+                                paymentDate={isReceived ? paymentDate : null}
+                            />
+                        </div>
+                    )}
 
                     {/* Client */}
                     <div className="space-y-2">
@@ -392,28 +455,61 @@ export function PaymentFormBackendBase({
 
                         {/* Payment reference — saisie ICI et nulle part ailleurs.
                             La facture liée la reprend (syncBillPaymentInfo) : c'est
-                            pourquoi le formulaire des factures ne la demande plus. */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Référence de paiement</label>
-                            <Input
-                                value={paymentReference}
-                                onChange={(e) => setPaymentReference(e.target.value)}
-                                placeholder="N° de chèque, référence de virement..."
-                                className="bg-field border-border text-foreground"
-                            />
-                        </div>
+                            pourquoi le formulaire des factures ne la demande plus.
+                            Pas de référence sur un paiement à demander : il n'y a
+                            pas encore de chèque ni de virement. */}
+                        {isReceived && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-foreground">Référence de paiement</label>
+                                <Input
+                                    value={paymentReference}
+                                    onChange={(e) => setPaymentReference(e.target.value)}
+                                    placeholder="N° de chèque, référence de virement..."
+                                    className="bg-field border-border text-foreground"
+                                />
+                            </div>
+                        )}
                     </div>
 
-                    {/* Dates */}
+                    {/* Dates, dans l'ordre de la vie du paiement : création, demande,
+                        règlement. La date de la demande ne se montre sur un paiement
+                        reçu que s'il a d'abord été demandé — sinon elle n'a rien à
+                        dire, et c'est le cas de presque tous. */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Date de création</label>
                             <DatePickerField value={creationDate} onChange={(d) => d && setCreationDate(d)} />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Date de paiement</label>
-                            <DatePickerField value={paymentDate} onChange={setPaymentDate} />
-                        </div>
+                        {requestable && (!isReceived || requestDate) && (
+                            <div className="space-y-2">
+                                <label htmlFor="payment-request-date" className="text-sm font-medium text-foreground">
+                                    Date de la demande
+                                    {!isReceived && (
+                                        <span className="text-muted-foreground text-xs font-normal"> (vide tant qu&apos;elle n&apos;est pas partie)</span>
+                                    )}
+                                </label>
+                                <DatePickerField
+                                    id="payment-request-date"
+                                    value={requestDate}
+                                    onChange={setRequestDate}
+                                    clearable
+                                    placeholder="Pas encore envoyée"
+                                />
+                            </div>
+                        )}
+                        {isReceived && (
+                            <div className="space-y-2">
+                                <label htmlFor="payment-date" className="text-sm font-medium text-foreground">
+                                    Date de paiement <span className="text-red-500">*</span>
+                                </label>
+                                <DatePickerField
+                                    id="payment-date"
+                                    value={paymentDate}
+                                    onChange={setPaymentDate}
+                                    triggerRef={registerField('paymentDate')}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Observations */}
@@ -521,7 +617,11 @@ export function PaymentFormBackendBase({
                             disabled={isLoading}
                             variant="save" className="w-full"
                         >
-                            {isLoading ? loadingText : submitButtonText}
+                            {isLoading
+                                ? loadingText
+                                : !initialData && !isReceived
+                                    ? 'Créer la demande de paiement'
+                                    : submitButtonText}
                         </Button>
                     </StickySubmitBar>
                 </form>
@@ -540,6 +640,7 @@ export function paymentFormDataToApiBody(d: PaymentFormData) {
         creationDate: d.creationDate.toISOString(),
         issueDate: d.issueDate?.toISOString() ?? null,
         paymentDate: d.paymentDate?.toISOString() ?? null,
+        requestDate: d.requestDate?.toISOString() ?? null,
         allocationDate: d.allocationDate?.toISOString() ?? null,
         paymentReference: d.paymentReference,
         receiptNumber: d.receiptNumber,

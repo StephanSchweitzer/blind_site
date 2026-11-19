@@ -1,5 +1,6 @@
 import { PaymentType, PaymentMethod } from '@/lib/payment-enums';
 import { isParisDay } from '@/lib/paris-day';
+import { PAYMENT_STATUS_VALUES, type PaymentStatus } from '@/lib/payments/status';
 
 /**
  * Les paramètres de la liste des paiements — la moitié CLIENT.
@@ -37,6 +38,8 @@ export interface PaymentListParams {
     search: string;
     type?: PaymentType;
     paymentMethod?: PaymentMethod;
+    /** Pro-forma, demandé, encaissé — lu sur les dates (derivePaymentStatus). */
+    status?: PaymentStatus;
     clientId?: number;
     /** Bornes en jour PARISIEN ('YYYY-MM-DD'), inclusives des deux côtés. */
     from?: string;
@@ -60,6 +63,7 @@ export function isDefaultPaymentFilters(p: PaymentListParams): boolean {
         !p.search &&
         !p.type &&
         !p.paymentMethod &&
+        !p.status &&
         !p.from &&
         !p.to &&
         !p.unlinked &&
@@ -108,6 +112,7 @@ export function parsePaymentListParams(
         search: get('search') || '',
         type: enumParam(get('type'), Object.values(PaymentType)),
         paymentMethod: enumParam(get('paymentMethod'), Object.values(PaymentMethod)),
+        status: enumParam(get('status'), PAYMENT_STATUS_VALUES),
         clientId: overrides.clientId ?? (Number.isInteger(parsedClientId) ? parsedClientId : undefined),
         from: isParisDay(from) ? from : undefined,
         to: isParisDay(to) ? to : undefined,
@@ -138,6 +143,7 @@ export function paymentListParamsToQuery(p: PaymentListParams): string {
     if (p.search) q.set('search', p.search);
     if (p.type) q.set('type', p.type);
     if (p.paymentMethod) q.set('paymentMethod', p.paymentMethod);
+    if (p.status) q.set('status', p.status);
     if (p.clientId !== undefined) q.set('clientId', String(p.clientId));
     if (p.from) q.set('from', p.from);
     if (p.to) q.set('to', p.to);

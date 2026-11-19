@@ -322,6 +322,14 @@ model Payment {
   amount           Decimal        @db.Decimal(10, 2)
   paymentMethod    PaymentMethod? // modepaiement_id from Access
   creationDate     DateTime
+  /// Le jour où la demande de paiement est partie (un appel de cotisation, par
+  /// exemple). Avec paymentDate, elle fait le statut du paiement, qui n'est
+  /// jamais stocké (derivePaymentStatus, lib/payments/status.ts) : datée de
+  /// paiement → « Encaissé », sinon datée de demande → « Demandé », sinon
+  /// « Pro-forma ». Nulle sur un paiement encaissé sans avoir été demandé — le
+  /// cas de presque tous. Ne pas confondre avec issueDate, qui est la date
+  /// d'émission du REÇU (reprise de l'ancienne base, avec receiptNumber).
+  requestDate      DateTime?
   issueDate        DateTime?
   paymentDate      DateTime?
   exportDate       DateTime?

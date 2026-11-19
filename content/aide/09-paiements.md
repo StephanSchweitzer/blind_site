@@ -18,9 +18,9 @@ L'URL de cette page est https://eca-aveugles.fr/admin/payments
 
 Vous pouvez rechercher un paiement par le nom de la personne, le numéro du paiement, le numéro de la facture ou la référence de règlement (un numéro de chèque, par exemple).
 
-(1) « **Exporter (CSV)** » enregistre la liste telle qu'elle est affichée (il n'apparaît pas sur une liste vide). (2) Le bouton « **Filtres** » ouvre les filtres : type, méthode de paiement et (3) période.
+(1) « **Exporter (CSV)** » enregistre la liste telle qu'elle est affichée (il n'apparaît pas sur une liste vide). (2) Le bouton « **Filtres** » ouvre les filtres : type, méthode de paiement, statut et (3) période.
 
-Dès qu'une recherche ou un filtre est posé, « **Montant total** », sous le titre, donne la somme des paiements trouvés. Dans le dossier d'une personne, il donne ce qu'elle a payé ; les filtres n'y apparaissent qu'à partir de deux pages de paiements.
+Dès qu'une recherche ou un filtre est posé, « **Montant total** », sous le titre, donne la somme des paiements encaissés trouvés. Si la sélection contient aussi des paiements demandés mais pas encore reçus, la ligne se dédouble : « **Encaissé** » d'un côté, « **En attente** » de l'autre — les deux sommes ne s'additionnent pas. Dans le dossier d'une personne, elle donne ce qu'elle a payé ; les filtres n'y apparaissent qu'à partir de deux pages de paiements.
 
 ![Paiements - capture 1](/admin/aide/images/paiements-01.jpg)
 
@@ -54,6 +54,8 @@ Les types « Don » et « Divers » ne nécessitent qu'un montant. Un don doit t
 
 Quel que soit le type, vous pouvez préciser le mode de règlement dans le champ « Méthode de paiement » : chèque, espèce, carte bancaire, virement ou compte Auxi.
 
+La « Date de paiement » est le jour où l'argent a été reçu. Elle est remplie avec la date du jour et elle est obligatoire : c'est elle qui fait compter le paiement comme encaissé.
+
 Au bas de la page, vous pouvez, si vous le souhaitez, saisir des informations comptables. Pour ce faire, il suffit de cliquer sur la rubrique « Détails comptables » : comptable, fiscalité, et la case « Affectée » avec sa date, « Affectée le ». Le « N° de reçu » et la « Date d'émission », repris de l'ancienne base, n'apparaissent que sur un paiement qui en porte déjà.
 
 À long terme, cela peut faciliter la clôture comptable de fin d'année grâce à la quantité accrue de données pouvant être filtrées. Sinon, il n'est pas nécessaire de les saisir.
@@ -65,6 +67,24 @@ Une fois que vous avez saisi toutes les informations nécessaires, cliquez sur l
 Un paiement lié à une facture affiche la facture correspondante.
 
 ![Paiements - capture 9](/admin/aide/images/paiements-09.jpg)
+
+## Demander un paiement
+
+Une cotisation ou un paiement « Divers » peut être enregistré **avant** d'être reçu — pour un appel de cotisation, par exemple. Sous le type, choisissez « **À demander** » plutôt que « **Déjà reçu** » : la date de paiement et la référence disparaissent, puisqu'il n'y a encore rien à noter, et le bouton devient « Créer la demande de paiement ».
+
+Un enregistrement ne se demande pas ici : sa demande de paiement, c'est sa facture. Un don non plus — il est toujours déjà reçu.
+
+### Statut d'un paiement
+
+Le statut d'un paiement se lit sur ses dates, comme celui d'une demande ou d'une attribution : vous saisissez les dates, le statut suit. Les trois étapes s'affichent sous le choix « Déjà reçu » / « À demander ».
+
+- **Pro-forma** : le paiement est créé, la demande n'est pas encore partie.
+- **Demandé** : la « Date de la demande » est remplie — le jour où elle a été envoyée.
+- **Encaissé** : la « Date de paiement » est remplie — l'argent est reçu.
+
+Un paiement reçu sans avoir été demandé, le cas le plus courant, passe directement à « Encaissé ». Pour enregistrer le règlement d'un paiement demandé, ouvrez-le, choisissez « Déjà reçu » et indiquez la date de paiement, la méthode et la référence.
+
+Seul un paiement encaissé compte : dans les montants, pour une cotisation « à jour », pour une facture payée. Une cotisation demandée mais pas reçue ne rend pas l'auditeur à jour. Le statut apparaît dans la liste, en tête de la fenêtre du paiement, et peut servir de filtre.
 
 ## Modification des paiements
 

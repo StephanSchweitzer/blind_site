@@ -46,6 +46,13 @@ import { getUserNameOnly } from '@/lib/users/displayName';
 import { parseEntityId } from '@/lib/search-query';
 import { parisDateDisplay } from '@/lib/paris-day';
 import { BillingStatus, getBillingStatusLabel, getBillingStatusColor } from '@/lib/billing-enums';
+import {
+    PAYMENT_STATUS_LABELS,
+    PAYMENT_STATUS_VALUES,
+    derivePaymentStatus,
+    getPaymentStatusColor,
+    getPaymentStatusLabel,
+} from '@/lib/payments/status';
 // list-params, pas list-query : ce fichier est 'use client', et list-query
 // importe @prisma/client — qui ne peut pas entrer dans le bundle navigateur.
 import {
@@ -68,7 +75,8 @@ interface PaymentsTableProps {
     initialParams: PaymentListParams;
     availableTypes: PaymentType[];
     availableMethods: PaymentMethod[];
-    initialTotalAmount: string;
+    /** Encaissé et attendu, séparément — paymentSelectionTotals (lib/payments/list-query.ts). */
+    initialTotals: { received: string; pending: string };
     hideSearch?: boolean;
     presetClient?: { id: number; firstName: string | null; lastName: string | null; email: string | null } | null;
     /** « Vouliez-vous dire … ? », computed only when the search found nothing. */
@@ -169,7 +177,7 @@ export default function PaymentsTable({
                                           initialParams,
                                           availableTypes,
                                           availableMethods,
-                                          initialTotalAmount,
+                                          initialTotals,
                                           hideSearch = false,
                                           presetClient = null,
                                           searchSuggestions,
@@ -197,7 +205,7 @@ export default function PaymentsTable({
 
     // Le serveur a déjà validé chaque paramètre ; relire l'URL ici ferait afficher
     // comme actif un filtre que le serveur a écarté (« ?type=nimportequoi »).
-    const { type: currentType, paymentMethod: currentMethod, sort, dir } = initialParams;
+    const { type: currentType, paymentMethod: currentMethod, status: currentStatus, sort, dir } = initialParams;
     // Un token numérique matche aussi la facture réglée (buildPaymentSearchWhere,
     // lib/search.ts) — `initialParams.search`, pas le `searchTerm` en cours de
     // frappe, pour rester le terme qui a produit ces lignes.
@@ -238,6 +246,7 @@ export default function PaymentsTable({
     const handleClearSearch = () => { setSearchTerm(''); updateUrl({ search: undefined, page: '1' }); };
     const handleTypeFilter = (value: string) => updateUrl({ type: value === 'all' ? undefined : value, page: '1' });
     const handleMethodFilter = (value: string) => updateUrl({ paymentMethod: value === 'all' ? undefined : value, page: '1' });
+    const handleStatusFilter = (value: string) => updateUrl({ status: value === 'all' ? undefined : value, page: '1' });
     const handleDateFieldChange = (value: string) => updateUrl({ dateField: value === 'creationDate' ? undefined : value, page: '1' });
     const handleBoundChange = (key: 'from' | 'to', value: string) => updateUrl({ [key]: value || undefined, page: '1' });
     const handleToggle = (key: 'unlinked' | 'unallocated', on: boolean) => updateUrl({ [key]: on ? 'true' : undefined, page: '1' });
@@ -257,7 +266,7 @@ export default function PaymentsTable({
     const handleResetFilters = () => {
         setSearchTerm('');
         updateUrl({
-            search: undefined, type: undefined, paymentMethod: undefined,
+            search: undefined, type: undefined, paymentMethod: undefined, status: undefined,
             from: undefined, to: undefined, dateField: undefined,
             unlinked: undefined, unallocated: undefined,
             sort: undefined, dir: undefined, page: '1',
@@ -272,6 +281,9 @@ export default function PaymentsTable({
     }
     if (currentMethod) {
         activeFilters.push({ key: 'method', label: `Méthode : ${PAYMENT_METHOD_LABELS[currentMethod]}`, remove: () => handleMethodFilter('all') });
+    }
+    if (currentStatus) {
+        activeFilters.push({ key: 'status', label: `Statut : ${PAYMENT_STATUS_LABELS[currentStatus]}`, remove: () => handleStatusFilter('all') });
     }
     if (initialParams.from || initialParams.to) {
         const on = initialParams.dateField === 'paymentDate' ? 'Paiement' : 'Création';
@@ -320,6 +332,7 @@ export default function PaymentsTable({
     // personne ? », dès qu'elle a payé quelque chose.
     const narrowed = activeFilters.length > 0 || !!initialParams.search;
     const showTotal = presetClient ? pagination.total > 0 : narrowed;
+    const hasPending = parseFloat(initialTotals.pending) > 0;
     // Dans un dossier, une personne a rarement plus d'une page de paiements :
     // « Filtres » ne revient qu'à partir de deux pages, ou si un filtre est
     // posé (pour pouvoir l'enlever) — même règle que les demandes du dossier.
@@ -336,10 +349,19 @@ export default function PaymentsTable({
                             <CardTitle as={presetClient ? 'h2' : 'h1'} className={presetClient ? 'sr-only' : 'text-2xl font-bold text-foreground'}>Paiements</CardTitle>
                             <AideLink section="paiements" />
                         </div>
+                        {/* L'encaissé et l'attendu ne s'additionnent pas : le premier
+                            se rapproche d'un relevé bancaire, le second non. Tant
+                            que rien n'est attendu, la ligne reste celle d'avant. */}
                         {showTotal && (
                             <CardDescription className="text-muted-foreground mt-1">
-                                Montant total :{' '}
-                                <span className="font-semibold text-foreground">{formatCurrency(initialTotalAmount)}</span>
+                                {hasPending ? 'Encaissé' : 'Montant total'} :{' '}
+                                <span className="font-semibold text-foreground">{formatCurrency(initialTotals.received)}</span>
+                                {hasPending && (
+                                    <>
+                                        {' · '}En attente :{' '}
+                                        <span className="font-semibold text-foreground">{formatCurrency(initialTotals.pending)}</span>
+                                    </>
+                                )}
                             </CardDescription>
                         )}
                     </div>
@@ -451,7 +473,7 @@ export default function PaymentsTable({
                         id="payment-filters"
                         className="rounded-lg border border-border bg-muted/40 p-4 mb-6 space-y-4"
                     >
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div className="space-y-1.5">
                                 <label className="block text-xs text-muted-foreground uppercase tracking-wide">Type</label>
                                 <Select value={currentType ?? 'all'} onValueChange={handleTypeFilter}>
@@ -480,6 +502,23 @@ export default function PaymentsTable({
                                         {availableMethods.map((m) => (
                                             <SelectItem key={m} value={m} className="text-foreground">
                                                 {PAYMENT_METHOD_LABELS[m]}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="block text-xs text-muted-foreground uppercase tracking-wide">Statut</label>
+                                <Select value={currentStatus ?? 'all'} onValueChange={handleStatusFilter}>
+                                    <SelectTrigger className="w-full bg-field border-border text-foreground">
+                                        <SelectValue placeholder="Filtrer par statut" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-card border-border">
+                                        <SelectItem value="all" className="text-foreground">Tous les statuts</SelectItem>
+                                        {PAYMENT_STATUS_VALUES.map((s) => (
+                                            <SelectItem key={s} value={s} className="text-foreground">
+                                                {PAYMENT_STATUS_LABELS[s]}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -590,6 +629,7 @@ export default function PaymentsTable({
                                                 <TableHead className="text-foreground font-medium">Client</TableHead>
                                             )}
                                             <TableHead className="text-foreground font-medium">Type</TableHead>
+                                            <TableHead className="text-foreground font-medium">Statut</TableHead>
                                             <TableHead className="text-foreground font-medium">Méthode</TableHead>
                                             <TableHead className="text-foreground font-medium">Facture</TableHead>
                                             <SortableHead field="creationDate" label="Date de création" activeField={sort} direction={dir} onSort={handleSort} />
@@ -627,6 +667,11 @@ export default function PaymentsTable({
                                                 <TableCell>
                                                     <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
                                                         {getPaymentTypeLabel(payment.type)}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentStatusColor(derivePaymentStatus(payment))}`}>
+                                                        {getPaymentStatusLabel(derivePaymentStatus(payment))}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-foreground">

@@ -34,6 +34,7 @@ export const PaymentCreateInputSchema = z
         creationDate: isoDate.optional(),
         issueDate: nullableIsoDate,
         paymentDate: nullableIsoDate,
+        requestDate: nullableIsoDate,
         allocationDate: nullableIsoDate,
         paymentReference: optionalText,
         receiptNumber: optionalText,
@@ -82,6 +83,7 @@ export const PaymentUpdateInputSchema = z.object({
     creationDate: isoDate.optional(),
     issueDate: nullableIsoDate,
     paymentDate: nullableIsoDate,
+    requestDate: nullableIsoDate,
     allocationDate: nullableIsoDate,
     paymentReference: optionalText,
     receiptNumber: optionalText,
@@ -107,6 +109,7 @@ export interface SerializedPayment {
     creationDate: string;
     issueDate: string | null;
     paymentDate: string | null;
+    requestDate: string | null;
     exportDate: string | null;
     importDate: string | null;
     paymentReference: string | null;

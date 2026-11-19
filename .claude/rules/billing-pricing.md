@@ -35,8 +35,13 @@ paths:
   Tout ce qui additionne de l'argent ou dit « à jour » / « payée » filtre sur
   `RECEIVED_PAYMENT_WHERE` (ou `isPaymentReceived`), jamais sur `isActive` seul — et ne retombe
   plus sur `creationDate` : ce repli est devenu la migration `payment_date_backfill`. Une liste de
-  paiements, elle, les montre tous. Tant qu'un paiement ne peut pas être *demandé*, les routes de
-  saisie datent un paiement sans date de sa création (`receivedDateOnSave`).
+  paiements, elle, les montre tous.
+- **Le statut d'un paiement se lit sur ses dates et n'est jamais stocké** : `paymentDate` →
+  « Encaissé », sinon `requestDate` → « Demandé », sinon « Pro-forma » (`derivePaymentStatus` /
+  `paymentStatusWhere`, à changer ensemble). Seuls les types de `PAYMENT_REQUESTABLE_TYPES`
+  (cotisation, divers) peuvent rester sans date de paiement ; un enregistrement — dont la demande
+  est sa facture — ou un don reçoit sa date de création (`paymentDateOnSave`) et perd sa date de
+  demande. `issueDate` n'est PAS la date de la demande : c'est celle du reçu (reprise).
 - Bills **lock** once status is `PAID` or `SOLDE`. Do not mutate a locked bill's line items
   or amounts.
 - Exporting a PDF from a `DRAFT` bill triggers a confirmation dialog before proceeding.

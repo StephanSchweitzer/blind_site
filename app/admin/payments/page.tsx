@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { PaymentType, PaymentMethod, Prisma } from '@prisma/client';
+import { PaymentType, PaymentMethod } from '@prisma/client';
 import PaymentsTable from './payments-table';
 import { paymentsTableInclude } from '@/types/models/payment.model';
 import { notFound } from 'next/navigation';
@@ -8,12 +8,13 @@ import {
     parsePaymentListParams,
     buildPaymentListWhere,
     buildPaymentListOrderBy,
+    paymentSelectionTotals,
     type PaymentListParams,
 } from '@/lib/payments/list-query';
-import { RECEIVED_PAYMENT_WHERE } from '@/lib/payments/status';
 import { rescueEmptySearch, rescueNote, RESCUE_CANDIDATES, type RescueFilter } from '@/lib/search-rescue';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { getPaymentMethodLabel, getPaymentTypeLabel } from '@/lib/payment-enums';
+import { derivePaymentStatus, getPaymentStatusLabel } from '@/lib/payments/status';
 import { parisDate } from '@/lib/paris-day';
 import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 
@@ -51,8 +52,8 @@ async function getPayments(page: number, pageSize: number, params: PaymentListPa
                 include: paymentsTableInclude,
             }),
             prisma.payment.count({ where: whereClause }),
-            // Ce qui a été ENCAISSÉ dans la sélection (lib/payments/status.ts).
-            prisma.payment.aggregate({ where: { ...whereClause, ...RECEIVED_PAYMENT_WHERE }, _sum: { amount: true } }),
+            // Encaissé et attendu, séparément (paymentSelectionTotals).
+            paymentSelectionTotals(whereClause),
         ]);
 
         // Only when the search found nothing — see lib/search-rescue.ts.
@@ -62,7 +63,7 @@ async function getPayments(page: number, pageSize: number, params: PaymentListPa
         return {
             searchSuggestions,
             payments,
-            totalAmount: (totals._sum.amount ?? new Prisma.Decimal(0)).toString(),
+            totals,
             pagination: pageInfo(page, pageSize, totalPayments),
             availableTypes: Object.values(PaymentType),
             availableMethods: Object.values(PaymentMethod),
@@ -87,6 +88,7 @@ async function rescuePayments(params: PaymentListParams): Promise<RescueSuggesti
         search: query,
         type: lifted.includes('type') ? undefined : params.type,
         paymentMethod: lifted.includes('method') ? undefined : params.paymentMethod,
+        status: lifted.includes('status') ? undefined : params.status,
         from: lifted.includes('period') ? undefined : params.from,
         to: lifted.includes('period') ? undefined : params.to,
         unlinked: lifted.includes('unlinked') ? false : params.unlinked,
@@ -96,6 +98,7 @@ async function rescuePayments(params: PaymentListParams): Promise<RescueSuggesti
     const filters: RescueFilter[] = [];
     if (params.type) filters.push({ key: 'type', label: 'type' });
     if (params.paymentMethod) filters.push({ key: 'method', label: 'method' });
+    if (params.status) filters.push({ key: 'status', label: 'status' });
     if (params.from || params.to) filters.push({ key: 'period', label: 'period' });
     if (params.unlinked) filters.push({ key: 'unlinked', label: 'unlinked' });
     if (params.unallocated) filters.push({ key: 'unallocated', label: 'unallocated' });
@@ -128,6 +131,7 @@ async function rescuePayments(params: PaymentListParams): Promise<RescueSuggesti
             note: rescueNote(q.lifted, {
                 type: () => getPaymentTypeLabel(p.type),
                 method: () => getPaymentMethodLabel(p.paymentMethod),
+                status: () => getPaymentStatusLabel(derivePaymentStatus(p)),
                 period: () => day(p),
                 unlinked: () => (p.bill ? `Facture n°${p.bill.id}` : null),
                 unallocated: () => (p.isAllocated ? 'Affecté' : null),
@@ -153,7 +157,7 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
         notFound();
     }
 
-    const { payments, pagination, totalAmount, availableTypes, availableMethods, searchSuggestions } = data;
+    const { payments, pagination, totals, availableTypes, availableMethods, searchSuggestions } = data;
     redirectPastLastPage('/admin/payments', rawParams, pagination, payments.length);
 
     const serializedPayments = payments.map(payment => ({
@@ -162,6 +166,7 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
         creationDate: payment.creationDate.toISOString(),
         issueDate: payment.issueDate?.toISOString() ?? null,
         paymentDate: payment.paymentDate?.toISOString() ?? null,
+        requestDate: payment.requestDate?.toISOString() ?? null,
         bill: payment.bill
             ? { ...payment.bill, invoiceAmount: payment.bill.invoiceAmount.toString() }
             : null,
@@ -175,7 +180,7 @@ export default async function AdminPaymentsPage({ searchParams }: PageProps) {
                 initialParams={params}
                 availableTypes={availableTypes}
                 availableMethods={availableMethods}
-                initialTotalAmount={totalAmount}
+                initialTotals={totals}
                 searchSuggestions={searchSuggestions}
             />
         </div>

@@ -16,7 +16,8 @@ import {
     buildPaymentListWhere,
     buildPaymentListOrderBy,
 } from '@/lib/payments/list-query';
-import { receivedDateOnSave } from '@/lib/payments/status';
+import { paymentDateOnSave, requestDateOnSave } from '@/lib/payments/status';
+import { requestFollowsPayment, REQUEST_AFTER_PAYMENT_MESSAGE } from '@/lib/payments/guards';
 
 const clientSelect = { id: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
@@ -51,6 +52,7 @@ export const GET = withAdmin(async (request) => {
             creationDate: p.creationDate.toISOString(),
             issueDate: p.issueDate?.toISOString() ?? null,
             paymentDate: p.paymentDate?.toISOString() ?? null,
+            requestDate: p.requestDate?.toISOString() ?? null,
             exportDate: p.exportDate?.toISOString() ?? null,
             importDate: p.importDate?.toISOString() ?? null,
             allocationDate: p.allocationDate?.toISOString() ?? null,
@@ -99,6 +101,14 @@ export const POST = withAdmin(async (request, { me }) => {
         const cotisationYear = d.type === PaymentType.COTISATION ? (d.cotisationYear ?? null) : null;
 
         const creationDate = d.creationDate ? new Date(d.creationDate) : new Date();
+        const paymentDate = paymentDateOnSave(d.type, d.paymentDate ? new Date(d.paymentDate) : null, creationDate);
+        const requestDate = requestDateOnSave(d.type, d.requestDate ? new Date(d.requestDate) : null);
+        if (requestFollowsPayment(requestDate, paymentDate)) {
+            return NextResponse.json(
+                { success: false, error: 'REQUEST_AFTER_PAYMENT', message: REQUEST_AFTER_PAYMENT_MESSAGE },
+                { status: 400 }
+            );
+        }
         const data: Prisma.PaymentUncheckedCreateInput = {
             clientId: d.clientId ?? null,
             type: d.type,
@@ -106,8 +116,10 @@ export const POST = withAdmin(async (request, { me }) => {
             paymentMethod: d.paymentMethod ?? null,
             creationDate,
             issueDate: d.issueDate ? new Date(d.issueDate) : null,
-            // Toujours datée : un paiement saisi est un encaissement (receivedDateOnSave).
-            paymentDate: receivedDateOnSave(d.paymentDate ? new Date(d.paymentDate) : null, creationDate),
+            // Vide seulement sur un type qu'on demande : c'est ce qui le fait
+            // « Demandé » ou « Pro-forma » (lib/payments/status.ts).
+            paymentDate,
+            requestDate,
             allocationDate: d.allocationDate ? new Date(d.allocationDate) : null,
             paymentReference: d.paymentReference ?? null,
             receiptNumber: d.receiptNumber ?? null,
@@ -175,6 +187,7 @@ export const POST = withAdmin(async (request, { me }) => {
                     creationDate: payment.creationDate.toISOString(),
                     issueDate: payment.issueDate?.toISOString() ?? null,
                     paymentDate: payment.paymentDate?.toISOString() ?? null,
+                    requestDate: payment.requestDate?.toISOString() ?? null,
                     exportDate: payment.exportDate?.toISOString() ?? null,
                     importDate: payment.importDate?.toISOString() ?? null,
                     allocationDate: payment.allocationDate?.toISOString() ?? null,

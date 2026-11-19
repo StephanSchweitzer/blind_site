@@ -12,6 +12,7 @@ import { Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { markToasted } from '@/hooks/useFormToast';
 import { getPaymentTypeColor, getPaymentTypeLabel } from '@/lib/payment-enums';
+import { derivePaymentStatus, getPaymentStatusColor, getPaymentStatusLabel } from '@/lib/payments/status';
 import { CopyableId } from './CopyableId';
 import type { SerializedPayment } from '@/types/api/payment.api';
 import {
@@ -37,6 +38,7 @@ function toInitialData(p: SerializedPayment): PaymentFormInitialData {
         creationDate: p.creationDate,
         issueDate: p.issueDate,
         paymentDate: p.paymentDate,
+        requestDate: p.requestDate,
         paymentReference: p.paymentReference,
         receiptNumber: p.receiptNumber,
         fiscalite: p.fiscalite,
@@ -131,6 +133,11 @@ export function EditPaymentModal({
                         {payment && (
                             <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
                                 {getPaymentTypeLabel(payment.type)}
+                            </span>
+                        )}
+                        {payment && (
+                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentStatusColor(derivePaymentStatus(payment))}`}>
+                                {getPaymentStatusLabel(derivePaymentStatus(payment))}
                             </span>
                         )}
                     </DialogTitle>

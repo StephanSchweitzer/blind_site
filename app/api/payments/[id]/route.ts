@@ -11,7 +11,8 @@ import {
     archiveHandTypedSettlement,
     BILL_IS_DRAFT_MESSAGE,
 } from '@/lib/billing';
-import { receivedDateOnSave } from '@/lib/payments/status';
+import { paymentDateOnSave, requestDateOnSave } from '@/lib/payments/status';
+import { requestFollowsPayment, REQUEST_AFTER_PAYMENT_MESSAGE } from '@/lib/payments/guards';
 
 const clientSelect = { id: true, firstName: true, lastName: true, email: true };
 const billSelect = { id: true, invoiceAmount: true, state: true, creationDate: true };
@@ -21,6 +22,7 @@ function serialize(p: {
     creationDate: Date;
     issueDate: Date | null;
     paymentDate: Date | null;
+    requestDate: Date | null;
     exportDate: Date | null;
     importDate: Date | null;
     allocationDate: Date | null;
@@ -33,6 +35,7 @@ function serialize(p: {
         creationDate: p.creationDate.toISOString(),
         issueDate: p.issueDate?.toISOString() ?? null,
         paymentDate: p.paymentDate?.toISOString() ?? null,
+        requestDate: p.requestDate?.toISOString() ?? null,
         exportDate: p.exportDate?.toISOString() ?? null,
         importDate: p.importDate?.toISOString() ?? null,
         allocationDate: p.allocationDate?.toISOString() ?? null,
@@ -88,7 +91,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         const updated = await prisma.$transaction(async (tx) => {
             const existing = await tx.payment.findUnique({
                 where: { id: paymentId, isActive: true },
-                select: { id: true, type: true, clientId: true, billId: true, paymentDate: true, creationDate: true },
+                select: { id: true, type: true, clientId: true, billId: true, paymentDate: true, requestDate: true, creationDate: true },
             });
             if (!existing) throw new Error('PAYMENT_NOT_FOUND');
 
@@ -100,17 +103,6 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             if (p.clientId !== undefined) data.clientId = p.clientId;
             if (p.creationDate !== undefined) data.creationDate = new Date(p.creationDate);
             if (p.issueDate !== undefined) data.issueDate = p.issueDate ? new Date(p.issueDate) : null;
-            // Une date effacée retombe sur la date de création (receivedDateOnSave) :
-            // un paiement enregistré reste un encaissement, il ne devient pas attendu
-            // parce qu'on a vidé un champ.
-            const effectiveCreationDate =
-                p.creationDate !== undefined ? new Date(p.creationDate) : existing.creationDate;
-            if (p.paymentDate !== undefined) {
-                data.paymentDate = receivedDateOnSave(
-                    p.paymentDate ? new Date(p.paymentDate) : null,
-                    effectiveCreationDate
-                );
-            }
             if (p.allocationDate !== undefined) data.allocationDate = p.allocationDate ? new Date(p.allocationDate) : null;
             if (p.paymentReference !== undefined) data.paymentReference = p.paymentReference;
             if (p.receiptNumber !== undefined) data.receiptNumber = p.receiptNumber;
@@ -121,6 +113,25 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
 
             const effectiveType = p.type ?? existing.type;
             const effectiveClientId = p.clientId !== undefined ? p.clientId : existing.clientId;
+
+            // Les deux dates qui font le statut, calculées sur le RÉSULTAT (type
+            // compris) et écrites seulement quand elles changent. Un type qu'on ne
+            // demande pas reste encaissé : sa date effacée retombe sur la date de
+            // création, sa date de demande se vide — y compris quand c'est le
+            // TYPE qui change sans que la requête parle des dates. Voir
+            // paymentDateOnSave / requestDateOnSave (lib/payments/status.ts).
+            const effectiveCreationDate =
+                p.creationDate !== undefined ? new Date(p.creationDate) : existing.creationDate;
+            const sentPaymentDate =
+                p.paymentDate !== undefined ? (p.paymentDate ? new Date(p.paymentDate) : null) : existing.paymentDate;
+            const sentRequestDate =
+                p.requestDate !== undefined ? (p.requestDate ? new Date(p.requestDate) : null) : existing.requestDate;
+            const nextPaymentDate = paymentDateOnSave(effectiveType, sentPaymentDate, effectiveCreationDate);
+            const nextRequestDate = requestDateOnSave(effectiveType, sentRequestDate);
+            const sameInstant = (a: Date | null, b: Date | null) => (a?.getTime() ?? null) === (b?.getTime() ?? null);
+            if (!sameInstant(nextPaymentDate, existing.paymentDate)) data.paymentDate = nextPaymentDate;
+            if (!sameInstant(nextRequestDate, existing.requestDate)) data.requestDate = nextRequestDate;
+            if (requestFollowsPayment(nextRequestDate, nextPaymentDate)) throw new Error('REQUEST_AFTER_PAYMENT');
 
             // Le contrôle porte sur le RÉSULTAT, pas sur ce que la requête dit.
             //
@@ -195,10 +206,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
             // renvoie la date à chaque enregistrement : la tester à chaque fois
             // interdisait de corriger une observation sur un paiement déjà
             // antérieur à l'émission, le cas même que ce contrôle signale.
-            const effectivePaymentDate =
-                p.paymentDate !== undefined
-                    ? (data.paymentDate as Date)
-                    : existing.paymentDate;
+            const effectivePaymentDate = nextPaymentDate;
             const dateIsChanging =
                 (effectivePaymentDate?.getTime() ?? null) !== (existing.paymentDate?.getTime() ?? null);
             const billIdForDateCheck =
@@ -250,6 +258,7 @@ export const PATCH = withAdmin(async (request, { me, params }) => {
         const errorMap: Record<string, [string, number]> = {
             PAYMENT_NOT_FOUND: ['Paiement introuvable', 404],
             CLIENT_REQUIRED: ['Ce type de paiement doit être rattaché à une personne', 400],
+            REQUEST_AFTER_PAYMENT: [REQUEST_AFTER_PAYMENT_MESSAGE, 400],
             PAYMENT_BEFORE_ISSUE: ['La date de paiement ne peut pas précéder la date d’émission de la facture', 400],
             BILL_SETTLED_NEEDS_PAYMENT: [
                 'La facture que ce paiement réglait est payée : elle doit garder au moins un paiement. Rouvrez la facture avant de détacher son règlement.',

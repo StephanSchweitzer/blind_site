@@ -243,6 +243,7 @@ const FIELD_LABELS: Record<string, string> = {
     creationDate: 'Date de création',
     issueDate: 'Date d’émission',
     paymentDate: 'Date de paiement',
+    requestDate: 'Date de la demande',
     paymentReference: 'Référence de paiement',
     paymentMethod: 'Mode de paiement',
     invoiceAmount: 'Montant de la facture',
