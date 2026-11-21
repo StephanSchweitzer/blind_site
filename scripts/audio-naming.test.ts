@@ -91,6 +91,30 @@ check(
     check('troisième envoi', third.filename, '003 Essai.mp3');
 }
 
+// Régression (novembre 2026, « La villa rose ») : le lecteur numérote lui-même
+// ses fichiers « 01 Titre ». Le premier devenait « 001 01 Titre » et les
+// suivants « 001 002 02 Titre » : bon ordre dans le portail, mais un graveur de
+// CD trie octet par octet et jouait la présentation juste avant le chapitre 10.
+{
+    const originals = Array.from({ length: 28 }, (_, i) => `${String(i + 1).padStart(2, '0')} LA VILLA ROSE.mp3`);
+    originals.push('29PND 2109.mp3'); // numéro collé au titre
+    const folder: string[] = [];
+    for (const o of originals) folder.push(nextTrackName(folder, o).filename);
+    check('titre numéroté : premier fichier au même format', folder[0], '001 001 01 LA VILLA ROSE.mp3');
+    check('titre numéroté : deuxième fichier', folder[1], '001 002 02 LA VILLA ROSE.mp3');
+    check('ordre octet par octet (CD) = ordre d’envoi', [...folder].sort(), folder);
+    check(
+        'ordre naturel (portail) = ordre d’envoi',
+        [...folder].sort(naturalCompare),
+        folder,
+    );
+    check(
+        'numéro collé au titre',
+        nextTrackName([], '01PND 2109.mp3').filename,
+        '001 001 01PND 2109.mp3',
+    );
+}
+
 // ------------------------------------------------- dossier existant, tiret
 
 {

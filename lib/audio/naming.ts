@@ -156,8 +156,20 @@ export function nextTrackName(existing: string[], originalFilename: string): Nex
     // Empty folder: start a clean, zero-padded sequence with no lead token. Both
     // natural and plain lexicographic ordering agree on these, so the folder
     // stays correctly ordered even under a tool that doesn't use naturalCompare.
+    //
+    // Unless the title itself starts with a number — the lecteurs' own `01 Titre`
+    // numbering, which is most folders. `001 01 Titre` is read by the NEXT upload
+    // as lead `001` + track `01` (see commonLead), so every later file becomes
+    // `001 002 02 …` and track 1 is left one token short. naturalCompare still
+    // plays it first, so the portal looked right; but a CD burner or player
+    // compares byte by byte, `001 01` lands between `001 009` and `001 010`, and
+    // the listener hears the presentation just before chapter 10. 115 books were
+    // recorded that way between August and October 2026 before a volunteer
+    // noticed on a CD. Writing the first file as `001 001 01 Titre` gives it the
+    // same lead-plus-track shape the folder is about to adopt anyway.
     if (!existing.length) {
-        return { filename: `${pad(1)} ${title}.${ext}`, strategy: 'premier-fichier' };
+        const first = /^\d/.test(title) ? `${pad(1)} ${pad(1)}` : pad(1);
+        return { filename: `${first} ${title}.${ext}`, strategy: 'premier-fichier' };
     }
 
     const last = existing[existing.length - 1];
