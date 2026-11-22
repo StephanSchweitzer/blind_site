@@ -39,6 +39,19 @@ function checkSortsLast(label: string, existing: string[], produced: string) {
     );
 }
 
+/** What a CD burner or player does: compare the UTF-8 bytes, nothing else. */
+const bytes = (a: string, b: string) => Buffer.compare(Buffer.from(a), Buffer.from(b));
+
+function checkBytesLast(label: string, existing: string[], produced: string) {
+    const worst = existing.filter((e) => bytes(produced, e) <= 0);
+    const ok = worst.length === 0;
+    if (!ok) failures++;
+    console.log(
+        `${ok ? 'ok  ' : 'FAIL'}  ${label}` +
+            (ok ? '' : `\n        « ${produced} » ne se classe pas après ${JSON.stringify(worst)} (octets)`),
+    );
+}
+
 // --------------------------------------------------------------- sanitisation
 
 check('apostrophe droite retirée', sanitiseTrackTitle("L'assommoir"), 'Lassommoir');
@@ -125,9 +138,62 @@ check(
         '1000 22- Le secret de l’abbé Saunière.mp3',
     ];
     const out = nextTrackName(existing, 'Suite.mp3');
-    check('lead réutilisé', out.filename, '1000 023 Suite.mp3');
+    check('lead réutilisé, largeur du dossier gardée', out.filename, '1000 23 Suite.mp3');
     check('stratégie', out.strategy, 'suite-numerotation');
     checkSortsLast('nouvelle piste après toutes les anciennes (tiret)', existing, out.filename);
+    checkBytesLast('… et aussi sur un CD (octet par octet)', existing, out.filename);
+}
+
+// ---------------------------------------- largeur de numérotation du dossier
+
+// Régression (novembre 2026) : l'envoi écrivait toujours trois chiffres. Dans un
+// ancien dossier « 1000 01 … 1000 17 », la piste suivante devenait « 1000 018 » :
+// bon ordre dans le portail, mais un graveur de CD la jouait entre 09 et 10.
+// 7 075 dossiers vivants étaient dans ce cas.
+{
+    const existing = Array.from({ length: 17 }, (_, i) => `1000 ${String(i + 1).padStart(2, '0')} P ${i * 15} STEINER.mp3`);
+    const out = nextTrackName(existing, 'Chapitre.mp3');
+    check('deux chiffres : la suite garde deux chiffres', out.filename, '1000 18 Chapitre.mp3');
+    checkBytesLast('deux chiffres : en dernier sur un CD', existing, out.filename);
+    const numbered = nextTrackName(existing, '18 Chapitre.mp3');
+    check('titre numéroté par le lecteur, deux chiffres', numbered.filename, '1000 18 18 Chapitre.mp3');
+    checkBytesLast('titre numéroté : en dernier sur un CD', existing, numbered.filename);
+
+    // Un lot entier, numéroté fichier après fichier comme le fait upload-url.
+    const folder = [...existing];
+    for (let i = 18; i <= 40; i++) folder.push(nextTrackName(folder, `${i} Chapitre.mp3`).filename);
+    check('lot de 23 envois : ordre CD = ordre portail', [...folder].sort(bytes), [...folder].sort(naturalCompare));
+}
+{
+    const existing = ['1000 1 Intro.mp3', '1000 2 Suite.mp3', '1000 7 Fin.mp3'];
+    const out = nextTrackName(existing, 'Annexe.mp3');
+    check('un chiffre : la suite garde un chiffre', out.filename, '1000 8 Annexe.mp3');
+    checkBytesLast('un chiffre : en dernier sur un CD', existing, out.filename);
+}
+{
+    const existing = ['1000 0001 Lacan.mp3', '1000 0002 Lacan.mp3'];
+    const out = nextTrackName(existing, 'Lacan.mp3');
+    check('quatre chiffres : la suite garde quatre chiffres', out.filename, '1000 0003 Lacan.mp3');
+    checkBytesLast('quatre chiffres : en dernier sur un CD', existing, out.filename);
+}
+{
+    // Nos propres dossiers (« 001 NNN … ») restent à trois chiffres.
+    const existing = ['001 001 01 Titre.mp3', '001 002 02 Titre.mp3'];
+    check('dossier du portail : trois chiffres', nextTrackName(existing, '03 Titre.mp3').filename, '001 003 03 Titre.mp3');
+}
+{
+    // Le numéro suivant ne tient plus dans la largeur du dossier (9 → 10), ou le
+    // dossier mêle deux largeurs : aucun nom ne se classe juste dans les deux
+    // ordres sans renommer les autres. On garde trois chiffres, comme avant —
+    // l'ordre du portail, lui, reste garanti.
+    const full = Array.from({ length: 9 }, (_, i) => `1000 ${i + 1} Chagrin.mp3`);
+    const out = nextTrackName(full, 'Suite.mp3');
+    check('largeur dépassée (9 → 10) : trois chiffres', out.filename, '1000 010 Suite.mp3');
+    checkSortsLast('largeur dépassée : en dernier dans le portail', full, out.filename);
+    const mixed = ['1000 001 Présentation.mp3', '1000 02 Chapitre.mp3', '1000 53 bibliographie.mp3'];
+    const outMixed = nextTrackName(mixed, 'Suite.mp3');
+    check('largeurs mêlées : trois chiffres', outMixed.filename, '1000 054 Suite.mp3');
+    checkSortsLast('largeurs mêlées : en dernier dans le portail', mixed, outMixed.filename);
 }
 
 // ---------------------------------------------- dossier existant, double espace
@@ -136,7 +202,7 @@ check(
     const existing = ['1000  01 Wisigoths intro.mp3', '1000   03 Wisigoths.mp3'];
     const out = nextTrackName(existing, 'Wisigoths fin.mp3');
     checkSortsLast('espaces irréguliers gérés', existing, out.filename);
-    check('numérotation poursuivie malgré les espaces', out.filename, '1000 004 Wisigoths fin.mp3');
+    check('numérotation poursuivie malgré les espaces', out.filename, '1000 04 Wisigoths fin.mp3');
 }
 
 // -------------------------------------------------- dossier numéroté par date

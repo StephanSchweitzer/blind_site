@@ -115,14 +115,45 @@ export function commonLead(filenames: string[]): string | null {
     return leads.size === 1 ? [...leads][0] : null;
 }
 
-/** The first numeric token after the lead — the running order, when there is one. */
-function sectionOf(filename: string, lead: string | null): number | null {
+/** The first numeric token after the lead, as written — `'07'`, not 7. */
+function sectionRunOf(filename: string, lead: string | null): string | null {
     const body = lead ? filename.replace(new RegExp(`^${lead}\\s+`), '') : filename;
     const m = /^(\d+)/.exec(body.trim());
-    return m ? Number(m[1]) : null;
+    return m ? m[1] : null;
 }
 
-const pad = (n: number) => String(n).padStart(3, '0');
+/** The first numeric token after the lead — the running order, when there is one. */
+function sectionOf(filename: string, lead: string | null): number | null {
+    const run = sectionRunOf(filename, lead);
+    return run === null ? null : Number(run);
+}
+
+const pad = (n: number, width = 3) => String(n).padStart(width, '0');
+
+/**
+ * The width the folder writes its running number in, when every numbered file
+ * agrees on one — `2` for `1000 01 … 1000 17`. Null when the widths are mixed
+ * (`1000 9` beside `1000 10`), or nothing is numbered.
+ *
+ * This is what keeps an upload in CD order. naturalCompare reads `018` as 18,
+ * so the portal never minded our three digits; a CD burner or player compares
+ * byte by byte, and `1000 018` lands between `1000 09` and `1000 10` — the
+ * listener hears the new chapter in the middle of the book. Two-digit numbering
+ * is the norm in the Arbre Vert corpus: a check of every live folder
+ * (November 2026) found 7 075 of the 11 429 folders in CD order today that the
+ * next three-digit upload would have broken. Writing in the folder's own width
+ * leaves 58, the folders crossing a width (9 → 10, 99 → 100) or already mixing
+ * two, where no new name can sort right both ways without renaming the others
+ * — which is never done automatically.
+ */
+function sectionWidthOf(filenames: string[], lead: string | null): number | null {
+    const widths = new Set<number>();
+    for (const f of filenames) {
+        const run = sectionRunOf(f, lead);
+        if (run !== null) widths.add(run.length);
+    }
+    return widths.size === 1 ? [...widths][0] : null;
+}
 
 export interface NextTrackName {
     filename: string;
@@ -176,10 +207,17 @@ export function nextTrackName(existing: string[], originalFilename: string): Nex
     const lead = commonLead(existing);
     const prefix = lead ? `${lead} ` : '';
 
-    // Preferred: continue the folder's numbering from its highest track number.
+    // Preferred: continue the folder's numbering from its highest track number,
+    // in the width the folder already uses (see sectionWidthOf). Three digits
+    // only for a folder that has no single width, or whose next number no
+    // longer fits in it.
     const sections = existing.map((f) => sectionOf(f, lead)).filter((n): n is number => n !== null);
     if (sections.length) {
-        const candidate = `${prefix}${pad(Math.max(...sections) + 1)} ${title}.${ext}`;
+        const nextNumber = Math.max(...sections) + 1;
+        const folderWidth = sectionWidthOf(existing, lead);
+        const width =
+            folderWidth !== null && String(nextNumber).length <= folderWidth ? folderWidth : 3;
+        const candidate = `${prefix}${pad(nextNumber, width)} ${title}.${ext}`;
         if (naturalCompare(candidate, last) > 0) {
             return { filename: candidate, strategy: 'suite-numerotation' };
         }

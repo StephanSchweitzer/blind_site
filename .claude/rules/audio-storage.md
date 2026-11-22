@@ -80,7 +80,9 @@ of that.
 - **Never rename an existing key automatically.** Playback order comes from `naturalCompare`
   over the whole filename, and the corpus has no uniform track numbering. New uploads are
   named by `nextTrackName` (`lib/audio/naming.ts`), which guarantees the name **sorts after**
-  the folder's current last track or throws. A track that sorts into the middle plays an
+  the folder's current last track or throws — and writes the number in the folder's own width
+  (`1000 18`, not `1000 018`, after `1000 17`), because a CD burner sorts byte by byte and
+  three digits land between `09` and `10` there. A track that sorts into the middle plays an
   audiobook's chapters out of order — so no upload, backfill or repair path may rewrite a name
   as a side effect. The one deliberate rename is a human act: `PATCH
   /api/books/[id]/audio/track` → `renameTrack` (`lib/audio/rename.ts`), for the case where the
