@@ -6,7 +6,7 @@ import { asAdmin, type CurrentUser } from '@/lib/auth/guards';
 import { refresh } from 'next/cache';
 import { revalidateChangedBooks, revalidatePublic, snapshotPublicBooks } from '@/lib/revalidate-public';
 import { CACHE_TAGS } from '@/lib/cache-tags';
-import { listRawObjects } from '@/lib/audio/bucket';
+import { listRawObjects, toOrderedTracks } from '@/lib/audio/bucket';
 import { refreshBookAudioState } from '@/lib/audio/state';
 import { findFolderClaimant, describeClaimant } from '@/lib/audio/sharedFolder';
 import { appendOrphanNote } from '@/lib/audio/orphanFolders';
@@ -21,8 +21,6 @@ import { appendOrphanNote } from '@/lib/audio/orphanFolders';
  */
 
 export type ActionResult = { ok: true; message: string } | { ok: false; message: string };
-
-const AUDIO_EXT = /[.](mp3|m4a|m4b|wav|ogg|opus|flac|aac|wma|aiff?)$/i;
 
 const DENIED: ActionResult = { ok: false, message: 'Permissions insuffisantes' };
 
@@ -50,11 +48,15 @@ const isLinked = (o: { resolvedAt: Date | null; linkedBookId: number | null }): 
  * Used before overwriting a book's existing audio_filepath. A folder that is
  * empty or absent can be replaced without losing anything; one holding actual
  * tracks cannot, and the request is refused rather than confirmed away.
+ *
+ * Counted the way the book itself would count them (toOrderedTracks): a local
+ * extension test used to count Mac « ._ » stubs and files in sub-folders, so a
+ * folder holding nothing playable was refused as « already has a recording ».
  */
 async function folderAudioCount(prefix: string): Promise<number> {
     if (!prefix.trim()) return 0;
-    const objects = await listRawObjects(prefix.endsWith('/') ? prefix : `${prefix}/`);
-    return objects.filter((o) => AUDIO_EXT.test(o.key)).length;
+    const folder = prefix.endsWith('/') ? prefix : `${prefix}/`;
+    return toOrderedTracks(await listRawObjects(folder), folder).length;
 }
 
 interface LinkOptions {

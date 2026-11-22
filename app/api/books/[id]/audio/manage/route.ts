@@ -75,10 +75,6 @@ export const GET = withAdmin(async (_req, { params }) => {
         })),
     );
 
-    const trashCount = await prisma.deletedAudioTrack.count({
-        where: { bookId, restoredAt: null },
-    });
-
     // Is this book attached to anything in the workflow at all?
     //
     // A recording deposited on a book that no demande and no attribution ever
@@ -115,7 +111,6 @@ export const GET = withAdmin(async (_req, { params }) => {
         expiresIn: URL_TTL_SECONDS,
         trackCount: signed.length,
         totalBytes: signed.reduce((t, s) => t + s.sizeBytes, 0),
-        trashCount,
         orderCount,
         assignmentCount,
         inProgressReading,

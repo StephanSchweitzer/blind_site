@@ -28,9 +28,10 @@ import { pool } from '@/lib/concurrency';
  * deleted what. For recordings that are frequently the only copy in existence,
  * neither is sufficient, hence this layer on top.
  *
- * There is deliberately NO permanent-purge operation: every action in this
- * module is reversible. If disk pressure ever makes purging necessary it should
- * arrive as its own reviewed change, not as a switch inside the delete path.
+ * There is deliberately NO permanent deletion in this module: every action
+ * here is reversible. Purging arrived as its own reviewed change, in
+ * ./purge.ts — the nightly retention purge and « Supprimer définitivement » —
+ * and acts only on corbeille copies, never through the delete path.
  */
 
 export { TRASH_PREFIX } from './trash-prefix';

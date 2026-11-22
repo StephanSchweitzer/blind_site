@@ -78,7 +78,8 @@ interface ManageResponse {
     status: AudioLinkStatus;
     trackCount: number;
     totalBytes: number;
-    trashCount: number;
+    /** Lifetime of every `url` / `downloadUrl` below, in seconds — see freshTrack. */
+    expiresIn: number;
     /** Demandes / attributions nommant ce livre — voir MissingDemandeNotice. */
     orderCount: number;
     assignmentCount: number;
@@ -117,6 +118,17 @@ const formatSize = (bytes: number) =>
         : bytes >= 1e6
           ? `${(bytes / 1e6).toFixed(1)} Mo`
           : `${Math.max(1, Math.round(bytes / 1e3))} Ko`;
+
+/**
+ * Re-sign a little before the hour is up, not on the dot: the player asks the
+ * storage for a track piece by piece as it plays, and the pieces asked for
+ * after the link has expired are refused.
+ */
+const LINK_EXPIRY_MARGIN_MS = 5 * 60 * 1000;
+
+/** Has the time links signed at `signedAt` for `expiresIn` seconds (nearly) run out? */
+const linkExpired = (signedAt: number, expiresIn: number) =>
+    Date.now() > signedAt + expiresIn * 1000 - LINK_EXPIRY_MARGIN_MS;
 
 const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -275,7 +287,14 @@ function BatchProgressPanel({ phase, progress }: { phase: UploadPhase; progress:
                 </span>
             </div>
 
-            <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
+            <div
+                className="mt-2 h-2 w-full overflow-hidden rounded bg-muted"
+                role="progressbar"
+                aria-label="Envoi"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={percent}
+            >
                 <div
                     className="h-full bg-green-500 transition-all"
                     style={{ width: `${percent}%` }}
@@ -380,18 +399,27 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         [toast],
     );
 
+    /** When the links currently in `data` were signed, on this machine's clock. */
+    const signedAtRef = useRef(0);
+
+    const readManage = useCallback(async (): Promise<ManageResponse> => {
+        const res = await fetch(`/api/books/${bookId}/audio/manage`);
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw userErrorFromResponse(res, body);
+        signedAtRef.current = Date.now();
+        return body as ManageResponse;
+    }, [bookId]);
+
     const load = useCallback(async () => {
         setLoading(true);
         setLoadError(null);
         setTrashError(null);
         try {
-            const [mRes, tRes] = await Promise.all([
-                fetch(`/api/books/${bookId}/audio/manage`),
+            const [mData, tRes] = await Promise.all([
+                readManage(),
                 fetch(`/api/books/${bookId}/audio/trash`),
             ]);
-            const mData = await mRes.json().catch(() => null);
-            if (!mRes.ok) throw userErrorFromResponse(mRes, mData);
-            setData(mData as ManageResponse);
+            setData(mData);
 
             const tData = await tRes.json().catch(() => null);
             if (tRes.ok) {
@@ -405,7 +433,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         } finally {
             setLoading(false);
         }
-    }, [bookId]);
+    }, [bookId, readManage]);
 
     // Load on open, once per book. Tracked in a ref rather than state: this is
     // bookkeeping about whether a fetch has been kicked off, not something the
@@ -434,7 +462,37 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         onChanged?.();
     }, [load, onChanged]);
 
-    const togglePlay = (track: Track) => {
+    const linksExpired = () => linkExpired(signedAtRef.current, data?.expiresIn ?? 3600);
+
+    /**
+     * The track with links that still work.
+     *
+     * The listing's links are signed for an hour. A dialogue left open longer
+     * used to answer « Lecture impossible. », or open a storage error page for a
+     * download, with nothing saying that « Actualiser » was the way out. So an
+     * old link is re-signed first, by re-reading the folder — quietly, without
+     * the « Chargement… » that would throw the list and its scroll position away.
+     */
+    const freshTrack = async (track: Track): Promise<Track | null> => {
+        if (!linksExpired()) return track;
+        try {
+            const d = await readManage();
+            setData(d);
+            const fresh = d.tracks.find((t) => t.key === track.key) ?? null;
+            if (!fresh) notifyError(`« ${track.name} » n’est plus dans le dossier.`);
+            return fresh;
+        } catch (e) {
+            toast(
+                apiErrorToast(e, {
+                    title: 'Lien expiré',
+                    action: `Renouveler les liens audio du livre #${bookId}`,
+                }),
+            );
+            return null;
+        }
+    };
+
+    const togglePlay = async (track: Track) => {
         const el = audioRef.current;
         if (!el) return;
         if (playingKey === track.key && !el.paused) {
@@ -442,9 +500,24 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             setPlayingKey(null);
             return;
         }
-        el.src = track.url;
-        void el.play().catch(() => notifyError('Lecture impossible.'));
-        setPlayingKey(track.key);
+        const fresh = await freshTrack(track);
+        if (!fresh) return;
+        el.src = fresh.url;
+        setPlayingKey(fresh.key);
+        // A source that won't load is reported by the player's onError below;
+        // only a refusal to start (the browser's autoplay rule) lands here.
+        void el.play().catch((e: unknown) => {
+            if (e instanceof DOMException && e.name === 'NotAllowedError') notifyError('Lecture impossible.');
+        });
+    };
+
+    /** A download link past its hour leads to a storage error page: re-sign it first. */
+    const handleDownloadClick = (e: React.MouseEvent<HTMLAnchorElement>, track: Track) => {
+        if (!linksExpired()) return;
+        e.preventDefault();
+        void freshTrack(track).then((fresh) => {
+            if (fresh) window.location.assign(fresh.downloadUrl);
+        });
     };
 
     /**
@@ -659,6 +732,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         [data, selectionToSend],
     );
     const activeTrash = trash.filter((t) => !t.restoredAt);
+    const playingTrackName = data?.tracks.find((t) => t.key === playingKey)?.name ?? null;
     const zipping = zip.phase === 'running';
 
     /**
@@ -855,6 +929,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             size="sm"
                             disabled={busy}
                             onClick={() => setTab('pistes')}
+                            aria-pressed={tab === 'pistes'}
                             className={tab === 'pistes' ? '' : 'bg-field border-border text-foreground hover:bg-muted'}
                         >
                             Pistes {data ? `(${data.trackCount})` : ''}
@@ -865,6 +940,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             size="sm"
                             disabled={busy}
                             onClick={() => setTab('corbeille')}
+                            aria-pressed={tab === 'corbeille'}
                             className={tab === 'corbeille' ? '' : 'bg-field border-border text-foreground hover:bg-muted'}
                         >
                             Corbeille ({trashError ? '?' : activeTrash.length})
@@ -930,6 +1006,17 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                     </div>
 
                     {/* --- Zip progress ------------------------------------------------ */}
+                    {/* Mounted at all times: a live region that appears together with its
+                        text is not announced. Says the start and the end, not every file. */}
+                    <p className="sr-only" role="status" aria-live="polite">
+                        {zipping
+                            ? 'Archivage en cours.'
+                            : zip.phase === 'done'
+                              ? 'Archive téléchargée.'
+                              : zip.phase === 'error'
+                                ? zip.error
+                                : ''}
+                    </p>
                     {(zipping || zip.phase === 'done' || zip.phase === 'error') && (
                         <div className="flex-shrink-0 rounded-md border border-border bg-field p-3">
                             {zipping && (
@@ -949,7 +1036,16 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                         the green bar pauses between files while the
                                         download never does — showing only the green one
                                         would read as a stall. */}
-                                    <div className="relative mt-2 h-1.5 w-full overflow-hidden rounded bg-muted">
+                                    <div
+                                        className="relative mt-2 h-1.5 w-full overflow-hidden rounded bg-muted"
+                                        role="progressbar"
+                                        aria-label="Archivage"
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-valuenow={
+                                            zip.total ? Math.min(100, Math.round((zip.written / zip.total) * 100)) : 0
+                                        }
+                                    >
                                         <div
                                             className="absolute inset-y-0 left-0 bg-green-500/30"
                                             style={{
@@ -1023,114 +1119,11 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                         {/* --- Tracks -------------------------------------------------- */}
                         {!loading && !loadError && tab === 'pistes' && data && (
                             <div className="space-y-3">
-                                {data.tracks.length === 0 && (
-                                    <p className="text-sm text-muted-foreground">
-                                        {data.hasFolder
-                                            ? 'Ce dossier ne contient aucun fichier audio.'
-                                            : 'Ce livre n’a pas encore de dossier audio. Envoyez un fichier pour en créer un.'}
-                                    </p>
-                                )}
-
-                                {data.tracks.map((t) => (
-                                    <div
-                                        key={t.key}
-                                        className="flex items-center gap-3 rounded-md border border-border bg-field p-2"
-                                    >
-                                        <span className="w-8 flex-shrink-0 text-right text-xs text-muted-foreground">
-                                            {t.order}
-                                        </span>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => togglePlay(t)}
-                                            aria-label={
-                                                playingKey === t.key ? `Mettre en pause ${t.name}` : `Écouter ${t.name}`
-                                            }
-                                            className="h-8 w-8 flex-shrink-0 bg-card border-border text-foreground hover:bg-muted"
-                                        >
-                                            {playingKey === t.key ? (
-                                                <Pause className="h-4 w-4" />
-                                            ) : (
-                                                <Play className="h-4 w-4" />
-                                            )}
-                                        </Button>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="font-mono text-sm text-foreground break-all whitespace-pre-wrap">
-                                                {t.name}
-                                            </div>
-                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                <span>{formatSize(t.sizeBytes)}</span>
-                                                <span aria-hidden="true">·</span>
-                                                <span
-                                                    className="font-mono tabular-nums"
-                                                    aria-label={
-                                                        t.durationSeconds != null
-                                                            ? `Durée : ${formatDuration(t.durationSeconds)}`
-                                                            : 'Durée non mesurée'
-                                                    }
-                                                >
-                                                    {t.durationSeconds != null
-                                                        ? formatDuration(t.durationSeconds)
-                                                        : '—'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <a
-                                            href={t.downloadUrl}
-                                            className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
-                                            aria-label={`Télécharger ${t.name}`}
-                                        >
-                                            <Download className="h-4 w-4" />
-                                        </a>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            disabled={busy}
-                                            onClick={() => {
-                                                replaceTargetRef.current = t;
-                                                replaceInputRef.current?.click();
-                                            }}
-                                            aria-label={`Remplacer ${t.name} par une nouvelle version`}
-                                            title="Remplacer par une nouvelle version"
-                                            className="h-8 w-8 flex-shrink-0 bg-card border-border text-foreground hover:bg-muted"
-                                        >
-                                            <Replace className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            disabled={busy}
-                                            onClick={() => {
-                                                setRenameTarget(t);
-                                                setRenameOpen(true);
-                                            }}
-                                            aria-label={`Renommer ${t.name}`}
-                                            className="h-8 w-8 flex-shrink-0 bg-card border-border text-foreground hover:bg-muted"
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            disabled={busy}
-                                            onClick={() => {
-                                                setTarget(t);
-                                                setDeleteOpen(true);
-                                            }}
-                                            aria-label={`Supprimer ${t.name}`}
-                                            className="h-8 w-8 flex-shrink-0 border-red-500/50 bg-card text-red-500 hover:bg-red-500/10"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-
                                 {/* --- Upload ---------------------------------------------- */}
-                                <div className="mt-4 rounded-md border border-dashed border-border p-4">
+                                {/* Above the list, not below it: on a 228-track book, adding a
+                                    chapter meant scrolling past every row (and, with a screen
+                                    reader, some 700 buttons) to reach these two. */}
+                                <div className="rounded-md border border-dashed border-border p-4">
                                     {/* « Remplacer » : one file, for the track whose button opened it. */}
                                     <input
                                         ref={replaceInputRef}
@@ -1258,7 +1251,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                                 `${selectionPresent.length > 1 ? 'semblent' : 'semble'} déjà présent${selectionPresent.length > 1 ? 's' : ''} ` +
                                                                 `(même nom, même taille) et ne ${selectionPresent.length > 1 ? 'seront' : 'sera'} pas ` +
                                                                 `renvoyé${selectionPresent.length > 1 ? 's' : ''}. Pour remplacer une piste, ` +
-                                                                'supprimez-la d’abord.'}
+                                                                'utilisez « Remplacer » sur sa ligne.'}
                                                     </p>
                                                     {selectionMisplaced.length > 0 && (
                                                         <div className="mt-1">
@@ -1547,7 +1540,14 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                             )}
                                                         </span>
                                                     </div>
-                                                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-muted">
+                                                    <div
+                                                        className="mt-1 h-1.5 w-full overflow-hidden rounded bg-muted"
+                                                        role="progressbar"
+                                                        aria-label={`Envoi de ${p.assignedName ?? p.name}`}
+                                                        aria-valuemin={0}
+                                                        aria-valuemax={100}
+                                                        aria-valuenow={p.total ? Math.round((p.loaded / p.total) * 100) : 0}
+                                                    >
                                                         <div
                                                             className={`h-full ${
                                                                 p.status === 'échec'
@@ -1569,6 +1569,114 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                         </div>
                                     )}
                                 </div>
+
+                                {data.tracks.length === 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {data.hasFolder
+                                            ? 'Ce dossier ne contient aucun fichier audio.'
+                                            : 'Ce livre n’a pas encore de dossier audio. Envoyez un fichier pour en créer un.'}
+                                    </p>
+                                )}
+
+                                {data.tracks.map((t) => (
+                                    <div
+                                        key={t.key}
+                                        className="flex items-center gap-3 rounded-md border border-border bg-field p-2"
+                                    >
+                                        <span className="w-8 flex-shrink-0 text-right text-xs text-muted-foreground">
+                                            {t.order}
+                                        </span>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => void togglePlay(t)}
+                                            aria-label={
+                                                playingKey === t.key ? `Mettre en pause ${t.name}` : `Écouter ${t.name}`
+                                            }
+                                            className="h-8 w-8 flex-shrink-0 bg-card border-border text-foreground hover:bg-muted"
+                                        >
+                                            {playingKey === t.key ? (
+                                                <Pause className="h-4 w-4" />
+                                            ) : (
+                                                <Play className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-mono text-sm text-foreground break-all whitespace-pre-wrap">
+                                                {t.name}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                <span>{formatSize(t.sizeBytes)}</span>
+                                                <span aria-hidden="true">·</span>
+                                                {/* Text for screen readers rather than an aria-label:
+                                                    many ignore one on a plain span, and read « tiret ». */}
+                                                <span className="font-mono tabular-nums" aria-hidden="true">
+                                                    {t.durationSeconds != null
+                                                        ? formatDuration(t.durationSeconds)
+                                                        : '—'}
+                                                </span>
+                                                <span className="sr-only">
+                                                    {t.durationSeconds != null
+                                                        ? `Durée : ${formatDuration(t.durationSeconds)}`
+                                                        : 'Durée non mesurée'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <a
+                                            href={t.downloadUrl}
+                                            onClick={(e) => handleDownloadClick(e, t)}
+                                            className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
+                                            aria-label={`Télécharger ${t.name}`}
+                                        >
+                                            <Download className="h-4 w-4" />
+                                        </a>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            disabled={busy}
+                                            onClick={() => {
+                                                replaceTargetRef.current = t;
+                                                replaceInputRef.current?.click();
+                                            }}
+                                            aria-label={`Remplacer ${t.name} par une nouvelle version`}
+                                            title="Remplacer par une nouvelle version"
+                                            className="h-8 w-8 flex-shrink-0 bg-card border-border text-foreground hover:bg-muted"
+                                        >
+                                            <Replace className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            disabled={busy}
+                                            onClick={() => {
+                                                setRenameTarget(t);
+                                                setRenameOpen(true);
+                                            }}
+                                            aria-label={`Renommer ${t.name}`}
+                                            className="h-8 w-8 flex-shrink-0 bg-card border-border text-foreground hover:bg-muted"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            disabled={busy}
+                                            onClick={() => {
+                                                setTarget(t);
+                                                setDeleteOpen(true);
+                                            }}
+                                            aria-label={`Supprimer ${t.name}`}
+                                            className="h-8 w-8 flex-shrink-0 border-red-500/50 bg-card text-red-500 hover:bg-red-500/10"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+
                             </div>
                         )}
 
@@ -1650,8 +1758,21 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                     {/* Single shared player: only one track plays at a time. */}
                     <audio
                         ref={audioRef}
+                        aria-label={
+                            playingTrackName ? `Lecteur audio : ${playingTrackName}` : 'Lecteur audio'
+                        }
                         onEnded={() => setPlayingKey(null)}
                         onPause={() => setPlayingKey(null)}
+                        // A source the storage refused (a link past its hour, when the
+                        // player's own button restarts it) or a format this browser
+                        // can't play. « Écouter » re-signs an old link; see freshTrack.
+                        onError={() => {
+                            setPlayingKey(null);
+                            notifyError(
+                                'Lecture impossible. Cliquez à nouveau sur « Écouter » ; si l’erreur revient, ' +
+                                    'ce format n’est peut-être pas lu par ce navigateur : téléchargez la piste.',
+                            );
+                        }}
                         className="w-full flex-shrink-0"
                         controls
                     />

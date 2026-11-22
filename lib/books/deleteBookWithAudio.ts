@@ -25,7 +25,10 @@ import {
  *  1. ça ne finit pas. softDeleteTracks copie 10 de front et la route tient 45 s
  *     (maxDuration) ; le corpus contient un dossier de 77 pistes pour 748 Mio.
  *     scripts/delete-duplicate-book.ts n'existait que pour contourner ça, en
- *     vidant `audio_filepath` à la main avant de supprimer la ligne.
+ *     vidant `audio_filepath` à la main avant de supprimer la ligne. (Depuis,
+ *     la mise en corbeille avance par tranches enregistrées et la fenêtre
+ *     rappelle la route : elle finit, même sur les dossiers de plus de 300
+ *     pistes. Les points 2 et 3 restent.)
  *  2. recopier un dossier vers la corbeille pour protéger une copie que, sans
  *     fiche, plus personne ne réclamera, c'est une troisième copie pour rien —
  *     sur un stockage où l'enregistrement est souvent l'unique original.
