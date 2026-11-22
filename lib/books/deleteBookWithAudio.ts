@@ -124,8 +124,15 @@ export async function deleteBookWithAudio(opts: {
     disposition?: AudioDisposition | null;
     /** Mode `trash` : avancement du déplacement des pistes (voir softDeleteTracks). */
     onProgress?: (done: number, total: number) => void;
+    /**
+     * Mode `trash` : passé cet instant (epoch ms), plus aucune tranche de pistes
+     * ne démarre. S'il en reste, la réponse est un 202 `continue` et la fiche
+     * n'est PAS supprimée — l'appelant rappelle avec `confirmTrackCount` égal à
+     * `trackCountAfter`. Voir softDeleteTracks, « Recorded slice by slice ».
+     */
+    deadline?: number;
 }): Promise<DeleteBookResult> {
-    const { bookId, performedById, disposition, onProgress } = opts;
+    const { bookId, performedById, disposition, onProgress, deadline } = opts;
 
     const { book, preflight, objects } = await readBookDeletionCheck(bookId);
     if (!book || !preflight) {
@@ -179,8 +186,11 @@ export async function deleteBookWithAudio(opts: {
     }
 
     // Dossier vide ou absent : il n'y a rien à décider, et rien à mettre dans la
-    // file des orphelins.
-    const mode: AudioDispositionMode = tracks.length === 0 ? 'leave' : disposition!.mode;
+    // file des orphelins. Sauf pour la corbeille, dont le dernier appel d'une
+    // suppression faite en plusieurs fois trouve justement le dossier vidé par
+    // les précédents : c'est la fin de la même suppression, pas un « laisser ».
+    const mode: AudioDispositionMode =
+        tracks.length === 0 && disposition?.mode !== 'trash' ? 'leave' : disposition!.mode;
 
     if (mode === 'trash') {
         if (disposition?.confirmTrackCount !== tracks.length) {
@@ -197,9 +207,29 @@ export async function deleteBookWithAudio(opts: {
             tracks: tracks.map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes })),
             userId: performedById,
             // Plus rien à maintenir en vie ni à décrire : la fiche part juste après.
+            // (Sauf si le délai coupe le déplacement : softDeleteTracks relit
+            // alors l'état du dossier, que la fiche garde pour l'instant.)
             skipFinalisation: true,
+            priorObjects: objects,
+            deadline,
             onProgress,
         });
+
+        // Le délai a coupé le déplacement : tout ce qui a quitté le dossier est
+        // en corbeille, ligne comprise, et le reste n'a pas été touché. La fiche
+        // reste ; l'appelant rappelle pour la suite. Les échecs éventuels de
+        // cette tranche sont retentés au prochain appel, avec le reste.
+        if (result.remaining > 0) {
+            const trackCountAfter = tracks.length - result.parked.length;
+            return {
+                ok: false,
+                status: 202,
+                error:
+                    `${tracksLabel(trackCountAfter)} reste${trackCountAfter > 1 ? 'nt' : ''} à déplacer ` +
+                    'vers la corbeille. La fiche n’est pas encore supprimée.',
+                extra: { continue: true, remaining: result.remaining, trackCountAfter },
+            };
+        }
 
         // Refus plutôt que supprimer la fiche par-dessus des pistes restées dans
         // son dossier : elles seraient échouées sous un préfixe que plus aucune

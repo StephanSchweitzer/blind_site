@@ -17,15 +17,22 @@ import { blankToNull } from '@/lib/blank-to-null';
  * Applies to every handler in this file (GET/PUT are quick single-row
  * queries; only DELETE's audio cascade needs headroom — and only now that a
  * permanent asks for it explicitly, « envoyer à la corbeille » being one of
- * three dispositions rather than a silent side effect). softDeleteTracks
- * copies 10-wide, and the largest folder sampled in the corpus
- * (audit-audio-files.ts) held 77 tracks — ~8 pooled batches. 45s keeps real
- * margin over that for an unusually large folder, while staying inside the
- * ~60s that's configurable even on the smallest Vercel tier (the repo
- * doesn't record which plan this project is on; raise this if it turns out
- * to allow more).
+ * three dispositions rather than a silent side effect). 45s stays inside the
+ * ~60s that's configurable even on the smallest Vercel tier (the repo doesn't
+ * record which plan this project is on). The folder no longer has to fit in
+ * it: see TRASH_TIME_BUDGET_MS.
  */
 export const maxDuration = 45;
+
+/**
+ * How long one DELETE keeps starting slices of « envoyer à la corbeille » copies
+ * — the same budget, for the same reason, as DELETE /api/books/[id]/audio/tracks
+ * (TIME_BUDGET_MS there): folders reach 364 tracks and the bucket copies about
+ * five a second. What doesn't fit comes back as a 202 `continue`, and the
+ * dialogue calls again; the fiche is only deleted by the call that finds the
+ * folder empty.
+ */
+const TRASH_TIME_BUDGET_MS = 25_000;
 
 const invalidId = () => NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
 
@@ -343,6 +350,7 @@ function readDisposition(body: unknown): AudioDisposition | null {
  * lib/books/deleteBookWithAudio.ts, avec la suppression depuis Doublons.
  */
 export const DELETE = withAdmin(async (request, { params, me }) => {
+    const deadline = Date.now() + TRASH_TIME_BUDGET_MS;
     const bookId = await bookIdFrom(params);
     if (bookId === null) return invalidId();
 
@@ -360,7 +368,7 @@ export const DELETE = withAdmin(async (request, { params, me }) => {
         const publicBefore = await snapshotPublicBooks([bookId, disposition?.targetBookId]);
         let result: Awaited<ReturnType<typeof deleteBookWithAudio>>;
         try {
-            result = await deleteBookWithAudio({ bookId, performedById: me.id, disposition, onProgress });
+            result = await deleteBookWithAudio({ bookId, performedById: me.id, disposition, onProgress, deadline });
         } catch (error) {
             // Filet : plus aucune clé étrangère connue ne devrait arriver ici (le
             // contrôle de deleteBookWithAudio couvre les deux relations en RESTRICT),
@@ -393,6 +401,9 @@ export const DELETE = withAdmin(async (request, { params, me }) => {
         }
 
         if (!result.ok) {
+            // 202 `continue` : une partie des pistes a quitté le dossier, et la
+            // durée du livre — encore visible — a pu bouger avec elles.
+            if (result.status === 202) await revalidateChangedBooks(publicBefore);
             return NextResponse.json(
                 { error: result.error, ...(result.extra ?? {}) },
                 { status: result.status },

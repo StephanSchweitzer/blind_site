@@ -52,56 +52,87 @@ export function DeleteAllAudioTracksModal({
         setIsDeleting(true);
         setProgress({ done: 0, total: trackCount });
         try {
-            const res = await fetch(`/api/books/${bookId}/audio/tracks`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ confirmCount: trackCount, stream: true }),
-            });
-            // Les refus (404, 409…) arrivent en JSON ordinaire, avant tout flux.
-            const streaming = res.ok && !!res.body;
-            if (!streaming) {
-                throw userErrorFromResponse(res, await res.json().catch(() => null));
-            }
-
-            // Flux NDJSON : des lignes `progress`, puis `done` ou `error`.
-            type Done = { message?: string; failed?: { name: string; message: string }[] };
-            const final: { data: Done | null } = { data: null };
-            await readNdjson<Done & { type: string; done?: number; total?: number }>(res.body!, (msg) => {
-                if (msg.type === 'progress') setProgress({ done: msg.done ?? 0, total: msg.total ?? trackCount });
-                else if (msg.type === 'done') final.data = msg;
-                else if (msg.type === 'error') {
-                    throw userErrorFromResponse(new Response(null, { status: 500 }), msg);
+            // Un gros dossier se vide en plusieurs requêtes : chacune fait ce qui
+            // tient dans son délai et répond `remaining` (voir TIME_BUDGET_MS dans
+            // la route). On rappelle avec le nombre de pistes que la route vient
+            // de laisser — le même contrôle qu'à la première confirmation.
+            type Done = {
+                message?: string;
+                failed?: { name: string; message: string }[];
+                deletedCount?: number;
+                remaining?: number;
+                trackCountAfter?: number;
+            };
+            let confirmCount = trackCount;
+            let moved = 0;
+            let data: Done;
+            for (;;) {
+                // Ce qui a déjà quitté le dossier avant cette requête : la barre
+                // reste une seule barre, de 0 au total confirmé.
+                const before = trackCount - confirmCount;
+                const res = await fetch(`/api/books/${bookId}/audio/tracks`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ confirmCount, stream: true }),
+                });
+                // Les refus (404, 409…) arrivent en JSON ordinaire, avant tout flux.
+                const streaming = res.ok && !!res.body;
+                if (!streaming) {
+                    throw userErrorFromResponse(res, await res.json().catch(() => null));
                 }
-            });
-            // Flux coupé sans ligne finale : l'issue est inconnue (délai dépassé).
-            if (!final.data) {
-                throw new TypeError('Failed to fetch');
+
+                // Flux NDJSON : des lignes `progress`, puis `done` ou `error`.
+                const final: { data: Done | null } = { data: null };
+                await readNdjson<Done & { type: string; done?: number; total?: number }>(res.body!, (msg) => {
+                    if (msg.type === 'progress') {
+                        setProgress({ done: Math.min(trackCount, before + (msg.done ?? 0)), total: trackCount });
+                    } else if (msg.type === 'done') final.data = msg;
+                    else if (msg.type === 'error') {
+                        throw userErrorFromResponse(new Response(null, { status: 500 }), msg);
+                    }
+                });
+                // Flux coupé sans ligne finale : l'issue est inconnue (délai dépassé).
+                if (!final.data) {
+                    throw new TypeError('Failed to fetch');
+                }
+                data = final.data;
+                moved += data.deletedCount ?? 0;
+
+                if (!data.remaining) break;
+                // Rien n'a quitté le dossier : une requête de plus referait la même chose.
+                if (!data.deletedCount) break;
+                confirmCount = data.trackCountAfter ?? confirmCount - data.deletedCount;
             }
-            const data = final.data;
 
             const failed = (data.failed ?? []) as { name: string; message: string }[];
+            const left = data.trackCountAfter ?? 0;
+            const complete = left === 0;
+            const s = (n: number) => (n > 1 ? 's' : '');
             toast({
-                ...(failed.length > 0
+                ...(!complete
                     ? // Une suppression partielle reste à l'écran : elle dit quoi relancer.
                       { variant: 'destructive' as const, duration: Infinity }
                     : {}),
-                title: failed.length > 0 ? 'Suppression partielle' : 'Déplacées dans la corbeille',
+                title: complete ? 'Déplacées dans la corbeille' : 'Suppression partielle',
                 description: (
                     <span>
-                        {data.message ?? 'Les pistes ont été déplacées dans la corbeille.'}
-                        {failed.length > 0 && (
+                        {complete
+                            ? `${moved} piste${s(moved)} déplacée${s(moved)} dans la corbeille.`
+                            : `${moved} piste${s(moved)} déplacée${s(moved)} dans la corbeille, ` +
+                              `${left} ${left > 1 ? 'sont restées' : 'est restée'} dans le dossier.`}
+                        {!complete && (
                             <span className="block mt-2">
-                                En échec : {failed.map((f) => `« ${f.name} » (${f.message})`).join(', ')}.
+                                {failed.length > 0 &&
+                                    `En échec : ${failed.map((f) => `« ${f.name} » (${f.message})`).join(', ')}. `}
                                 Relancez la suppression : les fichiers déjà déplacés ne le seront pas
                                 deux fois.
                             </span>
                         )}
                     </span>
                 ),
-                className:
-                    failed.length > 0
-                        ? 'bg-red-100 border-red-500 text-red-900'
-                        : 'bg-green-100 border-green-500 text-green-900',
+                className: !complete
+                    ? 'bg-red-100 border-red-500 text-red-900'
+                    : 'bg-green-100 border-green-500 text-green-900',
             });
 
             onDeleted?.();

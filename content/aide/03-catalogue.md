@@ -114,7 +114,7 @@ Lorsque vous cliquez sur « Supprimer le livre », une fenêtre de confirmation 
 
 Si le livre est encore lié à des demandes ou à des attributions, la suppression est refusée et la fenêtre vous indique lesquelles. Traitez-les d'abord, puis recommencez. Le contrôle est refait au dernier moment : si quelqu'un rattache une demande au livre pendant la suppression, elle est refusée de la même façon. Si vous aviez choisi d'envoyer l'audio à la corbeille, les pistes y sont déjà : [restaurez-les depuis la corbeille audio](/admin/aide/corbeille-audio) si le livre doit les garder.
 
-Si le livre possède un enregistrement audio, la fenêtre vous demande ce qu'il faut en faire. Dans le doute, choisissez « Laisser le dossier dans le stockage ».
+Si le livre possède un enregistrement audio, la fenêtre vous demande ce qu'il faut en faire. Dans le doute, choisissez « Laisser le dossier dans le stockage ». Si vous l'envoyez à la corbeille et que la suppression s'interrompt (connexion coupée), la fiche n'est pas supprimée : la fenêtre affiche alors le nombre de pistes restées dans le dossier, à confirmer pour terminer.
 
 Si ce dossier audio est aussi celui d'une autre fiche — cas des doublons issus de l'ancienne base —, un cadre orange nomme cette autre fiche et seule l'option « Laisser le dossier dans le stockage » reste possible : les deux autres la priveraient de son enregistrement. Supprimez alors la fiche en trop : l'enregistrement n'est ni copié ni effacé, et l'autre fiche le garde.
 

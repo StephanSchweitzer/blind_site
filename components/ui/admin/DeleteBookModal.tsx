@@ -114,6 +114,8 @@ export function DeleteBookModal({
     const [isDeleting, setIsDeleting] = useState(false);
     const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
     const [error, setError] = useState<UserFacingError | null>(null);
+    /** Relance le contrôle après une corbeille interrompue : voir la fin de handleDelete. */
+    const [reloadToken, setReloadToken] = useState(0);
 
     const reset = useCallback(() => {
         setPreflight(null);
@@ -144,7 +146,7 @@ export function DeleteBookModal({
             })
             .finally(() => setLoading(false));
         return () => controller.abort();
-    }, [isOpen, bookId]);
+    }, [isOpen, bookId, reloadToken]);
 
     const audio = preflight?.audio;
     const trackCount = audio?.trackCount ?? 0;
@@ -166,52 +168,80 @@ export function DeleteBookModal({
         if (!ready || !preflight) return;
         setIsDeleting(true);
         setError(null);
+        // Hors du try : le `finally` en a besoin pour savoir si le dossier a déjà bougé.
+        let confirmTrackCount = trackCount;
+        let succeeded = false;
         try {
             const sendsProgress = hasFolder && mode === 'trash';
             if (sendsProgress) setProgress({ done: 0, total: trackCount });
-            const res = await fetch(`/api/books/${bookId}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    // Le flux n'existe que pour la corbeille, seul sort long.
-                    ...(sendsProgress ? { stream: true } : {}),
-                    audio: {
-                        mode: hasFolder ? mode : 'leave',
-                        ...(mode === 'transfer' && target
-                            ? { targetBookId: target.id, confirmReplaceTarget }
-                            : {}),
-                        ...(mode === 'trash' ? { confirmTrackCount: trackCount } : {}),
-                    },
-                }),
-            });
 
-            type Data = DeleteFailure & { audio?: Record<string, unknown> };
-            let status = res.status;
+            type Data = DeleteFailure & {
+                audio?: Record<string, unknown>;
+                continue?: boolean;
+                trackCountAfter?: number;
+            };
+            let status: number;
             let data: Data | null = null;
-            if (res.ok && res.body && res.headers.get('content-type')?.includes('ndjson')) {
-                // Flux : des lignes `progress`, puis `result` — la réponse que la
-                // route aurait rendue sans flux, refus compris.
-                const final: { status: number | null; data: Data | null } = { status: null, data: null };
-                await readNdjson<{
-                    type: string;
-                    done?: number;
-                    total?: number;
-                    status?: number;
-                    body?: Data | null;
-                }>(res.body, (msg) => {
-                    if (msg.type === 'progress') {
-                        setProgress({ done: msg.done ?? 0, total: msg.total ?? trackCount });
-                    } else if (msg.type === 'result') {
-                        final.status = msg.status ?? 500;
-                        final.data = msg.body ?? null;
-                    }
+            // La corbeille d'un gros dossier se fait en plusieurs requêtes : tant
+            // que la route répond 202 `continue`, la fiche n'est pas supprimée et
+            // on rappelle avec le nombre de pistes qu'elle vient de laisser —
+            // le même contrôle qu'à la confirmation (voir TRASH_TIME_BUDGET_MS).
+            for (;;) {
+                // Ce qui a déjà quitté le dossier : une seule barre, de 0 au total.
+                const before = trackCount - confirmTrackCount;
+                const res = await fetch(`/api/books/${bookId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        // Le flux n'existe que pour la corbeille, seul sort long.
+                        ...(sendsProgress ? { stream: true } : {}),
+                        audio: {
+                            mode: hasFolder ? mode : 'leave',
+                            ...(mode === 'transfer' && target
+                                ? { targetBookId: target.id, confirmReplaceTarget }
+                                : {}),
+                            ...(mode === 'trash' ? { confirmTrackCount } : {}),
+                        },
+                    }),
                 });
-                // Flux coupé sans ligne finale : l'issue est inconnue (délai dépassé).
-                if (final.status === null) throw new TypeError('Failed to fetch');
-                status = final.status;
-                data = final.data;
-            } else {
-                data = await res.json().catch(() => null);
+
+                status = res.status;
+                data = null;
+                if (res.ok && res.body && res.headers.get('content-type')?.includes('ndjson')) {
+                    // Flux : des lignes `progress`, puis `result` — la réponse que la
+                    // route aurait rendue sans flux, refus compris.
+                    const final: { status: number | null; data: Data | null } = { status: null, data: null };
+                    await readNdjson<{
+                        type: string;
+                        done?: number;
+                        total?: number;
+                        status?: number;
+                        body?: Data | null;
+                    }>(res.body, (msg) => {
+                        if (msg.type === 'progress') {
+                            setProgress({ done: Math.min(trackCount, before + (msg.done ?? 0)), total: trackCount });
+                        } else if (msg.type === 'result') {
+                            final.status = msg.status ?? 500;
+                            final.data = msg.body ?? null;
+                        }
+                    });
+                    // Flux coupé sans ligne finale : l'issue est inconnue (délai dépassé).
+                    if (final.status === null) throw new TypeError('Failed to fetch');
+                    status = final.status;
+                    data = final.data;
+                } else {
+                    data = await res.json().catch(() => null);
+                }
+
+                if (status !== 202 || !data?.continue) break;
+                const after = data.trackCountAfter ?? confirmTrackCount;
+                // Rien n'a quitté le dossier : une requête de plus referait la
+                // même chose. Le message de la route dit ce qui reste.
+                if (after >= confirmTrackCount) {
+                    status = 502;
+                    break;
+                }
+                confirmTrackCount = after;
             }
             const ok = status >= 200 && status < 300;
 
@@ -227,7 +257,12 @@ export function DeleteBookModal({
                 return;
             }
 
-            const outcome = (data?.audio ?? {}) as {
+            const outcome = {
+                ...(data?.audio ?? {}),
+                // Fait en plusieurs fois, le dernier appel n'a trouvé que le reste
+                // (souvent rien) : le compte à annoncer est celui qui a été confirmé.
+                ...(sendsProgress ? { trackCount } : {}),
+            } as {
                 mode?: BookAudioDispositionMode;
                 trackCount?: number;
                 targetTitle?: string;
@@ -235,6 +270,7 @@ export function DeleteBookModal({
                 keptBy?: { id: number; title: string }[];
                 targetStateStale?: boolean;
             };
+            succeeded = true;
             toast({
                 title: 'Fiche supprimée',
                 description: describeOutcome(outcome),
@@ -248,6 +284,16 @@ export function DeleteBookModal({
         } finally {
             setIsDeleting(false);
             setProgress(null);
+            // Une partie des pistes a déjà rejoint la corbeille : le nombre
+            // confirmé ne correspond plus au dossier, et un nouveau clic serait
+            // refusé. On relit le contrôle — l'erreur reste affichée — pour que
+            // la confirmation porte sur ce qui reste.
+            if (!succeeded && confirmTrackCount !== trackCount) {
+                setPreflight(null);
+                setLoading(true);
+                setTypedCount('');
+                setReloadToken((t) => t + 1);
+            }
         }
     };
 

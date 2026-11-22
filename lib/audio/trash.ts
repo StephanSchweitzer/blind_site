@@ -37,6 +37,13 @@ export class AudioTrashError extends Error {}
 const COPY_CONCURRENCY = 10;
 
 /**
+ * Tracks copied, recorded and removed together before the next ones start —
+ * see « Recorded slice by slice » in softDeleteTracks. One concurrency's worth,
+ * so a slice costs a single round of copies.
+ */
+const SLICE_SIZE = COPY_CONCURRENCY;
+
+/**
  * How much older than its corbeille row a file must be to count as the leftover
  * of an interrupted move rather than a new upload under the same name. See the
  * resume note in softDeleteTracks.
@@ -58,6 +65,12 @@ export interface BulkTrashResult {
      * removing (counted in `skipped`, not `moved`: their copy already existed).
      */
     parked: { key: string; trashId: number; trashKey: string; sizeBytes: number }[];
+    /**
+     * Tracks this call never started, because `deadline` passed first. They are
+     * untouched in the folder — no copy, no row — and the next call picks them
+     * up like any other track. Always 0 without a deadline.
+     */
+    remaining: number;
 }
 
 /**
@@ -77,12 +90,27 @@ export interface BulkTrashResult {
  *
  *   sizes come from the caller's listing        (the first HEAD disappears)
  *   copies run COPY_CONCURRENCY at a time       (the only irreducibly per-object call)
- *   rows are written with two createMany calls  (was two INSERTs per track)
- *   originals go in one DeleteObjects call      (was one DELETE per track)
+ *   rows are written with createMany, per slice (was two INSERTs per track)
+ *   originals go in one DeleteObjects per slice (was one DELETE per track)
  *   placeholder and state refresh happen once   (was twice per track, with listings)
  *
- * A 77-track folder lands at roughly twenty sequential steps instead of nine
+ * A 77-track folder lands at a few dozen sequential steps instead of nine
  * hundred.
+ *
+ * ## Recorded slice by slice
+ *
+ * The rows used to be written once, after EVERY copy had finished. A folder too
+ * large to copy inside the route's time limit therefore died with hundreds of
+ * verified copies in `corbeille/` and not one row naming them: invisible on
+ * every screen, never reached by the purge (which only reads rows), and — no
+ * row, no leftover — copied all over again by the retry, which died at the same
+ * place. « Abysses » (#10275, 228 tracks) did exactly that twice in November
+ * 2026: 2 × 217 copies, 3.8 GB, and the folder untouched.
+ *
+ * So the tracks go SLICE_SIZE at a time, each slice copied, verified, recorded
+ * (row and journal entry in one transaction) and removed before the next one
+ * starts. A call that dies leaves at most one slice of unrecorded copies; every
+ * earlier slice is either finished or recognised as a leftover by the next call.
  *
  * ## Resumable on purpose
  *
@@ -93,6 +121,10 @@ export interface BulkTrashResult {
  * makes a timeout survivable rather than a half-emptied folder nobody can
  * account for — and it is why the caller must not delete the book until `failed`
  * comes back empty.
+ *
+ * `deadline` turns « ran out of time » from an accident into a normal answer:
+ * no slice starts after it, and the call returns with `remaining` set, the
+ * caller's cue to call again. Routes pass one well inside their maxDuration.
  *
  * Copies are verified exactly as the single-track path verifies them: the
  * original is only removed once its copy has been read back at the right size.
@@ -112,8 +144,19 @@ export async function softDeleteTracks(opts: {
      *    refreshBookAudioState itself once, with that listing, after this
      *    returns — doing it here too would be a second, redundant LIST (see
      *    commit/route.ts, which routes mis-sized uploads through here).
+     *
+     * Ignored when the call stops at `deadline` with tracks left: the book is
+     * then NOT about to be deleted (its folder still holds tracks), and it may
+     * stay that way if nobody calls again — so its state has to say what the
+     * folder holds now.
      */
     skipFinalisation?: boolean;
+    /**
+     * Epoch milliseconds after which no new slice starts. The slice in flight
+     * still finishes — copy, record, remove — so the caller's own limit must
+     * leave room for one slice plus the finalisation. See `remaining`.
+     */
+    deadline?: number;
     /**
      * The prefix's complete, unfiltered listing from just before this call —
      * the same shape `listRawObjects` returns. When given, the placeholder
@@ -129,8 +172,8 @@ export async function softDeleteTracks(opts: {
      */
     onProgress?: (done: number, total: number) => void;
 }): Promise<BulkTrashResult> {
-    const { bookId, prefix, tracks, userId, skipFinalisation = false, priorObjects, onProgress } = opts;
-    if (!tracks.length) return { moved: 0, skipped: 0, failed: [], parked: [] };
+    const { bookId, prefix, tracks, userId, skipFinalisation = false, priorObjects, deadline, onProgress } = opts;
+    if (!tracks.length) return { moved: 0, skipped: 0, failed: [], parked: [], remaining: 0 };
 
     const failed: BulkTrashResult['failed'] = [];
 
@@ -213,15 +256,86 @@ export async function softDeleteTracks(opts: {
     let settled = tracks.length - todo.length;
     onProgress?.(settled, tracks.length);
 
-    // --- Copy and verify, in parallel. Nothing is destroyed in this phase. ---
-    const copied = await pool(todo, COPY_CONCURRENCY, async (track) => {
-        try {
-            return await copyOne(track);
-        } finally {
-            settled += 1;
-            onProgress?.(settled, tracks.length);
-        }
-    });
+    // --- Leftovers first: their copy and row already exist, an earlier
+    //     attempt verified both, and only the original is left to remove.
+    const parked: BulkTrashResult['parked'] = [];
+    let moved = 0;
+    if (leftovers.length) {
+        await removeOriginals(leftovers);
+    }
+
+    // --- Then slice by slice: copy and verify, record, remove. Nothing from a
+    //     slice is destroyed before its rows exist, and no slice starts before
+    //     the previous one is fully settled — see « Recorded slice by slice ».
+    let next = 0;
+    while (next < todo.length) {
+        if (deadline !== undefined && Date.now() >= deadline) break;
+        const slice = todo.slice(next, next + SLICE_SIZE);
+        next += slice.length;
+
+        const copied = await pool(slice, COPY_CONCURRENCY, async (track) => {
+            try {
+                return await copyOne(track);
+            } finally {
+                settled += 1;
+                onProgress?.(settled, tracks.length);
+            }
+        });
+        const ok = copied.filter((c): c is NonNullable<typeof c> => c !== null);
+        if (!ok.length) continue;
+
+        // Record BEFORE removing anything, so a crash between the two leaves a
+        // recoverable trace rather than an orphaned copy nobody can find. Also
+        // required by the foreign key: bookId can only be set while the book row
+        // still exists. *AndReturn so a single-track caller (softDeleteTrack)
+        // can hand back its own trashId without a second query.
+        //
+        // The journal entry goes in the same transaction. It used to follow the
+        // removal, so a call that died in between left a row with no entry — and
+        // the next call, finding a leftover, rightly logs nothing (« logged by
+        // the attempt that copied them »), so the entry was lost for good.
+        const createdRows = await prisma.$transaction(async (tx) => {
+            const rows = await tx.deletedAudioTrack.createManyAndReturn({
+                data: ok.map((t) => ({
+                    bookId,
+                    originalKey: t.key,
+                    trashKey: t.trashKey,
+                    filename: t.name,
+                    sizeBytes: BigInt(t.sizeBytes),
+                    deletedById: userId,
+                })),
+                select: { id: true, originalKey: true },
+            });
+            await tx.audioTrackEvent.createMany({
+                data: ok.map((t) => ({
+                    bookId,
+                    action: 'DELETE' as const,
+                    filename: t.name,
+                    sizeBytes: BigInt(t.sizeBytes),
+                    performedById: userId,
+                })),
+            });
+            return rows;
+        });
+        const rowIdByKey = new Map(createdRows.map((r) => [r.originalKey, r.id]));
+        moved += ok.length;
+
+        const removed = await removeOriginals(
+            ok.map((t) => ({
+                key: t.key,
+                name: t.name,
+                sizeBytes: t.sizeBytes,
+                trashKey: t.trashKey,
+                trashId: rowIdByKey.get(t.key)!,
+            })),
+        );
+        // B2 refused the removal outright: the next slice would only pile more
+        // recorded-but-not-removed originals on top. Stop here; the untouched
+        // tracks come back as `remaining`, and the next call finishes these as
+        // leftovers.
+        if (!removed) break;
+    }
+    const remaining = todo.length - next;
 
     async function copyOne(track: (typeof todo)[number]) {
         if (track.sizeBytes > MAX_COPY_BYTES) {
@@ -250,78 +364,44 @@ export async function softDeleteTracks(opts: {
         }
     }
 
-    const ok = copied.filter((c): c is NonNullable<typeof c> => c !== null);
-    if (!ok.length && !leftovers.length) return { moved: 0, skipped: doneKeys.size, failed, parked: [] };
-
-    // --- Record BEFORE removing anything, so a crash between the two leaves a
-    //     recoverable trace rather than an orphaned copy nobody can find. Also
-    //     required by the foreign key: bookId can only be set while the book row
-    //     still exists. *AndReturn so a single-track caller (softDeleteTrack)
-    //     can hand back its own trashId without a second query. Leftovers
-    //     already have their row.
-    const createdRows = ok.length
-        ? await prisma.deletedAudioTrack.createManyAndReturn({
-              data: ok.map((t) => ({
-                  bookId,
-                  originalKey: t.key,
-                  trashKey: t.trashKey,
-                  filename: t.name,
-                  sizeBytes: BigInt(t.sizeBytes),
-                  deletedById: userId,
-              })),
-              select: { id: true, originalKey: true },
-          })
-        : [];
-    const rowIdByKey = new Map(createdRows.map((r) => [r.originalKey, r.id]));
-
-    // Everything this call takes out of the folder: the fresh copies and the
-    // leftovers, whose copy an earlier attempt already verified.
-    const leaving = [
-        ...ok.map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes, trashKey: t.trashKey, trashId: rowIdByKey.get(t.key)! })),
-        ...leftovers,
-    ];
-
-    // --- Only now remove the originals, in as few calls as B2 allows.
-    const { failed: notDeleted } = await deleteTracks(leaving.map((t) => t.key));
-    const notDeletedKeys = new Set(notDeleted);
-    for (const key of notDeletedKeys) {
-        const track = leaving.find((t) => t.key === key);
-        // The copy and the row both exist, so nothing is lost — the original
-        // simply outlived the call and is recognised as a leftover by the
-        // next attempt, which then deletes it.
-        failed.push({
-            filename: track?.name ?? key,
-            reason: 'original non supprimé du stockage — relancez la suppression',
-        });
+    /**
+     * Remove originals whose verified copy AND row already exist, in as few
+     * calls as B2 allows. Returns false when the DeleteObjects call itself
+     * failed, rather than answering per key.
+     */
+    async function removeOriginals(
+        leaving: { key: string; name: string; sizeBytes: number; trashKey: string; trashId: number }[],
+    ): Promise<boolean> {
+        let notDeleted: string[];
+        let reachable = true;
+        try {
+            notDeleted = (await deleteTracks(leaving.map((t) => t.key))).failed;
+        } catch (e) {
+            console.error('softDeleteTracks: suppression des originaux refusée', e);
+            notDeleted = leaving.map((t) => t.key);
+            reachable = false;
+        }
+        const notDeletedKeys = new Set(notDeleted);
+        for (const t of leaving) {
+            if (notDeletedKeys.has(t.key)) {
+                // The copy and the row both exist, so nothing is lost — the
+                // original simply outlived the call and is recognised as a
+                // leftover by the next attempt, which then deletes it.
+                failed.push({
+                    filename: t.name,
+                    reason: 'original non supprimé du stockage — relancez la suppression',
+                });
+            } else {
+                // A track only counts as genuinely `parked` once its original
+                // is gone; the others are reported through `failed` above.
+                parked.push({ key: t.key, trashId: t.trashId, trashKey: t.trashKey, sizeBytes: t.sizeBytes });
+            }
+        }
+        return reachable;
     }
 
-    // A track only counts as genuinely `parked` once its original is gone —
-    // `notDeletedKeys` is still sitting in the folder, its row and corbeille
-    // copy notwithstanding, so it is reported through `failed` above, not here.
-    const parked = leaving
-        .filter((t) => !notDeletedKeys.has(t.key))
-        .map((t) => ({
-            key: t.key,
-            trashId: t.trashId,
-            trashKey: t.trashKey,
-            sizeBytes: t.sizeBytes,
-        }));
-
-    // Leftovers were logged by the attempt that copied them.
-    if (ok.length) {
-        await prisma.audioTrackEvent.createMany({
-            data: ok.map((t) => ({
-                bookId,
-                action: 'DELETE' as const,
-                filename: t.name,
-                sizeBytes: BigInt(t.sizeBytes),
-                performedById: userId,
-            })),
-        });
-    }
-
-    // --- Per-folder work, done once.
-    if (!skipFinalisation) {
+    // --- Per-folder work, done once — and only if the folder changed.
+    if (parked.length && (!skipFinalisation || remaining > 0)) {
         // Removing the last track would otherwise make the folder itself
         // disappear, turning "an admin emptied this" into "this book's path
         // points nowhere".
@@ -329,15 +409,24 @@ export async function softDeleteTracks(opts: {
         // When the caller handed us its pre-mutation listing, the post-
         // mutation remainder is known exactly — everything that listing held
         // MINUS the keys just genuinely removed (copied out AND deleted;
-        // `notDeletedKeys` are still sitting in the folder) — so neither call
-        // below needs to list the prefix again.
+        // originals B2 refused to delete are still sitting in the folder) —
+        // so neither call below needs to list the prefix again.
         const removedKeys = new Set(parked.map((t) => t.key));
-        const remaining = priorObjects?.filter((o) => !removedKeys.has(o.key));
-        await ensureFolderPlaceholder(prefix, remaining);
-        await refreshBookAudioState(bookId, null, true, remaining);
+        const left = priorObjects?.filter((o) => !removedKeys.has(o.key));
+        const placed = await ensureFolderPlaceholder(prefix, left);
+        // The placeholder just written belongs in that remainder too: handed an
+        // empty listing, the refresh reads « nothing at this path » and writes
+        // FOLDER_MISSING — the very answer the placeholder exists to prevent.
+        // (It did, every time the caller's listing held no `.bzEmpty` of its own.)
+        await refreshBookAudioState(
+            bookId,
+            null,
+            true,
+            left && placed ? [...left, { key: `${prefix}.bzEmpty`, size: 0 }] : left,
+        );
     }
 
-    return { moved: ok.length, skipped: leftovers.length + doneKeys.size, failed, parked };
+    return { moved, skipped: leftovers.length + doneKeys.size, failed, parked, remaining };
 }
 
 /**

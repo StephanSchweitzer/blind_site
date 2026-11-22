@@ -9,14 +9,24 @@ import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/shared
 import { unexpectedErrorResponse } from '@/lib/api-errors';
 
 /**
- * softDeleteTracks copies 10-wide; the largest folder sampled in the corpus
- * (audit-audio-files.ts) held 77 tracks, ~8 pooled copy batches. 45s keeps
- * real margin over that for an unusually large folder, while staying inside
- * the ~60s that's configurable even on the smallest Vercel tier (the repo
- * doesn't record which plan this project is on; raise this if it turns out
- * to allow more).
+ * Inside the ~60s that's configurable even on the smallest Vercel tier (the
+ * repo doesn't record which plan this project is on). What has to fit in it is
+ * no longer the whole folder — see TIME_BUDGET_MS.
  */
 export const maxDuration = 45;
+
+/**
+ * How long one request keeps STARTING slices of copies. The corpus has folders
+ * of up to 364 tracks, and the bucket copies about five a second: « Abysses »
+ * (228 tracks) died at 217 copies, twice, when the route tried to do the whole
+ * folder in one go (see softDeleteTracks, « Recorded slice by slice »).
+ *
+ * So a request does what fits and answers with `remaining`; the dialogue calls
+ * again with the count it was just given, and the permanent sees one progress
+ * bar. The 20 s left under maxDuration cover the slice still in flight (ten
+ * copies) and the final state refresh.
+ */
+const TIME_BUDGET_MS = 25_000;
 
 /**
  * Move every track in a book's folder to the corbeille, in one action.
@@ -29,8 +39,14 @@ export const maxDuration = 45;
  * The caller must echo back the current track count, re-checked here against
  * a fresh listing: a stale dialogue must not be able to wipe more (or fewer)
  * tracks than the admin actually saw when they confirmed.
+ *
+ * A large folder takes several requests (TIME_BUDGET_MS). Each answer carries
+ * `remaining` — tracks this request never started — and `trackCountAfter`, the
+ * folder's count as this request leaves it; the follow-up request echoes the
+ * latter as its `confirmCount`, so the same check guards every step.
  */
 export const DELETE = withAdmin(async (req, { params, me }) => {
+    const deadline = Date.now() + TIME_BUDGET_MS;
     const { id } = (await params) ?? {};
     const bookId = Number(id);
     if (!Number.isInteger(bookId)) {
@@ -92,10 +108,10 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
 
     // The per-track cached-state refresh used to force this loop to be
     // sequential; softDeleteTracks does that refresh once at the end instead, so
-    // the copies can run in parallel and the removals collapse into a single
-    // DeleteObjects call. A track an earlier run already copied is not copied
-    // again (its leftover original is just removed), so a run that timed out
-    // half way is finished simply by confirming again.
+    // the copies can run in parallel and the removals go one DeleteObjects call
+    // per slice. A track an earlier run already copied and recorded is not
+    // copied again (its leftover original is just removed), so a run that was
+    // cut short is finished by calling again.
     const run = async (onProgress?: (done: number, total: number) => void) => {
         const publicBefore = await snapshotPublicBooks([bookId]);
         let result: Awaited<ReturnType<typeof softDeleteTracks>>;
@@ -108,6 +124,7 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
                 // The listing above already covers the whole prefix, so the
                 // placeholder check and the final state refresh don't need a second one.
                 priorObjects: objects,
+                deadline,
                 onProgress,
             });
         } catch (e) {
@@ -142,6 +159,10 @@ export const DELETE = withAdmin(async (req, { params, me }) => {
         return {
             ok: true as const,
             body: {
+                // Not started yet: the dialogue calls again (see TIME_BUDGET_MS).
+                remaining: result.remaining,
+                // What the folder holds now — the `confirmCount` of that next call.
+                trackCountAfter: tracks.length - deleted.length,
                 message:
                     failed.length === 0
                         ? `${deleted.length} piste${deleted.length > 1 ? 's' : ''} déplacée${deleted.length > 1 ? 's' : ''} dans la corbeille.`
