@@ -142,31 +142,12 @@ export function parseSection(key: string, size = 0): ParsedSection {
 }
 
 /**
- * Natural ("human") comparison: digit runs compare numerically, everything else
- * lexicographically. `x2` before `x10`, `141201_1224` before `141203_1226`.
+ * Playback order — the portal's own comparison, not a copy of it. This file
+ * used to carry a duplicate; the two had to agree by hand, and an audit that
+ * orders folders differently from the portal reports problems that aren't there.
  */
-export function naturalCompare(a: string, b: string): number {
-    // Collapse whitespace runs first: the bucket has `1000    01 T.mp3` next to
-    // `1000   02 T.mp3`, and without this the differing run lengths decide the
-    // order before the track numbers ever get compared.
-    const split = (s: string) => s.replace(/\s+/g, ' ').match(/\d+|\D+/g) ?? [];
-    const A = split(a);
-    const B = split(b);
-    for (let i = 0; i < Math.min(A.length, B.length); i++) {
-        const x = A[i];
-        const y = B[i];
-        const xn = /^\d/.test(x);
-        const yn = /^\d/.test(y);
-        if (xn && yn) {
-            const d = Number(x) - Number(y);
-            if (d) return d;
-        } else {
-            const d = x.localeCompare(y, 'fr');
-            if (d) return d;
-        }
-    }
-    return A.length - B.length;
-}
+import { naturalCompare } from '../lib/audio/natural-compare';
+export { naturalCompare };
 
 /**
  * Playback order.

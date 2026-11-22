@@ -131,6 +131,26 @@ check(
     );
 }
 
+// ------------------------------------------------- ordre de lecture (portail)
+
+// Régressions (novembre 2026) : majuscules, accents et espace entre un mot et
+// son numéro décidaient de l'ordre avant les numéros de piste.
+{
+    const sorted = (names: string[]) => [...names].sort(naturalCompare);
+    check('casse : « Look 01 » avant « look 02 »', sorted(['1000 look 02.mp3', '1000 Look 01.mp3']), ['1000 Look 01.mp3', '1000 look 02.mp3']);
+    check('casse : « PIste 07 » avant « Piste 08 »', sorted(['1000 Piste 08.mp3', '1000 PIste 07.mp3']), ['1000 PIste 07.mp3', '1000 Piste 08.mp3']);
+    check('accents : « séq 2 » avant « seq 8 »', sorted(['1000 seq 8 a.mp3', '1000 séq 2 b.mp3']), ['1000 séq 2 b.mp3', '1000 seq 8 a.mp3']);
+    check(
+        'mot collé à son numéro : « plage 00 » … avant « plage10 »',
+        sorted(['1000 plage10.mp3', '1000 plage 00.mp3', '1000 plage 09.mp3', '1000 plage11.mp3']),
+        ['1000 plage 00.mp3', '1000 plage 09.mp3', '1000 plage10.mp3', '1000 plage11.mp3'],
+    );
+    check('« girard 02 » avant « girard04 »', sorted(['1000 girard04.mp3', '1000 girard 02.mp3']), ['1000 girard 02.mp3', '1000 girard04.mp3']);
+    check('le lead et le numéro restent séparés', naturalCompare('1000 2 a.mp3', '1000 10 a.mp3') < 0, true);
+    check('noms égaux sauf la casse : départagés comme avant (minuscule d’abord)', sorted(['A.mp3', 'a.mp3']), ['a.mp3', 'A.mp3']);
+    check('noms identiques : 0', naturalCompare('1000 01 a.mp3', '1000 01 a.mp3'), 0);
+}
+
 // ------------------------------------------- avertissement ordre CD (panneau)
 
 {
