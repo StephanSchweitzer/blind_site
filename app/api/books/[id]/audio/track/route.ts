@@ -6,7 +6,7 @@ import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
 import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
 import { renameTrack, AudioRenameError } from '@/lib/audio/rename';
-import { splitExtension, isAppleDoubleName } from '@/lib/audio/naming';
+import { splitExtension, isAppleDoubleName, WINDOWS_FORBIDDEN_CHARS } from '@/lib/audio/naming';
 import { isAudioKey } from '@/lib/audio/bucket';
 import { unexpectedErrorResponse } from '@/lib/api-errors';
 
@@ -136,7 +136,8 @@ export const PATCH = withAdmin(async (req, { params, me }) => {
     const body = await req.json().catch(() => null);
     const key = typeof body?.key === 'string' ? body.key : '';
     const confirmFilename = typeof body?.filename === 'string' ? body.filename : '';
-    const newName = typeof body?.newName === 'string' ? body.newName.trim() : '';
+    // Composé (NFC), comme un envoi — voir sanitiseTrackTitle.
+    const newName = typeof body?.newName === 'string' ? body.newName.trim().normalize('NFC') : '';
 
     if (!key) {
         return NextResponse.json({ message: 'Clé manquante' }, { status: 400 });
@@ -146,6 +147,17 @@ export const PATCH = withAdmin(async (req, { params, me }) => {
     }
     if (newName.includes('/') || newName.includes('..') || newName.length > 255) {
         return NextResponse.json({ message: 'Nom de fichier invalide.' }, { status: 400 });
+    }
+    // Un nom que Windows ne sait pas créer : la piste ne se téléchargerait plus
+    // sur la plupart des postes des bénévoles.
+    if (WINDOWS_FORBIDDEN_CHARS.test(newName)) {
+        return NextResponse.json(
+            {
+                message:
+                    'Les caractères \\ : * ? " < > | ne sont pas acceptés : Windows ne peut pas créer un fichier qui en contient.',
+            },
+            { status: 400 },
+        );
     }
 
     const book = await prisma.book.findUnique({

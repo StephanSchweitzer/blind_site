@@ -15,10 +15,10 @@
  * plays out of order.
  */
 
-import { byteOrderCompare } from './naming';
+import { byteOrderCompare, WINDOWS_FORBIDDEN_CHARS } from './naming';
 
-/** Characters Windows refuses in a file name: its own unzip tool stops on them. */
-const WINDOWS_FORBIDDEN = /[\\/:*?"<>|]/g;
+/** Characters Windows refuses in a file name: its own unzip tool stops on them. Same set the rename refuses. */
+const WINDOWS_FORBIDDEN = new RegExp(WINDOWS_FORBIDDEN_CHARS.source, 'g');
 
 /** The playlist written beside the tracks, for players and burners that read one. */
 export const PLAYLIST_NAME = 'Liste de lecture.m3u8';
@@ -30,7 +30,7 @@ export const PLAYLIST_NAME = 'Liste de lecture.m3u8';
  * touched: four folders, in November 2026 (`Et ça, ça se met où ? P 7.mp3`).
  */
 export function windowsSafeName(name: string): string {
-    if (!/[\\/:*?"<>|]/.test(name)) return name;
+    if (!WINDOWS_FORBIDDEN_CHARS.test(name)) return name;
     return name.replace(WINDOWS_FORBIDDEN, ' ').replace(/\s+/g, ' ').replace(/ (?=\.[^.]+$)/, '').trim();
 }
 

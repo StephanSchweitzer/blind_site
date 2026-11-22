@@ -1604,6 +1604,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                 onOpenChange={setRenameOpen}
                 bookId={bookId}
                 track={renameTarget}
+                folderNames={data?.tracks.map((t) => t.name) ?? []}
                 onRenamed={() => void refreshAll()}
             />
         </>

@@ -19,6 +19,8 @@ import {
     alreadyUploadedFinder,
     byteOrderCompare,
     cdOrderConflict,
+    renamePreview,
+    WINDOWS_FORBIDDEN_CHARS,
 } from '../lib/audio/naming';
 import { downloadEntryNames, playlistM3u, windowsSafeName } from '../lib/audio/download-names';
 import { missingInMiddle } from '../lib/audio/folder-selection';
@@ -414,6 +416,42 @@ check(
     check('renvoi d’un ancien nom à apostrophe', find({ name: '1000 2 L\'enfant de l\'enfer.mp3', size: 111 }), stored[0].name);
     check('renvoi d’un nom nettoyé pour Windows', find({ name: windowsSafeName(stored[1].name), size: 222 }), stored[1].name);
     check('même titre, autre taille : pas un doublon', find({ name: '002 1000 2 L\'enfant de l\'enfer.mp3', size: 112 }), null);
+}
+
+// ------------------------------------------- noms composés (NFC), renommage
+
+{
+    const nfd = 'Présentation.mp3';
+    check('titre envoyé depuis un Mac : stocké composé', nextTrackName([], nfd).filename, '001 Présentation.mp3');
+    check('nettoyage : composé', sanitiseTrackTitle('Émile'), 'Émile');
+
+    const folder = ['1000 01 Intro.mp3', '1000 02 Suite.mp3', '1000 03 Fin.mp3'];
+    check('renommage sans effet sur l’ordre', renamePreview(folder, '1000 02 Suite.mp3', '1000 02 La suite.mp3'), {
+        position: 2,
+        cdSwap: null,
+    });
+    check('renommage qui déplace la piste', renamePreview(folder, '1000 03 Fin.mp3', '1000 00 Fin.mp3').position, 1);
+    check(
+        'renommage que le CD lirait ailleurs : « 1000 10 » après « 1000 3 » dans le portail, avant sur un CD',
+        renamePreview(['1000 1 a.mp3', '1000 2 b.mp3', '1000 3 c.mp3'], '1000 1 a.mp3', '1000 10 a.mp3'),
+        { position: 3, cdSwap: { other: '1000 3 c.mp3', cdFirst: true } },
+    );
+    check(
+        'interversion que l’ancien nom avait déjà : pas d’avertissement',
+        renamePreview(['1000 2 a.mp3', '1000 10 b.mp3', '1000 11 c.mp3'], '1000 11 c.mp3', '1000 12 c.mp3').cdSwap,
+        null,
+    );
+    check(
+        'renommage qui remet la piste en ordre CD : pas d’avertissement',
+        renamePreview(['1000 01 a.mp3', '1000 2 b.mp3', '1000 03 c.mp3'], '1000 2 b.mp3', '1000 02 b.mp3').cdSwap,
+        null,
+    );
+    check('caractères refusés par Windows', ['a?b', 'a"b', 'a:b', 'ab'].map((s) => WINDOWS_FORBIDDEN_CHARS.test(s)), [
+        true,
+        true,
+        true,
+        false,
+    ]);
 }
 
 // --------------------------------- nouveau choix d'un dossier : trou au milieu

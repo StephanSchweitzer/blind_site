@@ -36,9 +36,16 @@ const PATH_HOSTILE = new Set(['/', '\\', ':', '*', '?', '"', '<', '>', '|']);
  * Accents are legal in bucket keys and the catalogue is French, so `Émile`
  * stays `Émile`; it is only the apostrophe family and the path-hostile set that
  * cause the `l'abbé` / `l!abbé` divergence already visible in the corpus.
+ *
+ * Composed (NFC) first. A Mac hands over `é` as `e` + a combining accent (NFD):
+ * the same name to the eye, different bytes in the key. 476 portal-named
+ * tracks were stored that way by November 2026, beside 90 from the migration
+ * and the composed rest — and a burner, which sorts by bytes, places
+ * `Présentation` and `Présentation` differently. Existing keys are left as
+ * they are (never renamed automatically); new ones are composed.
  */
 export function sanitiseTrackTitle(raw: string): string {
-    return [...raw]
+    return [...raw.normalize('NFC')]
         .filter((c) => !APOSTROPHES.has(c))
         .map((c) => (PATH_HOSTILE.has(c) || c < ' ' ? ' ' : c))
         .join('')
@@ -304,6 +311,53 @@ export function cdOrderConflict(existing: string[], originals: string[]): CdOrde
         folder.push(filename);
     }
     return null;
+}
+
+/** Characters Windows refuses in a file name — a track named with one cannot be downloaded there. */
+export const WINDOWS_FORBIDDEN_CHARS = /[\\:*?"<>|]/;
+
+export interface RenamePreview {
+    /** 1-based playback position the track would take under its new name. */
+    position: number;
+    /**
+     * The nearest track (in playback order) the new name would swap places
+     * with on a CD: `cdFirst` true when the burner would put the renamed track
+     * first although the portal plays it after `other`. Null when the two
+     * orders agree on where the new name goes.
+     */
+    cdSwap: { other: string; cdFirst: boolean } | null;
+}
+
+/**
+ * What a rename does to the playback order, said before it is applied.
+ *
+ * The rename exists to move a track (the order IS the name), so the dialogue
+ * shows where the new name lands; and because a CD sorts by bytes, it also
+ * checks the new name against every other track in both orders. Only swaps
+ * the rename brings count: a pair the old name already had (most of the 259
+ * folders out of CD order in November 2026) is not this rename's doing, and
+ * warning about it on every rename there would teach people to skip the line.
+ *
+ * `folder` is the current listing in playback order, `oldName` included.
+ */
+export function renamePreview(folder: string[], oldName: string, newName: string): RenamePreview {
+    const others = folder.filter((n) => n !== oldName);
+    const after = [...others, newName].sort(naturalCompare);
+    const position = after.indexOf(newName) + 1;
+    const swaps = (name: string, other: string) =>
+        naturalCompare(name, other) < 0 !== byteOrderCompare(name, other) < 0;
+    let cdSwap: RenamePreview['cdSwap'] = null;
+    let nearest = Infinity;
+    for (const [i, other] of after.entries()) {
+        if (other === newName || swaps(oldName, other)) continue;
+        const cdFirst = byteOrderCompare(newName, other) < 0;
+        const distance = Math.abs(i + 1 - position);
+        if (swaps(newName, other) && distance < nearest) {
+            nearest = distance;
+            cdSwap = { other, cdFirst };
+        }
+    }
+    return { position, cdSwap };
 }
 
 /** Case and Unicode form are noise here: macOS hands over NFD names, Windows ignores case. */

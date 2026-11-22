@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -14,7 +14,7 @@ import { Loader2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiErrorToast } from '@/admin/ApiErrorMessage';
 import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
-import { isAppleDoubleName } from '@/lib/audio/naming';
+import { isAppleDoubleName, renamePreview, WINDOWS_FORBIDDEN_CHARS } from '@/lib/audio/naming';
 
 export interface AudioTrackRenameTarget {
     order: number;
@@ -27,6 +27,8 @@ interface RenameAudioTrackModalProps {
     onOpenChange: (open: boolean) => void;
     bookId: number;
     track: AudioTrackRenameTarget | null;
+    /** Every track of the folder in playback order, for the position preview. */
+    folderNames: string[];
     onRenamed?: () => void;
 }
 
@@ -50,6 +52,7 @@ export function RenameAudioTrackModal({
     onOpenChange,
     bookId,
     track,
+    folderNames,
     onRenamed,
 }: RenameAudioTrackModalProps) {
     const { toast } = useToast();
@@ -72,12 +75,22 @@ export function RenameAudioTrackModal({
     }
 
     const ext = track ? splitName(track.name).ext : '';
-    const trimmed = base.trim();
+    // Composé (NFC), comme un envoi : voir sanitiseTrackTitle.
+    const trimmed = base.trim().normalize('NFC');
     const newName = ext ? `${trimmed}.${ext}` : trimmed;
     // Le refus de la route, dit avant l'envoi : un nom en « ._ » est celui d'un
     // fichier de métadonnées Mac, que tous les listings ignorent (isAudioKey).
     const appleDouble = isAppleDoubleName(newName);
-    const valid = trimmed.length > 0 && !trimmed.includes('/') && !appleDouble && newName !== track?.name;
+    // Même refus : Windows ne sait pas créer ce fichier, ni au téléchargement
+    // d'une piste ni en décompressant l'archive.
+    const forbidden = WINDOWS_FORBIDDEN_CHARS.test(trimmed);
+    const valid =
+        trimmed.length > 0 && !trimmed.includes('/') && !appleDouble && !forbidden && newName !== track?.name;
+    // Où la piste ira, dans le portail et sur un CD — le but même d'un renommage.
+    const preview = useMemo(
+        () => (track && valid ? renamePreview(folderNames, track.name, newName) : null),
+        [track, valid, folderNames, newName],
+    );
 
     const handleRename = async () => {
         if (!track || !valid) return;
@@ -169,6 +182,29 @@ export function RenameAudioTrackModal({
                                 <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                                     Un nom commençant par « ._ » (ou contenant « ._ » après un espace) est celui
                                     d’un fichier de métadonnées Mac : la piste disparaîtrait des listings.
+                                </p>
+                            )}
+                            {forbidden && (
+                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                                    Les caractères \ : * ? &quot; &lt; &gt; | ne sont pas acceptés : Windows ne peut pas
+                                    créer un fichier qui en contient, la piste ne se téléchargerait pas.
+                                </p>
+                            )}
+                            {preview && (
+                                <p className="mt-2 text-sm text-foreground">
+                                    {preview.position === track.order
+                                        ? `Reste la piste n° ${preview.position}.`
+                                        : `Deviendra la piste n° ${preview.position} (au lieu de ${track.order}).`}
+                                </p>
+                            )}
+                            {preview?.cdSwap && (
+                                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                                    Sur un CD, ce nom passerait {preview.cdSwap.cdFirst ? 'avant' : 'après'} «{' '}
+                                    <span className="font-mono break-all">{preview.cdSwap.other}</span> », alors
+                                    que le portail le joue {preview.cdSwap.cdFirst ? 'après' : 'avant'} : un graveur
+                                    range les noms caractère par caractère, sans lire les nombres ni ignorer les
+                                    majuscules. Le plus sûr : un numéro écrit avec autant de chiffres que celui des
+                                    autres pistes.
                                 </p>
                             )}
                         </div>
