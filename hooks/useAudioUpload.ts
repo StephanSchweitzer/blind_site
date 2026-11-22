@@ -169,6 +169,13 @@ const PUT_ATTEMPTS = 3;
 /** Attempts for the JSON calls to our own API (signing, verification). */
 const FETCH_ATTEMPTS = 3;
 
+/**
+ * How often an upload renews its claim on the book (UPLOAD_LEASE_SECONDS, ten
+ * minutes, in lib/audio/uploadLease.ts). A fifth of the claim's life, so a tab
+ * the browser throttles in the background still renews in time.
+ */
+const LEASE_RENEW_MS = 120_000;
+
 const RETRY_BASE_MS = 700;
 const MAX_BACKOFF_MS = 15_000;
 
@@ -643,362 +650,415 @@ export function useAudioUpload(bookId: number) {
                 row.recoverable = recoverable;
             };
 
-            let becameAvailable = false;
-            let repriced = 0;
-            let committed = 0;
-            let aborted = false;
-            let pending = files;
+            // Un seul envoi à la fois sur ce livre — voir lib/audio/uploadLease.ts.
+            // Le serveur prend le livre à la première demande de signature ; on
+            // le garde ici tant que des fichiers partent, et on le rend à la fin.
+            const leaseToken = crypto.randomUUID();
+            /** Set when another upload took the book over: no new PUT starts. */
+            let leaseLost: string | null = null;
+            const renewal = setInterval(() => {
+                void fetch(`/api/books/${bookId}/audio/upload-lease`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: leaseToken, action: 'renew' }),
+                })
+                    .then(async (res) => {
+                        if (res.status !== 409) return;
+                        const data = await res.json().catch(() => null);
+                        leaseLost = String(data?.message ?? 'Un autre envoi a repris ce livre.');
+                    })
+                    // A missed renewal is retried two minutes later; the claim lives ten.
+                    .catch(() => undefined);
+            }, LEASE_RENEW_MS);
 
-            for (let pass = 1; pass <= 1 + RECOVERY_PASSES && pending.length && !aborted; pass++) {
-                if (pass > 1) await sleep(PASS_PAUSE_MS);
+            try {
+                let becameAvailable = false;
+                let repriced = 0;
+                let committed = 0;
+                let aborted = false;
+                let pending = files;
 
-                for (const f of pending) {
-                    const row = rowOf(f.name);
-                    if (!row) continue;
-                    row.pass = pass;
-                    row.attempts = 0;
-                    row.loaded = 0;
-                    row.status = 'en attente';
-                    row.error = undefined;
-                    row.hint = undefined;
-                    row.recoverable = undefined;
-                }
-                publish();
+                for (let pass = 1; pass <= 1 + RECOVERY_PASSES && pending.length && !aborted; pass++) {
+                    if (pass > 1) await sleep(PASS_PAUSE_MS);
 
-                const chunks: File[][] = [];
-                for (let i = 0; i < pending.length; i += MAX_FILES_PER_CHUNK) {
-                    chunks.push(pending.slice(i, i + MAX_FILES_PER_CHUNK));
-                }
-
-                for (let c = 0; c < chunks.length; c++) {
-                    const chunk = chunks[c];
-                    const downstream = chunks.slice(c + 1).flat();
-
-                    // --- 0. Hash every file in the chunk ----------------------
-                    //
-                    // Has to happen before signing, not before the PUT: B2 needs
-                    // the checksum value at signing time to fold it into the
-                    // presigned URL's signature (see putTrackUrl's doc comment
-                    // in lib/audio/bucket-core.ts) — sending it only as a PUT
-                    // header, unsigned, is rejected outright. Bounded the same
-                    // as the transfers below so a 50-file chunk doesn't try to
-                    // hold 50 files' bytes in memory at once.
-                    setPhase('preparing');
-                    const checksumByName = new Map(
-                        (
-                            await pool(chunk, CONCURRENCY, async (f) => ({
-                                name: f.name,
-                                checksum: await sha256Base64(f),
-                            }))
-                        ).map((r) => [r.name, r.checksum] as const),
-                    );
-
-                    // --- 1. Ask the server to name and sign each file ---------
-                    let signed: SignedFile[];
-                    let skipped: { originalName: string; existingName: string }[];
-                    try {
-                        const { res, data } = await fetchJsonWithRetry(
-                            `/api/books/${bookId}/audio/upload-url`,
-                            {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    files: chunk.map((f) => {
-                                        const existingKey = assignedKeysRef.current.get(f.name);
-                                        const checksum = checksumByName.get(f.name)!;
-                                        if (existingKey) return { name: f.name, size: f.size, existingKey, checksum };
-                                        // « Remplacer » : la première demande seulement. Une fois la clé
-                                        // attribuée, les reprises passent par existingKey ci-dessus — le
-                                        // serveur ne remet donc jamais la NOUVELLE prise en corbeille.
-                                        if (opts.replaceKey && files.length === 1) {
-                                            return { name: f.name, size: f.size, checksum, replaceKey: opts.replaceKey };
-                                        }
-                                        return { name: f.name, size: f.size, checksum };
-                                    }),
-                                }),
-                            },
-                        );
-
-                        if (res.status === 409 && data?.occupied) {
-                            setFolderConflict({
-                                message: String(
-                                    data.message ?? 'Un dossier existe déjà à cet emplacement.',
-                                ),
-                                proposedPrefix: String(data.proposedPrefix ?? ''),
-                            });
-                            setPhase('idle');
-                            return FAILED;
-                        }
-                        // Dossier partagé avec une autre fiche : un refus de
-                        // principe, pas un incident — ni nouvelle passe, ni
-                        // bouton « Renvoyer », le message dit quoi faire.
-                        if (res.status === 409 && data?.sharedWith) {
-                            progressRef.current = [];
-                            publish();
-                            setError(String(data.message ?? 'Ce dossier audio est partagé avec une autre fiche.'));
-                            setPhase('error');
-                            return FAILED;
-                        }
-                        if (!res.ok) {
-                            throw new Error(
-                                String(data?.message ?? 'Préparation de l’envoi impossible'),
-                            );
-                        }
-                        signed = (data?.files ?? []) as SignedFile[];
-                        skipped = (data?.skipped ?? []) as typeof skipped;
-                    } catch (e) {
-                        // Signing is per-chunk, so this kills this chunk and
-                        // everything queued behind it — but not what already
-                        // landed, and not the retry offer.
-                        const message = e instanceof Error ? e.message : 'Erreur inattendue';
-                        for (const f of [...chunk, ...downstream]) {
-                            fail(
-                                f.name,
-                                message,
-                                'La préparation de l’envoi a échoué côté serveur. Relancez ' +
-                                    'les fichiers en échec avec le bouton ci-dessous ; s’ils ' +
-                                    'échouent encore, prévenez l’informaticien.',
-                                true,
-                            );
-                        }
-                        publish();
-                        setError(message);
-                        aborted = true;
-                        break;
-                    }
-
-                    for (const s of signed) {
-                        const row = rowOf(s.originalName);
-                        if (row) row.assignedName = s.filename;
-                        // Remembered regardless of which pass this is, so a
-                        // later retry — internal recovery pass or a fresh
-                        // "Renvoyer les fichiers en échec" call — asks the
-                        // server to re-sign this exact key instead of being
-                        // renamed into a new slot.
-                        assignedKeysRef.current.set(s.originalName, s.key);
-                    }
-                    // Already in the folder: nothing to send, nothing to verify.
-                    // Settled here as done rather than failed, so re-picking a
-                    // folder after a half-failed upload ends green once the
-                    // missing files are in.
-                    for (const k of skipped) {
-                        const row = rowOf(k.originalName);
+                    for (const f of pending) {
+                        const row = rowOf(f.name);
                         if (!row) continue;
-                        row.status = 'terminé';
-                        row.loaded = row.total;
-                        row.assignedName = k.existingName;
-                        row.alreadyPresent = true;
-                    }
-                    // A signature the server didn't return for is a file that
-                    // would otherwise sit at « en attente » for ever and be
-                    // dropped silently — the one outcome worse than a failure.
-                    const signedNames = new Set([
-                        ...signed.map((s) => s.originalName),
-                        ...skipped.map((k) => k.originalName),
-                    ]);
-                    for (const f of chunk.filter((f) => !signedNames.has(f.name))) {
-                        fail(
-                            f.name,
-                            'Le serveur n’a pas préparé l’envoi de ce fichier.',
-                            'Relancez-le avec le bouton ci-dessous. S’il échoue à nouveau, ' +
-                                'renommez-le (accents ou caractères inhabituels) avant de réessayer.',
-                            true,
-                        );
+                        row.pass = pass;
+                        row.attempts = 0;
+                        row.loaded = 0;
+                        row.status = 'en attente';
+                        row.error = undefined;
+                        row.hint = undefined;
+                        row.recoverable = undefined;
                     }
                     publish();
 
-                    // --- 2. PUT straight to the bucket -----------------------
-                    setPhase('uploading');
-                    const sent: { key: string; size: number; name: string }[] = [];
-                    let queue = 0;
+                    const chunks: File[][] = [];
+                    for (let i = 0; i < pending.length; i += MAX_FILES_PER_CHUNK) {
+                        chunks.push(pending.slice(i, i + MAX_FILES_PER_CHUNK));
+                    }
 
-                    // Kicked off now, in parallel with signing and every PUT
-                    // below — not awaited per file. Reading a track's own
-                    // metadata is local to the browser and has no business
-                    // gating transfer throughput; awaiting it right after each
-                    // PUT used to stall that worker's slot for up to
-                    // DURATION_READ_TIMEOUT_MS on a file the browser can't
-                    // decode. Collected once, after every PUT in the chunk is
-                    // done, just before the commit call needs them.
-                    const durationPromises = new Map(
-                        chunk.map((f) => [f.name, getAudioDurationSeconds(f)] as const),
-                    );
+                    for (let c = 0; c < chunks.length; c++) {
+                        const chunk = chunks[c];
+                        const downstream = chunks.slice(c + 1).flat();
 
-                    const worker = async () => {
-                        for (;;) {
-                            const index = queue++;
-                            if (index >= signed.length) return;
-                            const s = signed[index];
-                            const file = byName.get(s.originalName);
-                            const row = rowOf(s.originalName);
-                            if (!file || !row) continue;
+                        // --- 0. Hash every file in the chunk ----------------------
+                        //
+                        // Has to happen before signing, not before the PUT: B2 needs
+                        // the checksum value at signing time to fold it into the
+                        // presigned URL's signature (see putTrackUrl's doc comment
+                        // in lib/audio/bucket-core.ts) — sending it only as a PUT
+                        // header, unsigned, is rejected outright. Bounded the same
+                        // as the transfers below so a 50-file chunk doesn't try to
+                        // hold 50 files' bytes in memory at once.
+                        setPhase('preparing');
+                        const checksumByName = new Map(
+                            (
+                                await pool(chunk, CONCURRENCY, async (f) => ({
+                                    name: f.name,
+                                    checksum: await sha256Base64(f),
+                                }))
+                            ).map((r) => [r.name, r.checksum] as const),
+                        );
 
-                            try {
-                                // Computed once, back in step 0, and reused
-                                // across every retry attempt here — a retry
-                                // re-sends the same bytes, so re-hashing them
-                                // per attempt would repeat the same CPU work
-                                // for no reason. Must exist: every file in
-                                // `signed` came from `chunk`, which is exactly
-                                // what checksumByName was built from.
-                                const checksum = checksumByName.get(s.originalName)!;
-                                await putWithRetry(file, s, row, checksum, publish, publishProgress);
-                                row.status = 'terminé';
-                                row.loaded = row.total;
-                                sent.push({ key: s.key, size: file.size, name: s.originalName });
-                            } catch (e) {
-                                const err = e instanceof PutError ? e : null;
+                        // --- 1. Ask the server to name and sign each file ---------
+                        let signed: SignedFile[];
+                        let skipped: { originalName: string; existingName: string }[];
+                        try {
+                            const { res, data } = await fetchJsonWithRetry(
+                                `/api/books/${bookId}/audio/upload-url`,
+                                {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        leaseToken,
+                                        files: chunk.map((f) => {
+                                            const existingKey = assignedKeysRef.current.get(f.name);
+                                            const checksum = checksumByName.get(f.name)!;
+                                            if (existingKey) return { name: f.name, size: f.size, existingKey, checksum };
+                                            // « Remplacer » : la première demande seulement. Une fois la clé
+                                            // attribuée, les reprises passent par existingKey ci-dessus — le
+                                            // serveur ne remet donc jamais la NOUVELLE prise en corbeille.
+                                            if (opts.replaceKey && files.length === 1) {
+                                                return { name: f.name, size: f.size, checksum, replaceKey: opts.replaceKey };
+                                            }
+                                            return { name: f.name, size: f.size, checksum };
+                                        }),
+                                    }),
+                                },
+                            );
+
+                            if (res.status === 409 && data?.occupied) {
+                                setFolderConflict({
+                                    message: String(
+                                        data.message ?? 'Un dossier existe déjà à cet emplacement.',
+                                    ),
+                                    proposedPrefix: String(data.proposedPrefix ?? ''),
+                                });
+                                setPhase('idle');
+                                return FAILED;
+                            }
+                            // Dossier partagé avec une autre fiche : un refus de
+                            // principe, pas un incident — ni nouvelle passe, ni
+                            // bouton « Renvoyer », le message dit quoi faire.
+                            if (res.status === 409 && data?.sharedWith) {
+                                progressRef.current = [];
+                                publish();
+                                setError(String(data.message ?? 'Ce dossier audio est partagé avec une autre fiche.'));
+                                setPhase('error');
+                                return FAILED;
+                            }
+                            // Un autre envoi tient ce livre : même traitement, le
+                            // message dit qui et jusqu'à quand. Sur une tranche
+                            // suivante, ce qui est déjà parti reste en ligne.
+                            if (res.status === 409 && data?.uploadLease) {
+                                const message = String(data.message ?? 'Un autre envoi est en cours sur ce livre.');
+                                if (c === 0 && pass === 1) {
+                                    progressRef.current = [];
+                                    publish();
+                                    setError(message);
+                                    setPhase('error');
+                                    return FAILED;
+                                }
+                                throw new Error(message);
+                            }
+                            if (!res.ok) {
+                                throw new Error(
+                                    String(data?.message ?? 'Préparation de l’envoi impossible'),
+                                );
+                            }
+                            signed = (data?.files ?? []) as SignedFile[];
+                            skipped = (data?.skipped ?? []) as typeof skipped;
+                        } catch (e) {
+                            // Signing is per-chunk, so this kills this chunk and
+                            // everything queued behind it — but not what already
+                            // landed, and not the retry offer.
+                            const message = e instanceof Error ? e.message : 'Erreur inattendue';
+                            for (const f of [...chunk, ...downstream]) {
                                 fail(
-                                    s.originalName,
-                                    err?.message ?? 'Échec de l’envoi',
-                                    err?.hint ?? HINT_CONNECTION,
-                                    err?.retryable ?? false,
+                                    f.name,
+                                    message,
+                                    'La préparation de l’envoi a échoué côté serveur. Relancez ' +
+                                        'les fichiers en échec avec le bouton ci-dessous ; s’ils ' +
+                                        'échouent encore, prévenez l’informaticien.',
+                                    true,
                                 );
                             }
                             publish();
-                        }
-                    };
-
-                    await Promise.all(
-                        Array.from({ length: Math.min(CONCURRENCY, signed.length) }, worker),
-                    );
-
-                    // --- 3. Let the server verify and refresh the counters ----
-                    //
-                    // This has to complete before the next chunk is signed: the
-                    // names in that chunk are derived from the folder's
-                    // contents, which only now include what just landed. The
-                    // duration reads kicked off above have had the whole PUT
-                    // phase to finish in the background; collecting them here,
-                    // once, is the "detached Promise.all" — a slow-to-decode
-                    // file delays this collection, not a transfer worker.
-                    setPhase('finalising');
-                    const sentWithDurations = await Promise.all(
-                        sent.map(async (s) => ({
-                            ...s,
-                            durationSeconds: await (durationPromises.get(s.name) ?? Promise.resolve(null)),
-                        })),
-                    );
-                    // Publier un livre « en attente », seulement sur le dernier envoi d'un
-                    // lot arrivé EN ENTIER (voir le commit) : dernière tranche de la passe,
-                    // et plus aucun fichier en échec ni en attente hors de cette tranche.
-                    const sentNames = new Set(sent.map((s) => s.name));
-                    const publishBook =
-                        c === chunks.length - 1 &&
-                        sent.length === chunk.length &&
-                        progressRef.current.every((p) => p.status === 'terminé' || sentNames.has(p.name));
-                    try {
-                        const { res, data } = await fetchJsonWithRetry(
-                            `/api/books/${bookId}/audio/commit`,
-                            {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    uploaded: sentWithDurations.map(({ key, size, durationSeconds }) => ({
-                                        key,
-                                        size,
-                                        durationSeconds,
-                                    })),
-                                    ...(publishBook ? { publish: true } : {}),
-                                }),
-                            },
-                        );
-                        if (!res.ok) {
-                            throw new Error(String(data?.message ?? 'Vérification impossible'));
+                            setError(message);
+                            aborted = true;
+                            break;
                         }
 
-                        if (data?.becameAvailable === true) becameAvailable = true;
-                        if (typeof data?.confirmed === 'number') committed += data.confirmed;
-                        // Overwrite rather than accumulate: each chunk re-tarifies
-                        // the same demandes, so summing would count them twice.
-                        if (typeof data?.repriced === 'number' && data.repriced > 0) {
-                            repriced = data.repriced;
+                        for (const s of signed) {
+                            const row = rowOf(s.originalName);
+                            if (row) row.assignedName = s.filename;
+                            // Remembered regardless of which pass this is, so a
+                            // later retry — internal recovery pass or a fresh
+                            // "Renvoyer les fichiers en échec" call — asks the
+                            // server to re-sign this exact key instead of being
+                            // renamed into a new slot.
+                            assignedKeysRef.current.set(s.originalName, s.key);
                         }
-
-                        // A file that transferred cleanly can still be absent or
-                        // truncated in the bucket. Those are marked recoverable
-                        // so the next pass re-sends them by itself.
-                        for (const f of (data?.failed ?? []) as { key: string; reason: string }[]) {
-                            const assigned = f.key.split('/').pop();
-                            const row = progressRef.current.find((p) => p.assignedName === assigned);
+                        // Already in the folder: nothing to send, nothing to verify.
+                        // Settled here as done rather than failed, so re-picking a
+                        // folder after a half-failed upload ends green once the
+                        // missing files are in.
+                        for (const k of skipped) {
+                            const row = rowOf(k.originalName);
                             if (!row) continue;
-                            row.status = 'échec';
-                            row.error = f.reason;
-                            // Worded to hold true either way: a recovery pass
-                            // usually clears this before anyone reads it, and if
-                            // it doesn't, the instruction is still the right one.
-                            row.hint =
-                                'Le fichier n’est pas arrivé complet dans le stockage. ' +
-                                'Relancez-le avec le bouton ci-dessous.';
-                            row.recoverable = true;
+                            row.status = 'terminé';
+                            row.loaded = row.total;
+                            row.assignedName = k.existingName;
+                            row.alreadyPresent = true;
                         }
-                        publish();
-                    } catch (e) {
-                        // The transfers may well have landed — it is the
-                        // verification that failed, and the folder listing after
-                        // closing is what shows the truth. Marking them
-                        // recoverable lets the next pass settle it: anything
-                        // already in the bucket keeps its place, anything
-                        // missing gets sent again.
-                        const message = e instanceof Error ? e.message : 'Vérification impossible';
-                        for (const s of sent) {
+                        // A signature the server didn't return for is a file that
+                        // would otherwise sit at « en attente » for ever and be
+                        // dropped silently — the one outcome worse than a failure.
+                        const signedNames = new Set([
+                            ...signed.map((s) => s.originalName),
+                            ...skipped.map((k) => k.originalName),
+                        ]);
+                        for (const f of chunk.filter((f) => !signedNames.has(f.name))) {
                             fail(
-                                s.name,
-                                message,
-                                'L’envoi a réussi mais la vérification n’a pas abouti. ' +
-                                    'Le fichier est probablement déjà en ligne : rouvrez cette ' +
-                                    'fenêtre pour vérifier la liste des pistes.',
+                                f.name,
+                                'Le serveur n’a pas préparé l’envoi de ce fichier.',
+                                'Relancez-le avec le bouton ci-dessous. S’il échoue à nouveau, ' +
+                                    'renommez-le (accents ou caractères inhabituels) avant de réessayer.',
                                 true,
                             );
                         }
-                        for (const f of downstream) {
-                            fail(f.name, 'Envoi interrompu', HINT_TRANSIENT, true);
-                        }
                         publish();
-                        setError(message);
-                        aborted = true;
-                        break;
+
+                        // --- 2. PUT straight to the bucket -----------------------
+                        setPhase('uploading');
+                        const sent: { key: string; size: number; name: string }[] = [];
+                        let queue = 0;
+
+                        // Kicked off now, in parallel with signing and every PUT
+                        // below — not awaited per file. Reading a track's own
+                        // metadata is local to the browser and has no business
+                        // gating transfer throughput; awaiting it right after each
+                        // PUT used to stall that worker's slot for up to
+                        // DURATION_READ_TIMEOUT_MS on a file the browser can't
+                        // decode. Collected once, after every PUT in the chunk is
+                        // done, just before the commit call needs them.
+                        const durationPromises = new Map(
+                            chunk.map((f) => [f.name, getAudioDurationSeconds(f)] as const),
+                        );
+
+                        const worker = async () => {
+                            for (;;) {
+                                const index = queue++;
+                                if (index >= signed.length) return;
+                                const s = signed[index];
+                                const file = byName.get(s.originalName);
+                                const row = rowOf(s.originalName);
+                                if (!file || !row) continue;
+
+                                if (leaseLost) {
+                                    fail(s.originalName, 'Envoi interrompu', leaseLost, false);
+                                    publish();
+                                    continue;
+                                }
+                                try {
+                                    // Computed once, back in step 0, and reused
+                                    // across every retry attempt here — a retry
+                                    // re-sends the same bytes, so re-hashing them
+                                    // per attempt would repeat the same CPU work
+                                    // for no reason. Must exist: every file in
+                                    // `signed` came from `chunk`, which is exactly
+                                    // what checksumByName was built from.
+                                    const checksum = checksumByName.get(s.originalName)!;
+                                    await putWithRetry(file, s, row, checksum, publish, publishProgress);
+                                    row.status = 'terminé';
+                                    row.loaded = row.total;
+                                    sent.push({ key: s.key, size: file.size, name: s.originalName });
+                                } catch (e) {
+                                    const err = e instanceof PutError ? e : null;
+                                    fail(
+                                        s.originalName,
+                                        err?.message ?? 'Échec de l’envoi',
+                                        err?.hint ?? HINT_CONNECTION,
+                                        err?.retryable ?? false,
+                                    );
+                                }
+                                publish();
+                            }
+                        };
+
+                        await Promise.all(
+                            Array.from({ length: Math.min(CONCURRENCY, signed.length) }, worker),
+                        );
+
+                        // --- 3. Let the server verify and refresh the counters ----
+                        //
+                        // This has to complete before the next chunk is signed: the
+                        // names in that chunk are derived from the folder's
+                        // contents, which only now include what just landed. The
+                        // duration reads kicked off above have had the whole PUT
+                        // phase to finish in the background; collecting them here,
+                        // once, is the "detached Promise.all" — a slow-to-decode
+                        // file delays this collection, not a transfer worker.
+                        setPhase('finalising');
+                        const sentWithDurations = await Promise.all(
+                            sent.map(async (s) => ({
+                                ...s,
+                                durationSeconds: await (durationPromises.get(s.name) ?? Promise.resolve(null)),
+                            })),
+                        );
+                        // Publier un livre « en attente », seulement sur le dernier envoi d'un
+                        // lot arrivé EN ENTIER (voir le commit) : dernière tranche de la passe,
+                        // et plus aucun fichier en échec ni en attente hors de cette tranche.
+                        const sentNames = new Set(sent.map((s) => s.name));
+                        const publishBook =
+                            c === chunks.length - 1 &&
+                            sent.length === chunk.length &&
+                            progressRef.current.every((p) => p.status === 'terminé' || sentNames.has(p.name));
+                        try {
+                            const { res, data } = await fetchJsonWithRetry(
+                                `/api/books/${bookId}/audio/commit`,
+                                {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        uploaded: sentWithDurations.map(({ key, size, durationSeconds }) => ({
+                                            key,
+                                            size,
+                                            durationSeconds,
+                                        })),
+                                        ...(publishBook ? { publish: true } : {}),
+                                    }),
+                                },
+                            );
+                            if (!res.ok) {
+                                throw new Error(String(data?.message ?? 'Vérification impossible'));
+                            }
+
+                            if (data?.becameAvailable === true) becameAvailable = true;
+                            if (typeof data?.confirmed === 'number') committed += data.confirmed;
+                            // Overwrite rather than accumulate: each chunk re-tarifies
+                            // the same demandes, so summing would count them twice.
+                            if (typeof data?.repriced === 'number' && data.repriced > 0) {
+                                repriced = data.repriced;
+                            }
+
+                            // A file that transferred cleanly can still be absent or
+                            // truncated in the bucket. Those are marked recoverable
+                            // so the next pass re-sends them by itself.
+                            for (const f of (data?.failed ?? []) as { key: string; reason: string }[]) {
+                                const assigned = f.key.split('/').pop();
+                                const row = progressRef.current.find((p) => p.assignedName === assigned);
+                                if (!row) continue;
+                                row.status = 'échec';
+                                row.error = f.reason;
+                                // Worded to hold true either way: a recovery pass
+                                // usually clears this before anyone reads it, and if
+                                // it doesn't, the instruction is still the right one.
+                                row.hint =
+                                    'Le fichier n’est pas arrivé complet dans le stockage. ' +
+                                    'Relancez-le avec le bouton ci-dessous.';
+                                row.recoverable = true;
+                            }
+                            publish();
+                        } catch (e) {
+                            // The transfers may well have landed — it is the
+                            // verification that failed, and the folder listing after
+                            // closing is what shows the truth. Marking them
+                            // recoverable lets the next pass settle it: anything
+                            // already in the bucket keeps its place, anything
+                            // missing gets sent again.
+                            const message = e instanceof Error ? e.message : 'Vérification impossible';
+                            for (const s of sent) {
+                                fail(
+                                    s.name,
+                                    message,
+                                    'L’envoi a réussi mais la vérification n’a pas abouti. ' +
+                                        'Le fichier est probablement déjà en ligne : rouvrez cette ' +
+                                        'fenêtre pour vérifier la liste des pistes.',
+                                    true,
+                                );
+                            }
+                            for (const f of downstream) {
+                                fail(f.name, 'Envoi interrompu', HINT_TRANSIENT, true);
+                            }
+                            publish();
+                            setError(message);
+                            aborted = true;
+                            break;
+                        }
                     }
+
+                    // Whatever is still failing and could plausibly work goes round
+                    // again. This is what makes a transient hiccup invisible.
+                    pending = progressRef.current
+                        .filter((p) => p.status === 'échec' && p.recoverable)
+                        .map((p) => byName.get(p.name))
+                        .filter((f): f is File => Boolean(f));
+
+                    // A hard abort (signing or verification dead) still gets the
+                    // remaining passes — the server being briefly unreachable is
+                    // exactly the kind of thing that clears on its own.
+                    if (aborted && pass < 1 + RECOVERY_PASSES) aborted = false;
                 }
 
-                // Whatever is still failing and could plausibly work goes round
-                // again. This is what makes a transient hiccup invisible.
-                pending = progressRef.current
-                    .filter((p) => p.status === 'échec' && p.recoverable)
-                    .map((p) => byName.get(p.name))
-                    .filter((f): f is File => Boolean(f));
+                const rows = progressRef.current;
+                const stillFailed = rows.filter((p) => p.status === 'échec');
+                const recovered = rows.filter(
+                    (p) => p.status === 'terminé' && !p.alreadyPresent && (p.attempts > 1 || p.pass > 1),
+                ).length;
+                const alreadyPresent = rows.filter((p) => p.alreadyPresent).length;
 
-                // A hard abort (signing or verification dead) still gets the
-                // remaining passes — the server being briefly unreachable is
-                // exactly the kind of thing that clears on its own.
-                if (aborted && pass < 1 + RECOVERY_PASSES) aborted = false;
-            }
-
-            const rows = progressRef.current;
-            const stillFailed = rows.filter((p) => p.status === 'échec');
-            const recovered = rows.filter(
-                (p) => p.status === 'terminé' && !p.alreadyPresent && (p.attempts > 1 || p.pass > 1),
-            ).length;
-            const alreadyPresent = rows.filter((p) => p.alreadyPresent).length;
-
-            setFailedFiles(
-                stillFailed.map((p) => byName.get(p.name)).filter((f): f is File => Boolean(f)),
-            );
-
-            if (stillFailed.length) {
-                setPhase('error');
-                setError(
-                    `${stillFailed.length} fichier${stillFailed.length > 1 ? 's' : ''} sur ` +
-                        `${files.length} n’${stillFailed.length > 1 ? 'ont' : 'a'} pas pu être ` +
-                        'envoyé' +
-                        (stillFailed.length > 1 ? 's' : '') +
-                        '. Le détail et la marche à suivre sont indiqués pour chacun ci-dessous.',
+                setFailedFiles(
+                    stillFailed.map((p) => byName.get(p.name)).filter((f): f is File => Boolean(f)),
                 );
-                return { ok: false, becameAvailable, recovered, repriced, alreadyPresent, committed };
-            }
 
-            setPhase('done');
-            return { ok: true, becameAvailable, recovered, repriced, alreadyPresent, committed };
+                if (stillFailed.length) {
+                    setPhase('error');
+                    setError(
+                        `${stillFailed.length} fichier${stillFailed.length > 1 ? 's' : ''} sur ` +
+                            `${files.length} n’${stillFailed.length > 1 ? 'ont' : 'a'} pas pu être ` +
+                            'envoyé' +
+                            (stillFailed.length > 1 ? 's' : '') +
+                            '. Le détail et la marche à suivre sont indiqués pour chacun ci-dessous.',
+                    );
+                    return { ok: false, becameAvailable, recovered, repriced, alreadyPresent, committed };
+                }
+
+                setPhase('done');
+                return { ok: true, becameAvailable, recovered, repriced, alreadyPresent, committed };
+            } finally {
+                clearInterval(renewal);
+                // `keepalive` : la fenêtre peut se fermer juste après. Un échec
+                // ici ne coûte qu'une attente — le livre se libère de lui-même.
+                void fetch(`/api/books/${bookId}/audio/upload-lease`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: leaseToken, action: 'release' }),
+                    keepalive: true,
+                }).catch(() => undefined);
+            }
         },
         [bookId, publish, publishProgress],
     );

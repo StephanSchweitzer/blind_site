@@ -112,6 +112,17 @@ of that.
   take last). `upload-url` with `replaceKey`: the old take goes through `softDeleteTrack`
   first, then the PUT is signed on the same name; retries use `existingKey`, never
   `replaceKey`, so a landed new take is never trashed.
+- **One upload at a time per book** (`AudioUploadLease`, `lib/audio/uploadLease.ts`). Two
+  uploads signing at once get the same « next » name and the second PUT overwrites the first.
+  `upload-url` claims the book with the dialogue's per-upload token (refused 409 `uploadLease`
+  for any other token, a second tab of the same permanent included), the dialogue renews it
+  every 2 min and releases it at the end; an abandoned claim lapses after 10 min. Any new path
+  that signs PUTs must claim it too.
+- **The dev server cannot write to the bucket** unless `AUDIO_DEV_BUCKET_WRITES=1`:
+  `putTrackUrl`, `copyTrack`, `deleteTrack(s)` and `ensureFolderPlaceholder` throw
+  `DevBucketWriteRefused` under `NODE_ENV=development` (the bucket is the real one, the
+  database a stale copy). Reads stay open; `scripts/` (plain Node) are unaffected. Never set
+  the variable to get a test through — use the fake-bucket harness.
 - **An upload publishes a book « en attente » only once it has landed in full** (`publish`
   on the last commit) — never on a first chunk. This holds even when the folder already had
   tracks: « Rouvrir l'attribution » (content/aide/07-attributions.md) relies on the rest of a

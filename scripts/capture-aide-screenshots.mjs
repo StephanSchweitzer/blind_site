@@ -851,6 +851,60 @@ const SPECS = [
         annotations: [{ n: 1, selector: 'table tbody tr:first-child td:nth-child(5) button', self: true }],
         why: 'le bouton de l’éditeur audio, dans la colonne Audio',
     },
+    // 19 a 22 etaient prises a la main, fleches dessinees comprises, et avaient
+    // perdu le fil : ni « Remplacer » ni la zone d'envoi au-dessus de la liste.
+    // Meme livre que les originales. Une fenetre plus basse pour 20 a 22 : le
+    // modal (88dvh) n'y montre que le haut, ce que ces trois paragraphes commentent.
+    ...[
+        {
+            name: 'catalogue-19.jpg',
+            viewport: { width: 1440, height: 1100 },
+            why: 'l’éditeur audio tel qu’il s’ouvre',
+        },
+        {
+            name: 'catalogue-20.jpg',
+            viewport: { width: 1440, height: 640 },
+            annotations: [
+                { n: 1, label: 'Tout télécharger (ZIP)', self: true },
+                { n: 2, label: 'Tout supprimer', self: true },
+            ],
+            why: '« Tout télécharger (ZIP) » et « Tout supprimer »',
+        },
+        {
+            name: 'catalogue-21.jpg',
+            viewport: { width: 1440, height: 640 },
+            annotations: [
+                { n: 1, label: 'Ajouter des fichiers', self: true },
+                { n: 2, label: 'Ajouter un dossier', self: true },
+            ],
+            why: 'le cadre d’envoi, au-dessus de la liste des pistes',
+        },
+        {
+            name: 'catalogue-22.jpg',
+            viewport: { width: 1440, height: 640 },
+            // Les libelles accessibles embarquent le nom de la piste : selecteurs.
+            annotations: [
+                { n: 1, selector: '[role="dialog"] a[aria-label^="Télécharger "]', self: true, coin: 'hd' },
+                { n: 2, selector: '[role="dialog"] button[aria-label^="Remplacer "]', self: true, coin: 'hd' },
+                { n: 3, selector: '[role="dialog"] button[aria-label^="Renommer "]', self: true, coin: 'hd' },
+                { n: 4, selector: '[role="dialog"] button[aria-label^="Supprimer "]', self: true, coin: 'hd' },
+            ],
+            why: 'les boutons d’une piste : télécharger, remplacer, renommer, supprimer',
+        },
+    ].map((spec) => ({
+        url: '/admin/books?search=Mondo%20et%20autres%20histoires',
+        waitFor: 'table tbody tr',
+        steps: [
+            { clickSelector: 'table tbody tr:first-child td:nth-child(5) button' },
+            { waitFor: '[role="dialog"] button[aria-label^="Écouter "]' },
+            { sleep: 800 },
+        ],
+        clip: '[role="dialog"]',
+        // L'anonymiseur prend « 17780 Mondo… » pour un code postal et sa
+        // ville ; le chemin du dossier n'est pas une donnee personnelle.
+        remplacer: { 'dirt/2026/57000 EXEMPLEVILLE/': 'dirt/2026/17780 Mondo et autres histoires/' },
+        ...spec,
+    })),
     {
         name: 'page-principale-05.jpg',
         url: '/admin',

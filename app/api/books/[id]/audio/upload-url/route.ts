@@ -15,6 +15,7 @@ import { MAX_UPLOAD_BYTES } from '@/lib/audio/folder-selection';
 import { pool } from '@/lib/concurrency';
 import { booksSharingAudioFolder, sharedFolderUploadRefusal } from '@/lib/audio/sharedFolder';
 import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
+import { claimUploadLease, isLeaseToken } from '@/lib/audio/uploadLease';
 
 /** Presigned PUTs are short-lived; a stalled upload asks for a fresh URL. */
 const URL_TTL_SECONDS = 3600;
@@ -164,6 +165,24 @@ export const POST = withAdmin(async (req, { params, me }) => {
     if (sharing.length) {
         return NextResponse.json(
             { message: sharedFolderUploadRefusal(sharing), sharedWith: sharing },
+            { status: 409 },
+        );
+    }
+
+    // Un seul envoi à la fois sur ce livre : deux envois simultanés reçoivent
+    // le même nom de piste suivante, et le second écrase le premier. Voir
+    // lib/audio/uploadLease.ts. Avant de créer le dossier : un envoi refusé ne
+    // doit rien laisser derrière lui.
+    if (!isLeaseToken(body?.leaseToken)) {
+        return NextResponse.json(
+            { message: 'Rechargez la page avant d’envoyer des fichiers : elle date d’une version précédente.' },
+            { status: 400 },
+        );
+    }
+    const lease = await claimUploadLease(bookId, me.id, body.leaseToken);
+    if (!lease.ok) {
+        return NextResponse.json(
+            { message: lease.message, uploadLease: { holder: lease.holder, until: lease.until } },
             { status: 409 },
         );
     }

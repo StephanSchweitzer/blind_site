@@ -77,8 +77,14 @@ export function unexpectedErrorResult(opts: UnexpectedErrorInput): {
 } {
     const ref = newErrorRef();
     console.error(`[${ref}] ${opts.where}`, opts.error);
+    // Dev server only (lib/audio/bucket-core.ts): a refusal by design, which
+    // explains itself — routes and server actions both end up here.
+    const what =
+        opts.error instanceof Error && opts.error.name === 'DevBucketWriteRefused'
+            ? opts.error.message
+            : opts.what;
     const message =
-        `${opts.what ?? 'Une erreur inattendue s’est produite sur le serveur.'} ` +
+        `${what ?? 'Une erreur inattendue s’est produite sur le serveur.'} ` +
         `${opts.outcome ?? OUTCOME_UNKNOWN}`;
     return { message, unexpected: true, ref };
 }

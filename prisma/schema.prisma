@@ -1003,6 +1003,24 @@ model AudioTrackEvent {
   @@index([createdAt])
 }
 
+/// Un envoi audio en cours sur un livre. Un seul à la fois par dossier : deux
+/// envois qui demandent leurs noms en même temps reçoivent le même « piste
+/// suivante », et le second PUT écrase le premier — sans erreur, l'ancienne
+/// prise ne survivant que 30 jours en version B2. Voir lib/audio/uploadLease.ts.
+///
+/// Une ligne vit quelques minutes (renouvelée tant que l'envoi avance, libérée
+/// à la fin). Pas de clé étrangère : rien à protéger dans une ligne périmée,
+/// et un `@relation` imposerait un champ de retour sur Book et User.
+model AudioUploadLease {
+  bookId    Int      @id
+  /// Tiré au hasard par le navigateur pour CET envoi : un deuxième onglet du
+  /// même permanent est un autre envoi, et c'est justement le cas à refuser.
+  token     String
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
 /// Playback length measured from a track's own header bytes, cached per file.
 ///
 /// NOT an event log — it is a cache of a fact about an object in the bucket, and

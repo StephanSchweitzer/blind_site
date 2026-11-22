@@ -102,6 +102,10 @@ tell me. `DEV_AUTH_BYPASS` may be unset, and you must not work around it.
 The bypass only exists when `NODE_ENV=development`, `DEV_AUTH_BYPASS=true`, and the DB is local.
 Never create this account on the production database.
 
+The audio bucket is the **real** one even on dev. The dev server refuses every bucket write
+(upload, rename, corbeille, restore, purge) unless `AUDIO_DEV_BUCKET_WRITES=1` — never set it
+yourself; listing, playing and measuring still work.
+
 ## Always stop the dev server when you are done (IMPORTANT)
 
 Only **one** dev server should ever run here — a live `next dev` locks `.next/`, so a second one

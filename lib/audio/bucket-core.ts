@@ -64,6 +64,40 @@ function normaliseEndpoint(raw: string | undefined): string | undefined {
 
 export const AUDIO_BUCKET = process.env.S3_AUDIO_BUCKET ?? '';
 
+/**
+ * The dev server works on a copy of the database, but the bucket it reaches is
+ * the REAL one — there is no second bucket. In November 2026 the dev database's
+ * newest corbeille row was a month old: 774 corbeille objects (8.5 GB) had no
+ * dev row, and 153 « active » dev rows pointed at copies production had already
+ * purged. A « Tout supprimer », « Restaurer » or « Supprimer définitivement »
+ * clicked on dev would have moved or erased production's recordings, and
+ * written the only record of it into a database nobody else reads.
+ *
+ * So under `next dev` every write below is refused, unless the developer opts
+ * in for the session with AUDIO_DEV_BUCKET_WRITES=1 (in .env.local, say) —
+ * knowing the clicks are real. Reads (listing, playing, downloading, measuring)
+ * stay open: that is what working on the back office needs. The `scripts/` run
+ * under plain Node, where NODE_ENV is not « development », and are unaffected:
+ * each is its own deliberate act. The sturdier half of this is a read-only B2
+ * application key in the dev environment, which no code here can bypass.
+ */
+export class DevBucketWriteRefused extends Error {
+    constructor(what: string) {
+        super(
+            `Écriture refusée sur le stockage audio (${what}) : le serveur de développement ` +
+                'travaille sur une copie de la base, mais le stockage est le vrai. Pour écrire quand ' +
+                'même, définissez AUDIO_DEV_BUCKET_WRITES=1 et relancez le serveur.',
+        );
+        this.name = 'DevBucketWriteRefused';
+    }
+}
+
+function assertBucketWritable(what: string): void {
+    if (process.env.NODE_ENV === 'development' && process.env.AUDIO_DEV_BUCKET_WRITES !== '1') {
+        throw new DevBucketWriteRefused(what);
+    }
+}
+
 let client: S3Client | null = null;
 
 /**
@@ -239,6 +273,8 @@ export function putTrackUrl(
     checksumSha256: string,
     expiresIn = 3600,
 ): Promise<string> {
+    // Refused at signing: a URL handed out is a write nobody can call back.
+    assertBucketWritable('envoi');
     return getSignedUrl(
         getS3(),
         new PutObjectCommand({
@@ -317,6 +353,7 @@ function copySource(key: string): string {
 
 /** Server-side copy — B2 moves the bytes internally, nothing transits our server. */
 export async function copyTrack(fromKey: string, toKey: string): Promise<void> {
+    assertBucketWritable('copie');
     await getS3().send(
         new CopyObjectCommand({
             Bucket: AUDIO_BUCKET,
@@ -335,6 +372,7 @@ export async function copyTrack(fromKey: string, toKey: string): Promise<void> {
  * the corbeille first — this function itself does not make that check.
  */
 export async function deleteTrack(key: string): Promise<void> {
+    assertBucketWritable('suppression');
     await getS3().send(new DeleteObjectCommand({ Bucket: AUDIO_BUCKET, Key: key }));
 }
 
@@ -356,6 +394,7 @@ const DELETE_BATCH = 1000;
  */
 export async function deleteTracks(keys: string[]): Promise<{ failed: string[] }> {
     if (!keys.length) return { failed: [] };
+    assertBucketWritable('suppression');
     const s3 = getS3();
     const failed: string[] = [];
 
@@ -400,6 +439,7 @@ export async function ensureFolderPlaceholder(
     if (!prefix) return false;
     const objects = remaining ?? (await listRawObjects(prefix));
     if (objects.length) return false;
+    assertBucketWritable('dossier vide');
     await getS3().send(
         new PutObjectCommand({
             Bucket: AUDIO_BUCKET,
