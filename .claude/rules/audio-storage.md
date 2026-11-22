@@ -99,4 +99,20 @@ of that.
 - Durations are read from **header bytes** (`lib/audio/duration-probe.ts`), cached in
   `AudioTrackDuration` keyed on filename **and size**. `Book.readingDurationMinutes` is only
   written when **every** current track resolves — a partial sum silently understates a
-  recording that reaches the public catalogue.
+  recording that reaches the public catalogue. A partial sum keeps the stored figure only
+  while the folder's weight is unchanged; once tracks came or went it is blanked
+  (« Non calculée ») rather than left describing the old recording. Measuring runs in
+  cached batches under a deadline (`pending`), so no folder is too large to measure.
+- **Large folders go in recorded slices.** Bulk corbeille moves and restores
+  (`softDeleteTracks`, `restoreTracksByIds`) copy, verify and RECORD ten tracks at a time
+  before the next ten, and stop starting slices at a `deadline`; routes give 25 s and the
+  dialogues call again with what remains. Never record only after all the copies — a
+  timeout then leaves copies no row names (« Abysses », 3.8 GB, November 2026).
+- **« Remplacer » is the way to swap a take**, not delete-then-upload (which plays the new
+  take last). `upload-url` with `replaceKey`: the old take goes through `softDeleteTrack`
+  first, then the PUT is signed on the same name; retries use `existingKey`, never
+  `replaceKey`, so a landed new take is never trashed.
+- **An upload publishes a book « en attente » only once it has landed in full** (`publish`
+  on the last commit) — never on a first chunk. This holds even when the folder already had
+  tracks: « Rouvrir l'attribution » (content/aide/07-attributions.md) relies on the rest of a
+  recording republishing the book. Don't restrict it to empty folders (decided 2026-11-22).

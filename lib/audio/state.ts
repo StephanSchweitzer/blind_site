@@ -223,7 +223,23 @@ export async function refreshBookAudioState(
                     const d = durations.get(name);
                     return d == null ? null : sum + d;
                 }, 0);
-                if (total !== null) readingDurationMinutes = Math.round(total / 60);
+                if (total !== null) {
+                    readingDurationMinutes = Math.round(total / 60);
+                } else if (book.audioSizeKb != null && sizeKb !== book.audioSizeKb) {
+                    // …unless the folder itself has just changed. Keeping the
+                    // old figure is right when nothing moved (an imported
+                    // duration, a track the probe can't read), and wrong once
+                    // tracks came or went: it then describes a recording that no
+                    // longer exists — too short after a chapter is added, too
+                    // long after one is removed — on the catalogue and in the
+                    // spoken announcement. « Non calculée » until the sum is
+                    // whole again (the upload dialogue measures straight away;
+                    // otherwise « Recalculer »). The weight is the witness: it
+                    // moves with every track added or removed, never on a rename
+                    // or a mere re-read, and a first weighing (null before) is
+                    // not a change.
+                    readingDurationMinutes = null;
+                }
             }
         } else if (allObjects.length) {
             // The folder exists — B2's .bzEmpty placeholder or some stray file —

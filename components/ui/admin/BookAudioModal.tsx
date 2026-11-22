@@ -22,12 +22,14 @@ import {
     Pencil,
     Play,
     RefreshCw,
+    Replace,
     RotateCcw,
     Trash2,
     Upload,
     X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { requestDurationMeasure } from '@/lib/audio/duration-request';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useWarnIfUnsavedChanges } from '@/components/userWarnIfUnsavedChanges';
 import { useAudioUpload, type FileProgress, type UploadPhase } from '@/hooks/useAudioUpload';
@@ -39,7 +41,7 @@ import {
     type FolderSelection,
     type RejectReason,
 } from '@/lib/audio/folder-selection';
-import { alreadyUploadedFinder, cdOrderConflict } from '@/lib/audio/naming';
+import { alreadyUploadedFinder, cdOrderConflict, isAllowedAudioExtension, isAppleDoubleName } from '@/lib/audio/naming';
 import { downloadEntryNames, playlistM3u, PLAYLIST_NAME } from '@/lib/audio/download-names';
 import {
     getAudioLinkStatusColor,
@@ -344,6 +346,15 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    /** « Remplacer » : the picker for the one new take, and the track it replaces. */
+    const replaceInputRef = useRef<HTMLInputElement | null>(null);
+    const replaceTargetRef = useRef<Track | null>(null);
+    /**
+     * The key a « Remplacer » upload is filling, kept for « Renvoyer » : a retry
+     * that lost it would be named after the last track — exactly the
+     * out-of-order chapter « Remplacer » exists to avoid.
+     */
+    const replaceKeyRef = useRef<string | null>(null);
     const folderInputRef = useRef<HTMLInputElement | null>(null);
 
     const {
@@ -458,6 +469,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             return;
         }
         reset();
+        replaceKeyRef.current = null;
         setSelection(chosen);
     };
 
@@ -474,12 +486,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const measureAfterUpload = useCallback(async () => {
         setDurationCheck('running');
         try {
-            const res = await fetch(`/api/books/${bookId}/audio/duration`, { method: 'POST' }).catch(
-                () => null,
-            );
-            if (!res) throw new Error('le serveur est injoignable');
-            const d = await res.json().catch(() => null);
-            if (!res.ok) throw new Error(String(d?.message ?? 'la mesure a échoué'));
+            // Plusieurs appels pour un gros dossier — voir requestDurationMeasure.
+            const answer = await requestDurationMeasure(bookId);
+            if (!answer.ok) throw new Error(answer.message.replace(/\.$/, '').toLowerCase());
             setDurationCheck(null);
             await refreshAll();
         } catch (e) {
@@ -492,14 +501,19 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         setSelection(null);
         setDurationCheck(null);
         const { ok, becameAvailable, recovered, repriced, alreadyPresent, committed } =
-            await upload(files);
+            await upload(files, replaceKeyRef.current ? { replaceKey: replaceKeyRef.current } : {});
         const added = files.length - alreadyPresent;
+        const replacing = replaceKeyRef.current !== null;
         if (ok) {
+            replaceKeyRef.current = null;
             toast({
-                title: "Envoi terminé",
+                title: replacing ? 'Piste remplacée' : 'Envoi terminé',
                 description: (
                     <span>
-                        {added > 0
+                        {replacing
+                            ? `La nouvelle version a pris la place de l’ancienne dans l’ordre de lecture. ` +
+                              `L’ancienne est dans la corbeille du livre.`
+                            : added > 0
                             ? `${added} fichier${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} au dossier.`
                             : 'Aucun fichier ajouté.'}
                         {/* Only reachable when the folder changed between the
@@ -533,6 +547,37 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         // Not awaited: the upload is finished and the dialogue is free again;
         // the figure follows when the measurement does.
         if (committed > 0) void measureAfterUpload();
+    };
+
+    /**
+     * « Remplacer » : a new take of one track, in that track's place.
+     *
+     * Deleting the old take and sending the new one used to put the new one at
+     * the END of the book — every new file is named after the last track — so a
+     * re-recorded chapter 5 played last. Here the server gives the new file the
+     * old one's name, after moving the old take to the corbeille (see replaceOne
+     * in the upload-url route).
+     */
+    const handleReplaceChosen = async (file: File | undefined) => {
+        const target = replaceTargetRef.current;
+        replaceTargetRef.current = null;
+        if (!file || !target) return;
+        if (!isAllowedAudioExtension(file.name) || isAppleDoubleName(file.name)) {
+            notifyError(`« ${file.name} » n’est pas un fichier audio accepté.`);
+            return;
+        }
+        const ok = await confirm({
+            title: 'Remplacer cette piste ?',
+            description:
+                `« ${target.name} » sera remplacée par « ${file.name} » (${formatSize(file.size)}), ` +
+                'à la même place dans l’ordre de lecture.\n\n' +
+                'L’ancienne version part dans la corbeille du livre, d’où elle peut être restaurée.',
+            confirmLabel: 'Remplacer',
+        });
+        if (!ok) return;
+        reset();
+        replaceKeyRef.current = target.key;
+        await handleFilesChosen([file]);
     };
 
     const handleRestore = async (item: TrashItem) => {
@@ -707,7 +752,10 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         }
         // An unconfirmed folder selection is scoped to the session that picked
         // it — reopening on another book must not inherit it.
-        if (!open) setSelection(null);
+        if (!open) {
+            setSelection(null);
+            replaceKeyRef.current = null;
+        }
         onOpenChange(open);
     };
 
@@ -1041,6 +1089,21 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             size="icon"
                                             disabled={busy}
                                             onClick={() => {
+                                                replaceTargetRef.current = t;
+                                                replaceInputRef.current?.click();
+                                            }}
+                                            aria-label={`Remplacer ${t.name} par une nouvelle version`}
+                                            title="Remplacer par une nouvelle version"
+                                            className="h-8 w-8 flex-shrink-0 bg-card border-border text-foreground hover:bg-muted"
+                                        >
+                                            <Replace className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            disabled={busy}
+                                            onClick={() => {
                                                 setRenameTarget(t);
                                                 setRenameOpen(true);
                                             }}
@@ -1068,6 +1131,18 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
 
                                 {/* --- Upload ---------------------------------------------- */}
                                 <div className="mt-4 rounded-md border border-dashed border-border p-4">
+                                    {/* « Remplacer » : one file, for the track whose button opened it. */}
+                                    <input
+                                        ref={replaceInputRef}
+                                        type="file"
+                                        accept="audio/*,.mp3,.m4a,.m4b,.wav,.ogg,.opus,.flac,.aac,.wma,.aiff,.aif"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            e.target.value = '';
+                                            void handleReplaceChosen(file);
+                                        }}
+                                    />
                                     <input
                                         ref={fileInputRef}
                                         type="file"

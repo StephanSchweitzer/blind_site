@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
-import { putTrackUrl, headTrack, listBookTracks, listRawObjects } from '@/lib/audio/bucket';
+import { putTrackUrl, headTrack, listBookTracks, listRawObjects, isAudioKey } from '@/lib/audio/bucket';
 import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import {
     nextTrackName,
@@ -14,6 +14,7 @@ import {
 import { MAX_UPLOAD_BYTES } from '@/lib/audio/folder-selection';
 import { pool } from '@/lib/concurrency';
 import { booksSharingAudioFolder, sharedFolderUploadRefusal } from '@/lib/audio/sharedFolder';
+import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
 
 /** Presigned PUTs are short-lived; a stalled upload asks for a fresh URL. */
 const URL_TTL_SECONDS = 3600;
@@ -54,6 +55,12 @@ interface RequestedFile {
      */
     existingKey?: unknown;
     /**
+     * « Remplacer » : the bucket key of the track this one file takes the place
+     * of. Honoured on a single-file request only, and only on the FIRST
+     * request — retries come back with `existingKey`. See replaceOne below.
+     */
+    replaceKey?: unknown;
+    /**
      * Base64 SHA-256 of the file's bytes, computed client-side
      * (hooks/useAudioUpload.ts's `sha256Base64`) before this request is even
      * sent. Required so `putTrackUrl` can sign it into the URL — B2 needs the
@@ -77,7 +84,7 @@ const SHA256_BASE64 = /^[A-Za-z0-9+/]{43}=$/;
  * Requires a B2 CORS rule allowing `s3_put` from the site origin. Without it the
  * browser's preflight fails and every upload dies before it starts.
  */
-export const POST = withAdmin(async (req, { params }) => {
+export const POST = withAdmin(async (req, { params, me }) => {
     const { id } = (await params) ?? {};
     const bookId = Number(id);
     if (!Number.isInteger(bookId)) {
@@ -193,6 +200,14 @@ export const POST = withAdmin(async (req, { params }) => {
             data: { audio_filepath: proposed },
         });
         prefix = proposed;
+    }
+
+    // --- « Remplacer » : one file, into the slot of an existing track --------
+    const replaceKey = files.length === 1 && typeof files[0].replaceKey === 'string' && typeof files[0].existingKey !== 'string'
+        ? files[0].replaceKey
+        : '';
+    if (replaceKey) {
+        return replaceOne({ bookId, prefix, replaceKey, file: files[0], userId: me.id });
     }
 
     // --- Name each file so it sorts after everything already there ------------
@@ -370,3 +385,100 @@ export const POST = withAdmin(async (req, { params }) => {
 
     return NextResponse.json({ prefix, expiresIn: URL_TTL_SECONDS, files: results, skipped });
 });
+
+/**
+ * « Remplacer » : sign ONE file into the place of an existing track.
+ *
+ * The alternative used to be « supprimez d'abord l'ancienne, puis envoyez la
+ * nouvelle » — and a new file is always named after the folder's last track
+ * (nextTrackName), so chapter 5 re-recorded played LAST, on the portal, in the
+ * ZIP and on every CD burned from it, with nothing to say so.
+ *
+ * Here the new take inherits the old one's name (its extension aside), hence
+ * its place in the playing order. The old take goes through the ordinary
+ * corbeille path FIRST — copy, verify, row, then removal (softDeleteTrack) — and
+ * only once it is out of the way is the PUT signed. So:
+ *  - the corbeille refusing (B2 down) → 409, nothing signed, nothing lost;
+ *  - the PUT then failing → the slot is empty and the old take is restorable;
+ *    the dialogue's retry re-signs the same key through `existingKey`, never
+ *    through this function again, so a landed new take is never trashed by a
+ *    retry.
+ */
+async function replaceOne(opts: {
+    bookId: number;
+    prefix: string;
+    replaceKey: string;
+    file: RequestedFile;
+    userId: number;
+}): Promise<NextResponse> {
+    const { bookId, prefix, replaceKey, file, userId } = opts;
+    // Validated by the caller's structural pass.
+    const originalName = file.name as string;
+    const checksum = file.checksum as string;
+
+    if (!isKeyInsidePrefix(replaceKey, prefix) || !isAudioKey(replaceKey)) {
+        return NextResponse.json(
+            { message: 'La piste à remplacer n’appartient pas au dossier de ce livre.' },
+            { status: 403 },
+        );
+    }
+
+    const oldName = replaceKey.slice(prefix.length);
+    const oldSplit = splitExtension(oldName);
+    const newExt = splitExtension(originalName).ext;
+    // Same extension: the exact old key, its case included. Otherwise the old
+    // base with the new extension — the base is what decides the place.
+    const filename = newExt === oldSplit.ext ? oldName : `${oldSplit.base}.${newExt}`;
+    const key = `${prefix}${filename}`;
+    if (isAppleDoubleName(filename)) {
+        return NextResponse.json({ message: 'Nom de piste invalide.' }, { status: 400 });
+    }
+
+    // A different extension lands on a different key: it must be free BEFORE the
+    // old take is moved, or the refusal would come with the old take gone.
+    if (key !== replaceKey && (await headTrack(key))) {
+        return NextResponse.json(
+            { message: `Un fichier nommé « ${filename} » existe déjà dans ce dossier.` },
+            { status: 409 },
+        );
+    }
+
+    let replaced: { filename: string; trashId: number } | null = null;
+    if (await headTrack(replaceKey)) {
+        try {
+            const moved = await softDeleteTrack({ bookId, key: replaceKey, filename: oldName, userId });
+            replaced = { filename: oldName, trashId: moved.trashId };
+        } catch (e) {
+            if (e instanceof AudioTrashError) {
+                return NextResponse.json(
+                    { message: `L’ancienne version n’a pas pu être mise en corbeille : ${e.message} Rien n’a été envoyé.` },
+                    { status: 409 },
+                );
+            }
+            throw e;
+        }
+    }
+    // Absent already: an earlier request moved it and its answer was lost —
+    // the slot is simply free.
+
+    const contentType = MIME[newExt] ?? 'application/octet-stream';
+    const url = await putTrackUrl(key, contentType, checksum, URL_TTL_SECONDS);
+    return NextResponse.json({
+        prefix,
+        expiresIn: URL_TTL_SECONDS,
+        files: [
+            {
+                originalName,
+                filename,
+                key,
+                url,
+                contentType,
+                strategy: 'remplacement',
+                reused: false,
+                checksum,
+            },
+        ],
+        skipped: [],
+        replaced,
+    });
+}

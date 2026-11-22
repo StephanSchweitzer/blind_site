@@ -122,6 +122,14 @@ export interface UploadOutcome {
     committed: number;
 }
 
+export interface UploadOptions {
+    /**
+     * « Remplacer » : the one file of this upload takes the place of the track at
+     * this key, whose old take goes to the corbeille first — see upload-url.
+     */
+    replaceKey?: string;
+}
+
 /** Nothing landed — every early exit from `upload` returns this. */
 const FAILED: UploadOutcome = {
     ok: false,
@@ -604,7 +612,7 @@ export function useAudioUpload(bookId: number) {
     }, []);
 
     const upload = useCallback(
-        async (files: File[]): Promise<UploadOutcome> => {
+        async (files: File[], opts: UploadOptions = {}): Promise<UploadOutcome> => {
             if (!files.length) return FAILED;
 
             setError(null);
@@ -698,9 +706,14 @@ export function useAudioUpload(bookId: number) {
                                     files: chunk.map((f) => {
                                         const existingKey = assignedKeysRef.current.get(f.name);
                                         const checksum = checksumByName.get(f.name)!;
-                                        return existingKey
-                                            ? { name: f.name, size: f.size, existingKey, checksum }
-                                            : { name: f.name, size: f.size, checksum };
+                                        if (existingKey) return { name: f.name, size: f.size, existingKey, checksum };
+                                        // « Remplacer » : la première demande seulement. Une fois la clé
+                                        // attribuée, les reprises passent par existingKey ci-dessus — le
+                                        // serveur ne remet donc jamais la NOUVELLE prise en corbeille.
+                                        if (opts.replaceKey && files.length === 1) {
+                                            return { name: f.name, size: f.size, checksum, replaceKey: opts.replaceKey };
+                                        }
+                                        return { name: f.name, size: f.size, checksum };
                                     }),
                                 }),
                             },
@@ -866,6 +879,14 @@ export function useAudioUpload(bookId: number) {
                             durationSeconds: await (durationPromises.get(s.name) ?? Promise.resolve(null)),
                         })),
                     );
+                    // Publier un livre « en attente », seulement sur le dernier envoi d'un
+                    // lot arrivé EN ENTIER (voir le commit) : dernière tranche de la passe,
+                    // et plus aucun fichier en échec ni en attente hors de cette tranche.
+                    const sentNames = new Set(sent.map((s) => s.name));
+                    const publishBook =
+                        c === chunks.length - 1 &&
+                        sent.length === chunk.length &&
+                        progressRef.current.every((p) => p.status === 'terminé' || sentNames.has(p.name));
                     try {
                         const { res, data } = await fetchJsonWithRetry(
                             `/api/books/${bookId}/audio/commit`,
@@ -878,6 +899,7 @@ export function useAudioUpload(bookId: number) {
                                         size,
                                         durationSeconds,
                                     })),
+                                    ...(publishBook ? { publish: true } : {}),
                                 }),
                             },
                         );

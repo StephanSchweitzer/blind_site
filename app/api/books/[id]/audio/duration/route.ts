@@ -6,14 +6,19 @@ import { prisma } from '@/lib/prisma';
 import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 
 /**
- * measure.ts reasons its own MAX_TRACKS=200 ceiling as "about thirty seconds
- * of work" at 8-way concurrency — that was a budget nobody had actually
- * written down as a function limit. 45s keeps a margin over that reasoned
- * figure for a folder near the ceiling, while staying inside the ~60s that's
- * configurable even on the smallest Vercel tier (the repo doesn't record
- * which plan this project is on; raise this if it turns out to allow more).
+ * Inside the ~60s that's configurable even on the smallest Vercel tier (the repo
+ * doesn't record which plan this project is on). A folder no longer has to be
+ * measured within it — see TIME_BUDGET_MS.
  */
 export const maxDuration = 45;
+
+/**
+ * How long one call keeps starting batches of measurements. What doesn't fit
+ * comes back as `pending`, already-measured tracks being cached batch by batch,
+ * and the caller (upload dialogue, « Recalculer ») calls again. Folders reach
+ * 364 tracks; this used to refuse anything over 200.
+ */
+const TIME_BUDGET_MS = 25_000;
 
 /**
  * Recompute one book's reading duration from its audio files.
@@ -32,6 +37,7 @@ export const maxDuration = 45;
  * applied in exactly one place.
  */
 export const POST = withAdmin(async (_req, { params, me }) => {
+    const deadline = Date.now() + TIME_BUDGET_MS;
     const { id } = (await params) ?? {};
     const bookId = Number(id);
     if (!Number.isInteger(bookId)) {
@@ -40,7 +46,7 @@ export const POST = withAdmin(async (_req, { params, me }) => {
 
     let result;
     try {
-        result = await measureBookDurations(bookId);
+        result = await measureBookDurations(bookId, { deadline });
     } catch (error) {
         // A refusal the measurement is sure about keeps its own status, and is
         // not logged: « ce livre n'existe pas » is an answer, not a fault, and
@@ -55,6 +61,24 @@ export const POST = withAdmin(async (_req, { params, me }) => {
             { message: 'La mesure a échoué. Réessayez dans un instant.' },
             { status: 502 },
         );
+    }
+
+    // Not finished: what was measured is cached, nothing else to write yet —
+    // the figure is only ever written whole. The caller calls again.
+    if (result.pending > 0) {
+        const current = await prisma.book.findUnique({
+            where: { id: bookId },
+            select: { readingDurationMinutes: true },
+        });
+        return NextResponse.json({
+            readingDurationMinutes: current?.readingDurationMinutes ?? null,
+            totalSeconds: null,
+            measured: result.measured,
+            failed: result.failed,
+            fromCache: result.fromCache,
+            pending: result.pending,
+            problems: [],
+        });
     }
 
     // Read what the public site shows before touching anything, so the
@@ -83,6 +107,7 @@ export const POST = withAdmin(async (_req, { params, me }) => {
         measured: result.measured,
         failed: result.failed,
         fromCache: result.fromCache,
+        pending: 0,
         trackCount: state.trackCount,
         repriced: state.repriced,
         // Only the failures: naming forty files that worked is noise, and the

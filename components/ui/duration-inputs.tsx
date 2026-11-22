@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { requestDurationMeasure } from '@/lib/audio/duration-request';
 
 export interface FormData {
     title: string;
@@ -63,12 +64,13 @@ const DurationInputs: React.FC<DurationInputsProps> = ({ formData, bookId, onMea
         setMessage(null);
         setProblems([]);
         try {
-            const res = await fetch(`/api/books/${bookId}/audio/duration`, { method: 'POST' });
-            const data = await res.json().catch(() => null);
-            if (!res.ok) {
-                setMessage(data?.message ?? 'La mesure a échoué.');
+            // Plusieurs appels pour un gros dossier — voir requestDurationMeasure.
+            const answer = await requestDurationMeasure(bookId);
+            if (!answer.ok) {
+                setMessage(answer.message);
                 return;
             }
+            const data = answer.data;
 
             setProblems(data?.problems ?? []);
             onMeasured?.(data?.readingDurationMinutes ?? null);

@@ -213,13 +213,20 @@ export const POST = withAdmin(async (req, { params, me }) => {
     // returned the book long before, and the demande is already « Terminé ».
     const state = await refreshBookAudioState(bookId, me.id, true, remainingObjects);
 
-    // A book left « en attente » only because nobody had recorded it yet. Now
-    // that a track has landed, the reason is gone: publish it rather than make
-    // someone remember to tick the box on a second screen. Conditioned on the
-    // refreshed status, so a batch where every file failed verification does
-    // not publish an empty folder.
+    // A book left « en attente » because its recording wasn't in — never
+    // recorded, or its attribution reopened to receive the rest (« Rouvrir
+    // l'attribution », content/aide/07-attributions.md). Once the recording is
+    // in, the reason is gone: publish it rather than make someone remember to
+    // tick the box on a second screen.
+    //
+    // ONLY when the dialogue says so (`publish`): it sends it on the last commit
+    // of an upload that has landed IN FULL. This used to fire on the first
+    // committed chunk — so the first 50 files of a 300-track book went public
+    // alone, and an upload that died midway stayed public half-done.
+    // Conditioned on this commit too: every file confirmed, status OK.
+    const publishRequested = body?.publish === true;
     let becameAvailable = false;
-    if (confirmed.length && !book.available && state.status === 'OK') {
+    if (publishRequested && confirmed.length && !failed.length && !book.available && state.status === 'OK') {
         await prisma.book.update({ where: { id: bookId }, data: { available: true } });
         becameAvailable = true;
     }
