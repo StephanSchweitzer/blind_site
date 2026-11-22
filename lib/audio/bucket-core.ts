@@ -334,6 +334,28 @@ export async function headTrack(key: string): Promise<TrackHead | null> {
 }
 
 /**
+ * The SHA-256 B2 stored for an object (base64, as sent in
+ * `x-amz-checksum-sha256`), or null when the object is absent or was written
+ * without one — the legacy corpus, copies, anything not sent through
+ * `putTrackUrl`. Every upload from the dialogue carries one (see putTrackUrl),
+ * and B2 returns it on HEAD with ChecksumMode (checked on the real bucket,
+ * November 2026).
+ */
+export async function headTrackChecksum(key: string): Promise<string | null> {
+    try {
+        const r = await getS3().send(
+            new HeadObjectCommand({ Bucket: AUDIO_BUCKET, Key: key, ChecksumMode: 'ENABLED' }),
+        );
+        return r.ChecksumSHA256 ?? null;
+    } catch (e) {
+        const name = (e as { name?: string }).name;
+        const status = (e as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+        if (name === 'NotFound' || name === 'NoSuchKey' || status === 404) return null;
+        throw e;
+    }
+}
+
+/**
  * CopyObject is single-part; beyond this it would need a multipart copy.
  * Shared by trash.ts (corbeille moves) and rename.ts, which used to each
  * declare this same limit — both are copy-verify-then-delete sequences

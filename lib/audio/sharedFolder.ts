@@ -33,6 +33,20 @@ export interface FolderSharingBook {
 }
 
 /**
+ * Every spelling of one folder's path a fiche may hold: with and without the
+ * final « / », and in both Unicode forms — « é » composed (NFC) or as « e » plus
+ * a combining accent (NFD), which is how a Mac hands over a name. Two such
+ * spellings look identical on every screen but compare different, so a claim
+ * stored in the other form went unseen and the folder could be handed to a
+ * second fiche. None of the corpus's paths differ that way today (0 of them,
+ * November 2026); the check costs nothing and keeps it so.
+ */
+export function folderPathSpellings(prefix: string): string[] {
+    const forms = [prefix, prefix.normalize('NFC'), prefix.normalize('NFD')];
+    return [...new Set(forms.flatMap((p) => [p, p.slice(0, -1)]))];
+}
+
+/**
  * La fiche qui revendique déjà ce dossier, s'il y en a une — SUPPRIMÉES
  * COMPRISES — hors `excludeBookId`.
  *
@@ -51,7 +65,7 @@ export async function findFolderClaimant(
     const prefix = resolvePrefix(audioFilepath);
     if (!prefix) return null;
     const where = {
-        audio_filepath: { in: [prefix, prefix.slice(0, -1)] },
+        audio_filepath: { in: folderPathSpellings(prefix) },
         ...(excludeBookId != null ? { id: { not: excludeBookId } } : {}),
     };
     const select = { id: true, title: true } as const;
@@ -82,7 +96,7 @@ export async function booksSharingAudioFolder(
     return prisma.book.findMany({
         where: {
             id: { not: bookId },
-            audio_filepath: { in: [prefix, prefix.slice(0, -1)] },
+            audio_filepath: { in: folderPathSpellings(prefix) },
         },
         select: { id: true, title: true },
         orderBy: { id: 'asc' },

@@ -118,6 +118,11 @@ of that.
   for any other token, a second tab of the same permanent included), the dialogue renews it
   every 2 min and releases it at the end; an abandoned claim lapses after 10 min. Any new path
   that signs PUTs must claim it too.
+- **A PUT is only ever signed onto a key that holds nothing.** A retry's `existingKey` is
+  re-signed only when the object is absent; when it is present with the file's own SHA-256
+  (`headTrackChecksum` — B2 returns it on HEAD) it comes back `landed` and the dialogue skips
+  the PUT and commits it. Anything else gets a fresh name. Same size used to be enough, which let
+  a crafted key overwrite another track of the same size.
 - **The dev server cannot write to the bucket** unless `AUDIO_DEV_BUCKET_WRITES=1`:
   `putTrackUrl`, `copyTrack`, `deleteTrack(s)` and `ensureFolderPlaceholder` throw
   `DevBucketWriteRefused` under `NODE_ENV=development` (the bucket is the real one, the

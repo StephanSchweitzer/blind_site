@@ -6,13 +6,33 @@
  * (the react-server condition stubs out `server-only` so lib/audio/state.ts and
  * trash.ts — the actual production modules — can run under Node.)
  *
- * Works in its own scratch prefix under the root `2022/` tree, which is the
+ * Works in its own scratch prefixes under the root `2022/` tree, which is the
  * cancelled-upload copy, NOT the live `dirt/` catalogue. Creates its own files,
  * exercises delete/restore/FOLDER_EMPTY, and removes everything at the end.
+ *
+ * Since November 2026 it also drives the real route handlers and server
+ * actions (upload-url, commit, track, tracks, upload-lease, the orphan
+ * linking), which need the session and cache stubs of e2e-next-stubs.cjs:
+ *
+ *   node --env-file=.env --conditions=react-server --require ./scripts/e2e-next-stubs.cjs --import tsx scripts/audio-manage.e2e.ts
+ *
+ * Never calls purgeExpiredAudioTrash: the dev database is a stale copy whose
+ * old corbeille rows name production's real corbeille copies.
  */
 import 'dotenv/config';
+import { createHash, randomUUID } from 'node:crypto';
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { getS3, AUDIO_BUCKET, listBookTracks, listRawObjects, headTrack, copyTrack } from '../lib/audio/bucket';
+import { NextRequest } from 'next/server';
+import {
+    getS3,
+    AUDIO_BUCKET,
+    listBookTracks,
+    listRawObjects,
+    headTrack,
+    headTrackChecksum,
+    copyTrack,
+    naturalCompare,
+} from '../lib/audio/bucket';
 import { refreshBookAudioState, isKeyInsidePrefix, resolvePrefix } from '../lib/audio/state';
 import {
     softDeleteTrack,
@@ -21,10 +41,39 @@ import {
     restoreTracksByIds,
     trashKeyFor,
     LEFTOVER_MARGIN_MS,
+    TRASH_PREFIX,
 } from '../lib/audio/trash';
+import { renameTrack, AudioRenameError } from '../lib/audio/rename';
+import { purgeTrashNow } from '../lib/audio/purge';
+import { linkOrphanToBook } from '../app/admin/audio-orphelins/actions';
+import * as uploadUrlRoute from '../app/api/books/[id]/audio/upload-url/route';
+import * as commitRoute from '../app/api/books/[id]/audio/commit/route';
+import * as trackRoute from '../app/api/books/[id]/audio/track/route';
+import * as tracksRoute from '../app/api/books/[id]/audio/tracks/route';
+import * as leaseRoute from '../app/api/books/[id]/audio/upload-lease/route';
 import { prisma } from '../lib/prisma';
 
 const SCRATCH = '2022/_eca-test-audio/';
+/** 23 tracks: three slices of ten for the bulk corbeille moves and restores. */
+const SLICES = '2022/_eca-test-audio-slices/';
+/** A folder no book claims, attached through the orphan screen's action. */
+const ORPHAN = '2022/_eca-test-audio-orphan/';
+const SCRATCHES = [SCRATCH, SLICES, ORPHAN];
+
+/**
+ * A corbeille copy (`corbeille/<id>/<timestamp>-<name>`) of a file this script
+ * created. The cleanup sweeps the test books' corbeille folders with this and
+ * nothing broader — see the note there.
+ */
+function isOwnFile(key: string): boolean {
+    const name = key.slice(key.lastIndexOf('/') + 1).replace(/^\d+-/, '');
+    return (
+        FILES.includes(name) ||
+        / Tranche\.mp3$/.test(name) ||
+        / Orphelin\.mp3$/.test(name) ||
+        /Nouvelle prise [AB]( bis)?\.mp3$/.test(name)
+    );
+}
 const TITLE = 'ZZZ Test audio — ne pas utiliser';
 
 let failures = 0;
@@ -44,13 +93,18 @@ const FILES = [
     '1000 10- Dixième partie.mp3',
 ];
 
-async function putScratch(name: string, bytes: number) {
+const sha256 = (b: Buffer) => createHash('sha256').update(b).digest('base64');
+
+async function putScratch(name: string, bytes: number, prefix = SCRATCH, fill = 7) {
+    const body = Buffer.alloc(bytes, fill);
     await getS3().send(
         new PutObjectCommand({
             Bucket: AUDIO_BUCKET,
-            Key: `${SCRATCH}${name}`,
-            Body: Buffer.alloc(bytes, 7),
+            Key: `${prefix}${name}`,
+            Body: body,
             ContentType: 'audio/mpeg',
+            // Sent the way the dialogue's presigned PUTs are (see putTrackUrl).
+            ChecksumSHA256: sha256(body),
         }),
     );
 }
@@ -59,7 +113,10 @@ async function main() {
     if (!process.env.DATABASE_URL?.includes('localhost')) {
         throw new Error('Refus : base non locale.');
     }
-    if (SCRATCH.startsWith('dirt/')) throw new Error('Refus : le scratch ne doit jamais viser dirt/.');
+    if (SCRATCHES.some((p) => p.startsWith('dirt/'))) throw new Error('Refus : le scratch ne doit jamais viser dirt/.');
+    if (!(globalThis as { __e2eNextStubs?: boolean }).__e2eNextStubs) {
+        throw new Error('Lancez avec --require ./scripts/e2e-next-stubs.cjs (voir l’en-tête).');
+    }
 
     console.log(`Bucket ${AUDIO_BUCKET}, scratch ${SCRATCH}\n`);
 
@@ -349,21 +406,321 @@ async function main() {
     check('restauration refusée si la place est occupée', refused.includes('occupe déjà'), true);
     check('le fichier réenvoyé est intact', (await headTrack(back[0].key))?.sizeBytes, 4096);
 
+    const extraBooks = await runNovember2026Checks(bookId);
+
     // --- cleanup ------------------------------------------------------------
     console.log('\nnettoyage…');
-    const leftovers = await prisma.deletedAudioTrack.findMany({ where: { bookId } });
+    const testBooks = [bookId, ...extraBooks];
+    const leftovers = await prisma.deletedAudioTrack.findMany({ where: { bookId: { in: testBooks } } });
     for (const r of leftovers) {
         await getS3().send(new DeleteObjectCommand({ Bucket: AUDIO_BUCKET, Key: r.trashKey })).catch(() => {});
     }
-    await prisma.deletedAudioTrack.deleteMany({ where: { bookId } });
-    for (const f of [...FILES, '.bzEmpty']) {
-        await getS3().send(new DeleteObjectCommand({ Bucket: AUDIO_BUCKET, Key: `${SCRATCH}${f}` })).catch(() => {});
+    await prisma.deletedAudioTrack.deleteMany({ where: { bookId: { in: testBooks } } });
+    await prisma.audioUploadLease.deleteMany({ where: { bookId: { in: testBooks } } });
+    await prisma.orphanAudioFolder.deleteMany({ where: { prefix: ORPHAN } });
+    // Everything under the scratch prefixes, whatever a failed check left behind.
+    //
+    // NOT everything under `corbeille/<id>/`: these are DEV ids, and the bucket
+    // is production's — a production book can hold the same id (the dev copy
+    // and production have numbered new books separately since), and its
+    // corbeille folder is then this one. Only copies named after this script's
+    // own files are swept there: the rows above name the rest.
+    for (const p of SCRATCHES) {
+        for (const o of await listRawObjects(p)) {
+            await getS3().send(new DeleteObjectCommand({ Bucket: AUDIO_BUCKET, Key: o.key })).catch(() => {});
+        }
     }
-    const rest = await listRawObjects(SCRATCH);
-    check('scratch entièrement vidé (placeholder compris)', rest.length, 0);
+    const ownTrash = async () =>
+        (await Promise.all(testBooks.map((id) => listRawObjects(`${TRASH_PREFIX}${id}/`)))).flat().filter((o) => isOwnFile(o.key));
+    for (const o of await ownTrash()) {
+        await getS3().send(new DeleteObjectCommand({ Bucket: AUDIO_BUCKET, Key: o.key })).catch(() => {});
+    }
+    const rest = [...(await Promise.all(SCRATCHES.map((p) => listRawObjects(p)))).flat(), ...(await ownTrash())];
+    check('scratch entièrement vidé (placeholder et copies de corbeille du test compris)', rest.length, 0);
 
     console.log(failures ? `\n${failures} échec(s)` : '\nTous les contrôles passent.');
     process.exitCode = failures ? 1 : 0;
+}
+
+/** A test fiche by title, created once and reused by later runs. */
+async function testBook(title: string, audioFilepath: string | null): Promise<number> {
+    // Named `deletedAt` so the soft-delete filter (lib/prisma.ts) lets a
+    // fiche deleted by an earlier run be found and reused.
+    const found =
+        (await prisma.book.findFirst({ where: { title } })) ??
+        (await prisma.book.findFirst({ where: { title, deletedAt: { not: null } } }));
+    const data = { audio_filepath: audioFilepath, available: false, deletedAt: null };
+    const book = found
+        ? await prisma.book.update({ where: { id: found.id }, data })
+        : await prisma.book.create({ data: { title, author: 'Test', addedById: 1, ...data } });
+    return book.id;
+}
+
+type Handler = (req: NextRequest, ctx: { params: Promise<Record<string, string>> }) => Promise<Response> | Response;
+
+/** A real route handler, called as Next would, as the stubbed signed-in account. */
+async function callRoute(handler: Handler, method: string, bookId: number, body: unknown) {
+    const res = await handler(
+        new NextRequest(`http://localhost/api/books/${bookId}/audio`, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }),
+        { params: Promise.resolve({ id: String(bookId) }) },
+    );
+    return { status: res.status, data: (await res.json().catch(() => null)) as Record<string, any> | null };
+}
+
+/** The browser's PUT: exactly the signed Content-Type and checksum headers. */
+async function putSigned(url: string, contentType: string, checksum: string, body: Buffer) {
+    const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': contentType, 'x-amz-checksum-sha256': checksum },
+        body: new Uint8Array(body),
+    });
+    return res.status;
+}
+
+/**
+ * The fixes of November 2026, against the real bucket: sliced corbeille moves
+ * and restores, upload-url naming under the lease, the `landed` retry, the
+ * commit's `publish`, rename, purge, orphan linking, the duration rule and the
+ * shared-folder refusals. Returns the extra test books, for the cleanup.
+ *
+ * Rename's PARTIAL failures (copy made, delete refused) need a bucket that can
+ * be made to refuse: they are covered by the fake-bucket harness, not here.
+ */
+async function runNovember2026Checks(bookId: number): Promise<number[]> {
+    // --- sliced bulk corbeille move -------------------------------------------
+    console.log('\n— suppression et restauration par tranches');
+    for (let i = 1; i <= 23; i++) {
+        await putScratch(`1000 ${String(i).padStart(2, '0')} Tranche.mp3`, 512 + i, SLICES, i);
+    }
+    const sliceBook = await testBook('ZZZ Test audio — tranches', SLICES);
+    const asTracks = async () =>
+        (await listBookTracks(SLICES)).map((t) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes }));
+    // Only this test's own copies: a production book may share the dev id (see the cleanup).
+    const corbeilleCopies = async () =>
+        (await listRawObjects(`${TRASH_PREFIX}${sliceBook}/`)).filter((o) => o.key.endsWith(' Tranche.mp3')).length;
+    const activeRows = () => prisma.deletedAudioTrack.count({ where: { bookId: sliceBook, restoredAt: null } });
+    let todo = await asTracks();
+    check('tranches : 23 pistes à déplacer', todo.length, 23);
+
+    const none = await softDeleteTracks({
+        bookId: sliceBook, prefix: SLICES, tracks: todo, userId: 1, deadline: Date.now() - 1,
+    });
+    check('délai déjà passé : aucune tranche lancée', [none.moved, none.remaining], [0, 23]);
+    check('délai déjà passé : ni copie ni ligne', [await corbeilleCopies(), await activeRows()], [0, 0]);
+
+    let movedTotal = 0;
+    let calls = 0;
+    let recordedPerSlice = true;
+    let sliceSized = true;
+    while (todo.length && calls < 12) {
+        calls++;
+        const r = await softDeleteTracks({
+            bookId: sliceBook, prefix: SLICES, tracks: todo, userId: 1, deadline: Date.now() + 1500,
+        });
+        movedTotal += r.moved;
+        if (r.failed.length || r.moved + r.remaining !== todo.length) recordedPerSlice = false;
+        if (r.remaining > 0 && r.moved % 10 !== 0) sliceSized = false;
+        // The invariant the slicing exists for: whatever was copied is recorded.
+        if ((await corbeilleCopies()) !== movedTotal || (await activeRows()) !== movedTotal) recordedPerSlice = false;
+        todo = await asTracks();
+    }
+    console.log(`        (${calls} appel(s))`);
+    check('tranches : chaque appel rend ce qu’il n’a pas commencé', recordedPerSlice, true);
+    check('tranches : on ne s’arrête qu’entre deux tranches de dix', sliceSized, true);
+    check('tranches : tout déplacé, dossier vide', [movedTotal, todo.length], [23, 0]);
+
+    // --- sliced bulk restore ------------------------------------------------
+    let ids = (
+        await prisma.deletedAudioTrack.findMany({ where: { bookId: sliceBook, restoredAt: null }, select: { id: true } })
+    ).map((r) => r.id);
+    const idle = await restoreTracksByIds({ trashIds: ids, userId: 1, deadline: Date.now() - 1 });
+    check('restauration, délai passé : rien ramené, tout rendu', [idle.restored, idle.remainingIds.length], [0, 23]);
+    let restoredTotal = 0;
+    let restoreCalls = 0;
+    let restoreConsistent = true;
+    while (ids.length && restoreCalls < 12) {
+        restoreCalls++;
+        const r = await restoreTracksByIds({ trashIds: ids, userId: 1, deadline: Date.now() + 1500 });
+        restoredTotal += r.restored;
+        if (r.failed.length) restoreConsistent = false;
+        // Back in the folder ⇔ marked restored: never one without the other.
+        const inFolder = (await listBookTracks(SLICES)).length;
+        const marked = await prisma.deletedAudioTrack.count({ where: { bookId: sliceBook, restoredAt: { not: null } } });
+        if (inFolder !== restoredTotal || marked !== restoredTotal) restoreConsistent = false;
+        ids = r.remainingIds;
+    }
+    console.log(`        (${restoreCalls} appel(s))`);
+    check('restauration par tranches : dossier et lignes toujours d’accord', restoreConsistent, true);
+    check('restauration par tranches : 23 pistes revenues, dans l’ordre', (await asTracks()).map((t) => t.name),
+        Array.from({ length: 23 }, (_, i) => `1000 ${String(i + 1).padStart(2, '0')} Tranche.mp3`));
+
+    // --- upload-url under the lease, the real PUT, the landed retry, commit ---
+    console.log('\n— envoi : nom, bail, somme de contrôle, reprise, publication');
+    await prisma.book.update({ where: { id: bookId }, data: { available: false } });
+    const lease = randomUUID();
+    const takeA = Buffer.alloc(3000, 41);
+    const signA = await callRoute(uploadUrlRoute.POST as Handler, 'POST', bookId, {
+        leaseToken: lease,
+        files: [{ name: 'Nouvelle prise A.mp3', size: takeA.length, checksum: sha256(takeA) }],
+    });
+    check('upload-url : 200', signA.status, 200);
+    const fileA = signA.data?.files?.[0];
+    const before = (await listBookTracks(SCRATCH)).map((t) => t.name);
+    check('upload-url : le nom se range après la dernière piste',
+        [...before, fileA?.filename].sort(naturalCompare).pop(), fileA?.filename);
+
+    const other = await callRoute(uploadUrlRoute.POST as Handler, 'POST', bookId, {
+        leaseToken: randomUUID(),
+        files: [{ name: 'Intrus.mp3', size: 10, checksum: sha256(Buffer.alloc(10)) }],
+    });
+    check('bail : un second envoi sur le livre est refusé (409 uploadLease)', [other.status, !!other.data?.uploadLease], [409, true]);
+
+    check('PUT avec une autre somme : refusé par B2',
+        (await putSigned(fileA.url, fileA.contentType, fileA.checksum, Buffer.alloc(3000, 42))) >= 400, true);
+    check('PUT conforme : accepté', await putSigned(fileA.url, fileA.contentType, fileA.checksum, takeA), 200);
+    check('B2 rend la somme stockée au HEAD', await headTrackChecksum(fileA.key), sha256(takeA));
+
+    const retry = await callRoute(uploadUrlRoute.POST as Handler, 'POST', bookId, {
+        leaseToken: lease,
+        files: [{ name: 'Nouvelle prise A.mp3', size: takeA.length, checksum: sha256(takeA), existingKey: fileA.key }],
+    });
+    check('reprise après un commit perdu : landed, rien à signer',
+        [retry.data?.files?.[0]?.landed, retry.data?.files?.[0]?.url, retry.data?.files?.[0]?.key], [true, '', fileA.key]);
+    const crafted = await callRoute(uploadUrlRoute.POST as Handler, 'POST', bookId, {
+        leaseToken: lease,
+        files: [{ name: 'Pirate.mp3', size: takeA.length, checksum: sha256(Buffer.alloc(3000, 43)), existingKey: fileA.key }],
+    });
+    check('existingKey d’une piste de même taille, autre contenu : jamais resignée',
+        [crafted.data?.files?.[0]?.key === fileA.key, crafted.data?.files?.[0]?.reused], [false, false]);
+
+    const commitA = await callRoute(commitRoute.POST as Handler, 'POST', bookId, {
+        uploaded: [{ key: fileA.key, size: takeA.length, durationSeconds: 30 }],
+    });
+    check('commit sans publish : confirmé', commitA.data?.confirmed, 1);
+    check('commit sans publish : le livre reste en attente',
+        (await prisma.book.findUnique({ where: { id: bookId }, select: { available: true } }))?.available, false);
+
+    const takeB = Buffer.alloc(2000, 44);
+    const signB = await callRoute(uploadUrlRoute.POST as Handler, 'POST', bookId, {
+        leaseToken: lease,
+        files: [{ name: 'Nouvelle prise B.mp3', size: takeB.length, checksum: sha256(takeB) }],
+    });
+    const fileB = signB.data?.files?.[0];
+    check('second fichier : numéroté après le premier', [fileA.filename, fileB?.filename].sort(naturalCompare)[1], fileB?.filename);
+    check('PUT du second : accepté', await putSigned(fileB.url, fileB.contentType, fileB.checksum, takeB), 200);
+    const commitB = await callRoute(commitRoute.POST as Handler, 'POST', bookId, {
+        uploaded: [{ key: fileB.key, size: takeB.length, durationSeconds: 20 }],
+        publish: true,
+    });
+    check('commit avec publish : confirmé', commitB.status, 200);
+    check('commit avec publish : le livre est publié',
+        (await prisma.book.findUnique({ where: { id: bookId }, select: { available: true } }))?.available, true);
+    const released = await callRoute(leaseRoute.POST as Handler, 'POST', bookId, { token: lease, action: 'release' });
+    check('bail rendu à la fin', [released.status, await prisma.audioUploadLease.count({ where: { bookId } })], [200, 0]);
+
+    // --- rename ---------------------------------------------------------------
+    console.log('\n— renommage');
+    const renameFrom = fileB.key as string;
+    const renameTo = `${SCRATCH}${(fileB.filename as string).replace('.mp3', ' bis.mp3')}`;
+    await prisma.audioTrackDuration.deleteMany({ where: { bookId, filename: fileB.filename } });
+    await prisma.audioTrackDuration.create({
+        data: { bookId, filename: fileB.filename, sizeBytes: BigInt(takeB.length), seconds: 20, method: 'TEST', exact: true },
+    });
+    let occupiedError = '';
+    try {
+        await renameTrack({ bookId, oldKey: renameFrom, newKey: fileA.key, userId: 1 });
+    } catch (e) {
+        occupiedError = e instanceof AudioRenameError ? e.message : `inattendu : ${(e as Error).message}`;
+    }
+    check('renommage vers un nom occupé : refusé, rien touché',
+        [occupiedError.includes('porte déjà'), (await headTrack(fileA.key))?.sizeBytes, (await headTrack(renameFrom))?.sizeBytes],
+        [true, takeA.length, takeB.length]);
+    await renameTrack({ bookId, oldKey: renameFrom, newKey: renameTo, userId: 1 });
+    check('renommage : ancien nom parti, nouveau à la même taille',
+        [await headTrack(renameFrom), (await headTrack(renameTo))?.sizeBytes], [null, takeB.length]);
+    check('renommage : la durée mesurée suit le nom',
+        (await prisma.audioTrackDuration.findMany({ where: { bookId, filename: { in: [fileB.filename, renameTo.slice(SCRATCH.length)] } }, select: { filename: true } })).map((r) => r.filename),
+        [renameTo.slice(SCRATCH.length)]);
+
+    // --- purge ------------------------------------------------------------------
+    console.log('\n— suppression définitive');
+    const doomed = await softDeleteTrack({ bookId, key: renameTo, filename: renameTo.slice(SCRATCH.length), userId: 1 });
+    const purge = await purgeTrashNow({ trashIds: [doomed.trashId, doomed.trashId], userId: 1 });
+    check('purge : une copie supprimée, le doublon d’id ignoré', [purge.purged, purge.failed], [1, 0]);
+    check('purge : copie partie de la corbeille', await headTrack(doomed.trashKey), null);
+    const purgedRow = await prisma.deletedAudioTrack.findUnique({ where: { id: doomed.trashId }, select: { purgedAt: true, purgedById: true } });
+    check('purge : ligne datée et signée', [!!purgedRow?.purgedAt, purgedRow?.purgedById], [true, 1]);
+    check('purge : une ligne purgée ne se restaure plus',
+        (await restoreTracksByIds({ trashIds: [doomed.trashId], userId: 1 })).restored, 0);
+    check('purge : une seconde purge ne fait rien', (await purgeTrashNow({ trashIds: [doomed.trashId], userId: 1 })).skipped, 1);
+
+    // --- orphan linking + duration rule ---------------------------------------------
+    console.log('\n— rattachement d’un orphelin, règle de durée');
+    await putScratch('1000 01 Orphelin.mp3', 700, ORPHAN, 51);
+    await putScratch('1000 02 Orphelin.mp3', 800, ORPHAN, 52);
+    const orphanBook = await testBook('ZZZ Test audio — orphelin', null);
+    await prisma.orphanAudioFolder.deleteMany({ where: { prefix: ORPHAN } });
+    const orphan = await prisma.orphanAudioFolder.create({
+        data: { prefix: ORPHAN, title: 'ZZZ Test orphelin', trackCount: 2, bytes: BigInt(1500) },
+    });
+    const linked = await linkOrphanToBook(orphan.id, orphanBook);
+    check('rattachement : accepté', linked.ok, true);
+    const linkedBook = await prisma.book.findUnique({ where: { id: orphanBook }, select: { audio_filepath: true, audioTrackCount: true } });
+    check('rattachement : la fiche pointe le dossier, pistes comptées', [linkedBook?.audio_filepath, linkedBook?.audioTrackCount], [ORPHAN, 2]);
+    check('rattachement : un second rattachement est refusé', (await linkOrphanToBook(orphan.id, bookId)).ok, false);
+
+    const setDuration = (filename: string, size: number, seconds: number) =>
+        prisma.audioTrackDuration.upsert({
+            where: { bookId_filename: { bookId: orphanBook, filename } },
+            create: { bookId: orphanBook, filename, sizeBytes: BigInt(size), seconds, method: 'TEST', exact: true },
+            update: { sizeBytes: BigInt(size), seconds },
+        });
+    await setDuration('1000 01 Orphelin.mp3', 700, 120);
+    await setDuration('1000 02 Orphelin.mp3', 800, 120);
+    await refreshBookAudioState(orphanBook);
+    const minutes = async () =>
+        (await prisma.book.findUnique({ where: { id: orphanBook }, select: { readingDurationMinutes: true } }))?.readingDurationMinutes;
+    check('durée : toutes les pistes connues → somme', await minutes(), 4);
+    await putScratch('1000 03 Orphelin.mp3', 900, ORPHAN, 53);
+    await refreshBookAudioState(orphanBook);
+    check('durée : une piste inconnue et le poids a changé → « Non calculée »', await minutes(), null);
+    await setDuration('1000 03 Orphelin.mp3', 900, 60);
+    await refreshBookAudioState(orphanBook);
+    check('durée : la dernière mesurée → somme complète', await minutes(), 5);
+
+    // --- shared-folder refusals -------------------------------------------------
+    console.log('\n— dossier partagé avec une autre fiche');
+    const twin = await testBook('ZZZ Test audio — jumeau', SCRATCH.slice(0, -1)); // the « sans / » spelling
+    const shareLease = randomUUID();
+    const sharedUpload = await callRoute(uploadUrlRoute.POST as Handler, 'POST', bookId, {
+        leaseToken: shareLease,
+        files: [{ name: 'Partagé.mp3', size: 10, checksum: sha256(Buffer.alloc(10)) }],
+    });
+    check('partagé : envoi refusé en nommant le jumeau',
+        [sharedUpload.status, (sharedUpload.data?.sharedWith ?? []).map((b: { id: number }) => b.id)], [409, [twin]]);
+    const first = (await listBookTracks(SCRATCH))[0];
+    const sharedDelete = await callRoute(trackRoute.DELETE as Handler, 'DELETE', bookId, { key: first.key, filename: first.name });
+    check('partagé : suppression d’une piste refusée', [sharedDelete.status, !!sharedDelete.data?.sharedWith], [409, true]);
+    const sharedRename = await callRoute(trackRoute.PATCH as Handler, 'PATCH', bookId, {
+        key: first.key, filename: first.name, newName: `${first.name.replace('.mp3', '')} x.mp3`,
+    });
+    check('partagé : renommage refusé', [sharedRename.status, !!sharedRename.data?.sharedWith], [409, true]);
+    const sharedEmpty = await callRoute(tracksRoute.DELETE as Handler, 'DELETE', bookId, {});
+    check('partagé : « Tout supprimer » refusé', [sharedEmpty.status, !!sharedEmpty.data?.sharedWith], [409, true]);
+    check('partagé : rien n’a bougé', (await listBookTracks(SCRATCH)).length > 0 && (await headTrack(first.key)) !== null, true);
+    await prisma.book.update({ where: { id: twin }, data: { deletedAt: new Date() } });
+    const afterTwin = await callRoute(uploadUrlRoute.POST as Handler, 'POST', bookId, {
+        leaseToken: shareLease,
+        files: [{ name: 'Partagé.mp3', size: 10, checksum: sha256(Buffer.alloc(10)) }],
+    });
+    check('jumeau supprimé (dossier laissé) : l’envoi redevient possible', afterTwin.status, 200);
+    await callRoute(leaseRoute.POST as Handler, 'POST', bookId, { token: shareLease, action: 'release' });
+
+    return [sliceBook, orphanBook, twin];
 }
 
 main()

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/prisma';
-import { putTrackUrl, headTrack, listBookTracks, listRawObjects, isAudioKey } from '@/lib/audio/bucket';
+import { putTrackUrl, headTrack, headTrackChecksum, listBookTracks, listRawObjects, isAudioKey } from '@/lib/audio/bucket';
 import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import {
     nextTrackName,
@@ -257,6 +257,11 @@ export const POST = withAdmin(async (req, { params, me }) => {
         strategy: string;
         /** True when `key` was reused via `existingKey`, not freshly minted. */
         reused: boolean;
+        /**
+         * Already in the bucket with this file's bytes (see the reuse rule
+         * above): no URL, the dialogue skips the PUT and commits it.
+         */
+        landed: boolean;
         checksum: string;
     }[] = [];
 
@@ -280,13 +285,23 @@ export const POST = withAdmin(async (req, { params, me }) => {
         //
         // Honoured only when the key belongs to this book's folder
         // (isKeyInsidePrefix — a client-supplied key is not trusted blindly),
-        // NAMES SOMETHING THAT COULD BE A TRACK, and is either absent (the
-        // earlier PUT never actually landed) or already sitting at the
-        // announced size (it landed; a retry PUT is then an idempotent
-        // overwrite of identical bytes — see putWithRetry's doc comment). A key
-        // occupied at some OTHER size is not reused: that is not this file's
+        // directly in it (no sub-folder: nothing lists those, see
+        // toOrderedTracks), NAMES SOMETHING THAT COULD BE A TRACK, and is
+        // either:
+        //  - absent — the earlier PUT never landed: the key is signed again,
+        //    and writing it overwrites nothing (the upload lease keeps any
+        //    other upload out of the folder meanwhile);
+        //  - or present with the SAME BYTES — the SHA-256 B2 stored for it
+        //    (headTrackChecksum) equals this file's. It landed; nothing is
+        //    signed (`landed`), the dialogue skips the PUT and hands it
+        //    straight to the commit, which is what the lost answer was for.
+        // A key present with anything else is not reused: not this file's
         // earlier attempt, so it falls through to a fresh name below exactly as
-        // if no existingKey had been offered.
+        // if no existingKey had been offered. Same size used to be enough to
+        // re-sign it — so a crafted existingKey naming another track of the
+        // same size in the folder overwrote that take, with only B2's 30-day
+        // noncurrent version left of it. A PUT is now only ever signed onto a
+        // key that holds nothing.
         //
         // The name check matters because this branch is the one place a
         // filename reaches the bucket WITHOUT passing through nextTrackName,
@@ -300,13 +315,23 @@ export const POST = withAdmin(async (req, { params, me }) => {
         // must never be harder to complete than the first attempt.
         const requestedKey = typeof f.existingKey === 'string' ? f.existingKey : '';
         let reuseKey: string | null = null;
+        let landed = false;
         if (requestedKey && isKeyInsidePrefix(requestedKey, prefix)) {
             const requestedName = requestedKey.slice(prefix.length);
             const nameIsUsable =
-                isAllowedAudioExtension(requestedName) && !isAppleDoubleName(requestedName);
+                !requestedName.includes('/') &&
+                isAllowedAudioExtension(requestedName) &&
+                !isAppleDoubleName(requestedName);
             const currentSize = sizeByExistingKey.get(requestedKey);
-            if (nameIsUsable && (currentSize === undefined || currentSize === size)) {
+            if (nameIsUsable && currentSize === undefined) {
                 reuseKey = requestedKey;
+            } else if (
+                nameIsUsable &&
+                currentSize === size &&
+                (await headTrackChecksum(requestedKey)) === checksum
+            ) {
+                reuseKey = requestedKey;
+                landed = true;
             }
         }
 
@@ -370,6 +395,7 @@ export const POST = withAdmin(async (req, { params, me }) => {
             contentType,
             strategy,
             reused: Boolean(reuseKey),
+            landed,
             checksum,
         });
     }
@@ -397,8 +423,10 @@ export const POST = withAdmin(async (req, { params, me }) => {
         );
     }
 
-    // Sign only now that every name in the batch is confirmed free.
+    // Sign only now that every name in the batch is confirmed free — and never
+    // a key that already holds this file (`landed`).
     for (const r of results) {
+        if (r.landed) continue;
         r.url = await putTrackUrl(r.key, r.contentType, r.checksum, URL_TTL_SECONDS);
     }
 
@@ -494,6 +522,7 @@ async function replaceOne(opts: {
                 contentType,
                 strategy: 'remplacement',
                 reused: false,
+                landed: false,
                 checksum,
             },
         ],

@@ -146,7 +146,25 @@ interface SignedFile {
     key: string;
     url: string;
     contentType: string;
+    /**
+     * The server found this file's bytes already at `key` (an earlier PUT
+     * landed, its commit did not): no `url`, nothing to send — it goes
+     * straight to the commit. See upload-url's reuse rule.
+     */
+    landed?: boolean;
 }
+
+/**
+ * Above this, a file is hashed on its own. `sha256Base64` holds a whole file
+ * in memory, and hashing went three files at a time whatever their size: the
+ * corpus has 35 tracks over 100 MB and 7 over 200 MB (336 MB the largest,
+ * November 2026), so three of those meant a gigabyte of buffers in one tab —
+ * enough for a browser to kill it mid-upload. Small files keep CONCURRENCY;
+ * a large one waits for the others and then has memory to itself. A streaming
+ * hash would avoid the buffer entirely, but needs a JS SHA-256 in the bundle
+ * where crypto.subtle is native and an order of magnitude faster.
+ */
+const HASH_ALONE_BYTES = 100 * 1024 * 1024;
 
 /** How many files travel at once. Bounded so a big folder can't open 40 sockets. */
 const CONCURRENCY = 3;
@@ -328,7 +346,8 @@ const HINT_CONFIG =
  * Reads the whole file into memory, since `crypto.subtle.digest` takes a
  * buffer rather than a stream — unavoidable, but the *output* is a fixed 32
  * bytes regardless of the file being up to `MAX_UPLOAD_BYTES`, so encoding it
- * to base64 needs no chunking the way hashing the input itself would.
+ * to base64 needs no chunking the way hashing the input itself would. How
+ * many such buffers may be alive at once is `hashChecksums`'s business.
  */
 async function sha256Base64(file: File): Promise<string> {
     const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
@@ -336,6 +355,18 @@ async function sha256Base64(file: File): Promise<string> {
     let binary = '';
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
     return btoa(binary);
+}
+
+/**
+ * Name → checksum for a chunk: small files CONCURRENCY at a time, then each
+ * file over HASH_ALONE_BYTES on its own — at most 3 × 100 MB, or one large
+ * file, in memory at once.
+ */
+async function hashChecksums(files: File[]): Promise<Map<string, string>> {
+    const small = files.filter((f) => f.size <= HASH_ALONE_BYTES);
+    const large = files.filter((f) => f.size > HASH_ALONE_BYTES);
+    const hash = async (f: File) => [f.name, await sha256Base64(f)] as const;
+    return new Map([...(await pool(small, CONCURRENCY, hash)), ...(await pool(large, 1, hash))]);
 }
 
 interface PutCallbacks {
@@ -709,18 +740,11 @@ export function useAudioUpload(bookId: number) {
                         // the checksum value at signing time to fold it into the
                         // presigned URL's signature (see putTrackUrl's doc comment
                         // in lib/audio/bucket-core.ts) — sending it only as a PUT
-                        // header, unsigned, is rejected outright. Bounded the same
-                        // as the transfers below so a 50-file chunk doesn't try to
-                        // hold 50 files' bytes in memory at once.
+                        // header, unsigned, is rejected outright. Bounded by
+                        // hashChecksums so a 50-file chunk doesn't try to hold
+                        // 50 files' bytes — or three 300 MB ones — in memory at once.
                         setPhase('preparing');
-                        const checksumByName = new Map(
-                            (
-                                await pool(chunk, CONCURRENCY, async (f) => ({
-                                    name: f.name,
-                                    checksum: await sha256Base64(f),
-                                }))
-                            ).map((r) => [r.name, r.checksum] as const),
-                        );
+                        const checksumByName = await hashChecksums(chunk);
 
                         // --- 1. Ask the server to name and sign each file ---------
                         let signed: SignedFile[];
@@ -877,6 +901,13 @@ export function useAudioUpload(bookId: number) {
                                 const row = rowOf(s.originalName);
                                 if (!file || !row) continue;
 
+                                if (s.landed) {
+                                    row.status = 'terminé';
+                                    row.loaded = row.total;
+                                    sent.push({ key: s.key, size: file.size, name: s.originalName });
+                                    publish();
+                                    continue;
+                                }
                                 if (leaseLost) {
                                     fail(s.originalName, 'Envoi interrompu', leaseLost, false);
                                     publish();

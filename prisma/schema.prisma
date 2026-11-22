@@ -1050,7 +1050,9 @@ model AudioTrackDuration {
   book      Book?    @relation("BookAudioTrackDurations", fields: [bookId], references: [id], onDelete: SetNull)
 
   @@unique([bookId, filename])
-  @@index([bookId])
+  /// No separate @@index([bookId]): the unique index leads with bookId and
+  /// serves every by-book read and the SetNull lookup. Dropped 2026-11-22
+  /// (2.2 MB of a database with a 500 MB ceiling).
 }
 
 /// Singleton (id = 1) holding the editable content of the public Contact page.

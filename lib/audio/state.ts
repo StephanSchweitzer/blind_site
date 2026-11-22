@@ -5,6 +5,7 @@ import { withoutAudit } from '@/lib/audit/context';
 import { bytesToKb } from '@/lib/pricing';
 import { repriceOpenOrdersForBook } from '@/lib/pricing-sync';
 import { listRawObjects, isAudioKey } from './bucket';
+import { resolvePrefix } from './prefix';
 
 /**
  * Keeps Book.audioLinkStatus / audioTrackCount / audioSizeKb / audioCheckedAt
@@ -24,19 +25,8 @@ export type AudioLinkStatusValue =
     | 'NO_PATH'
     | 'UNVERIFIED';
 
-/**
- * The prefix to list for a book, with a guaranteed trailing slash.
- *
- * Without one, ListObjectsV2 on `dirt/2022/21525  Titre` also matches
- * `dirt/2022/21525  Titre bis/…`. That would inflate the track count, and —
- * far worse — let the containment check in the write routes accept a key that
- * belongs to a neighbouring book.
- */
-export function resolvePrefix(audioFilepath: string | null | undefined): string {
-    const v = audioFilepath?.trim();
-    if (!v) return '';
-    return v.endsWith('/') ? v : `${v}/`;
-}
+/** See ./prefix — split out so the scripts can share it. */
+export { resolvePrefix };
 
 /**
  * Guard for every key the client supplies to a write route.
