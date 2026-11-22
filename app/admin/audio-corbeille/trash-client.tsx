@@ -214,7 +214,12 @@ export default function TrashClient({
     const runGroup = (key: string, trashIds: number[]) => {
         setRestoringGroupKey(key);
         startTransition(async () => {
-            const res = await restoreTrashedGroup(trashIds);
+            // Un gros groupe revient en plusieurs appels : chacun rend ce qu'il
+            // n'a pas commencé (remainingIds) et ce qu'il a déjà fait (carry).
+            let res = await restoreTrashedGroup(trashIds);
+            while (res.remainingIds?.length && res.carry) {
+                res = await restoreTrashedGroup(res.remainingIds, res.carry);
+            }
             toast({
                 title: res.message,
                 variant: res.ok ? undefined : 'destructive',

@@ -6,6 +6,7 @@ import { refresh } from 'next/cache';
 import { revalidateChangedBooks, snapshotPublicBooks, type PublicBooksSnapshot } from '@/lib/revalidate-public';
 import { restoreTrack, restoreTracksByIds, AudioTrashError } from '@/lib/audio/trash';
 import { purgeTrashNow } from '@/lib/audio/purge';
+import { describeClaimant, findFolderClaimant } from '@/lib/audio/sharedFolder';
 
 /**
  * Restaurer une piste depuis la corbeille audio générale.
@@ -54,16 +55,21 @@ export async function restoreTrashedTrack(trashId: number): Promise<ActionResult
 
         try {
             const publicBefore = await snapshotTrashedBooks([trashId]);
-            const { bookId } = await restoreTrack({ trashId, userId: me.id });
+            const { bookId, originalKey } = await restoreTrack({ trashId, userId: me.id });
             refresh();
             // La durée du livre a pu changer : le catalogue public l'affiche.
             if (bookId) await revalidateChangedBooks(publicBefore);
+            if (bookId) return { ok: true, message: 'Fichier restauré dans le dossier du livre.' };
+
+            // Sans fiche : le dossier a pu être rattaché depuis à un livre, qui
+            // vient alors de gagner la piste (settleRestoredFolders l'a relu).
+            const claimant = await findFolderClaimant(originalKey.slice(0, originalKey.lastIndexOf('/') + 1));
             return {
                 ok: true,
-                message: bookId
-                    ? 'Fichier restauré dans le dossier du livre.'
+                message: claimant
+                    ? `Fichier restauré dans son dossier d’origine, qui appartient aujourd’hui à ${describeClaimant(claimant)}.`
                     : 'Fichier restauré dans son dossier d’origine. Ce dossier n’appartenant à ' +
-                      'aucune fiche, il apparaîtra dans Audio orphelins.',
+                      'aucune fiche, il apparaît dans Audio orphelin.',
             };
         } catch (e) {
             if (e instanceof AudioTrashError) return { ok: false, message: e.message };
@@ -86,18 +92,66 @@ export async function restoreTrashedTrack(trashId: number): Promise<ActionResult
  * client a sous les yeux — la même population que celle sur laquelle il
  * propose déjà un bouton Restaurer par fichier.
  */
-export async function restoreTrashedGroup(trashIds: number[]): Promise<ActionResult> {
-    return asAdminAction(async (me) => {
+/**
+ * Ce qu'une restauration de groupe a déjà fait aux appels précédents — voir
+ * GROUP_RESTORE_TIME_BUDGET_MS. Rendu par chaque appel, renvoyé tel quel par
+ * le suivant, pour que le dernier message compte tout le groupe.
+ */
+export interface GroupRestoreCarry {
+    restored: number;
+    failed: number;
+    firstReason: string | null;
+}
+
+export type GroupRestoreResult = ActionResult & {
+    /** Lignes pas encore commencées : à repasser, avec `carry`, à l'appel suivant. */
+    remainingIds?: number[];
+    carry?: GroupRestoreCarry;
+};
+
+/**
+ * Combien de temps un appel lance encore des tranches de copies — le même
+ * budget que les routes de suppression et de restauration d'un livre, pour la
+ * même raison (une carte de cet écran a porté 108 fichiers, 1,8 Go). L'écran
+ * rappelle avec `remainingIds` tant qu'il en reste et que l'appel a avancé.
+ */
+const GROUP_RESTORE_TIME_BUDGET_MS = 25_000;
+
+export async function restoreTrashedGroup(
+    trashIds: number[],
+    carry: GroupRestoreCarry = { restored: 0, failed: 0, firstReason: null },
+): Promise<GroupRestoreResult> {
+    return asAdmin<GroupRestoreResult>(DENIED, async (me) => {
+        const deadline = Date.now() + GROUP_RESTORE_TIME_BUDGET_MS;
         const ids = trashIds.filter((id) => Number.isInteger(id));
         if (!ids.length) return { ok: false, message: 'Identifiants invalides' };
 
         try {
             const publicBefore = await snapshotTrashedBooks(ids);
-            const { restored, failed } = await restoreTracksByIds({ trashIds: ids, userId: me.id });
+            const step = await restoreTracksByIds({ trashIds: ids, userId: me.id, deadline });
             refresh();
-            if (restored > 0) await revalidateChangedBooks(publicBefore);
+            if (step.restored > 0) await revalidateChangedBooks(publicBefore);
 
-            if (failed.length === 0) {
+            const total: GroupRestoreCarry = {
+                restored: carry.restored + step.restored,
+                failed: carry.failed + step.failed.length,
+                firstReason: carry.firstReason ?? step.failed[0]?.reason ?? null,
+            };
+            // Il en reste, et cet appel a avancé : l'écran rappelle.
+            if (step.remainingIds.length && step.restored > 0) {
+                return {
+                    ok: true,
+                    message: `${total.restored} fichier${total.restored > 1 ? 's' : ''} restauré${total.restored > 1 ? 's' : ''}…`,
+                    remainingIds: step.remainingIds,
+                    carry: total,
+                };
+            }
+
+            // Coupé sans avoir rien ramené : ce qui reste compte comme un échec.
+            const { restored } = total;
+            const failedCount = total.failed + step.remainingIds.length;
+            const reason = total.firstReason ?? 'interrompu avant la fin — relancez la restauration';
+            if (failedCount === 0) {
                 return {
                     ok: true,
                     message: `${restored} fichier${restored > 1 ? 's' : ''} restauré${restored > 1 ? 's' : ''}.`,
@@ -106,16 +160,21 @@ export async function restoreTrashedGroup(trashIds: number[]): Promise<ActionRes
             if (restored === 0) {
                 return {
                     ok: false,
-                    message: `Aucun fichier restauré — ${failed[0].reason}${failed.length > 1 ? ` (et ${failed.length - 1} autre${failed.length > 2 ? 's' : ''})` : ''}.`,
+                    message: `Aucun fichier restauré — ${reason}${failedCount > 1 ? ` (et ${failedCount - 1} autre${failedCount > 2 ? 's' : ''})` : ''}.`,
                 };
             }
             return {
                 ok: true,
-                message: `${restored} fichier${restored > 1 ? 's' : ''} restauré${restored > 1 ? 's' : ''}, ${failed.length} échec${failed.length > 1 ? 's' : ''} (${failed[0].reason}).`,
+                message: `${restored} fichier${restored > 1 ? 's' : ''} restauré${restored > 1 ? 's' : ''}, ${failedCount} échec${failedCount > 1 ? 's' : ''} (${reason}).`,
             };
         } catch (e) {
             console.error('restoreTrashedGroup error:', e);
-            return { ok: false, message: 'La restauration a échoué.' };
+            return {
+                ok: false,
+                message: carry.restored
+                    ? `La restauration s’est interrompue après ${carry.restored} fichier${carry.restored > 1 ? 's' : ''} : relancez-la pour le reste.`
+                    : 'La restauration a échoué.',
+            };
         }
     });
 }

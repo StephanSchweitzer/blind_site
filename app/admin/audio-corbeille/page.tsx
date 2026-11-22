@@ -12,6 +12,12 @@ export const metadata = { title: 'Corbeille audio' };
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+/**
+ * Couvre aussi les actions de cette page : une restauration de groupe lance des
+ * tranches pendant 25 s (GROUP_RESTORE_TIME_BUDGET_MS dans ./actions) et doit
+ * pouvoir finir celle qui est en cours.
+ */
+export const maxDuration = 45;
 
 
 /** Un fichier à ce nombre de jours ou moins de sa purge est signalé en ambre. */

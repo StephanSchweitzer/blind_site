@@ -13,6 +13,7 @@ import {
 } from '@/lib/audio/naming';
 import { MAX_UPLOAD_BYTES } from '@/lib/audio/folder-selection';
 import { pool } from '@/lib/concurrency';
+import { booksSharingAudioFolder, sharedFolderUploadRefusal } from '@/lib/audio/sharedFolder';
 
 /** Presigned PUTs are short-lived; a stalled upload asks for a fresh URL. */
 const URL_TTL_SECONDS = 3600;
@@ -147,6 +148,18 @@ export const POST = withAdmin(async (req, { params }) => {
     }
 
     let prefix = resolvePrefix(book.audio_filepath);
+
+    // Un dossier revendiqué par deux fiches : y ajouter des pistes les ajoute à
+    // l'autre aussi. Même refus que la suppression et le renommage
+    // (lib/audio/sharedFolder.ts), `sharedWith` permettant à l'envoi de
+    // s'arrêter là au lieu de retenter.
+    const sharing = await booksSharingAudioFolder(bookId, book.audio_filepath);
+    if (sharing.length) {
+        return NextResponse.json(
+            { message: sharedFolderUploadRefusal(sharing), sharedWith: sharing },
+            { status: 409 },
+        );
+    }
 
     // --- The book has no folder yet -----------------------------------------
     // Creating one is just Book.audio_filepath being set — there's nothing an

@@ -159,9 +159,51 @@ export default function BookDeletedNotice({
             });
             const body = await response.json().catch(() => null);
             if (!response.ok) throw userErrorFromResponse(response, body);
+
+            // Un gros dossier revient en plusieurs requêtes : la première restaure
+            // la fiche et ce qui tient dans son délai, les suivantes (continueAudio)
+            // le reste. La fiche est déjà revenue — une panne ici ne la remet pas
+            // en cause, d'où un message à part plutôt que l'erreur ci-dessous.
+            let remaining: number[] = Array.isArray(body?.remainingTrackIds) ? body.remainingTrackIds : [];
+            let restoredTracks: number = body?.audio?.restoredTracks ?? 0;
+            let failedTracks: number = body?.audio?.failedTracks ?? 0;
+            const continued = remaining.length > 0;
+            let interrupted = false;
+            while (remaining.length) {
+                const next = await fetch(`/api/books/${bookId}/restore`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ audioTrackIds: remaining, continueAudio: true }),
+                }).catch(() => null);
+                const data = next ? await next.json().catch(() => null) : null;
+                if (!next?.ok || !data) {
+                    interrupted = true;
+                    break;
+                }
+                const step: number = data.audio?.restoredTracks ?? 0;
+                restoredTracks += step;
+                failedTracks += data.audio?.failedTracks ?? 0;
+                remaining = Array.isArray(data.remainingTrackIds) ? data.remainingTrackIds : [];
+                // Rien n'est revenu : une requête de plus referait la même chose.
+                if (!step && remaining.length) {
+                    interrupted = true;
+                    break;
+                }
+            }
+
+            const s = (n: number) => (n > 1 ? 's' : '');
+            const left = failedTracks + (interrupted ? remaining.length : 0);
             toast({
                 title: 'Fiche restaurée',
-                description: body?.message ?? `« ${title} » a été restauré.`,
+                ...(interrupted ? { variant: 'destructive' as const, duration: Infinity } : {}),
+                description: !continued
+                    ? (body?.message ?? `« ${title} » a été restauré.`)
+                    : `« ${title} » a été restauré. ${restoredTracks} piste${s(restoredTracks)} audio ` +
+                      `restaurée${s(restoredTracks)} depuis la corbeille.` +
+                      (left > 0
+                          ? ` ${left} piste${s(left)} ${left > 1 ? 'sont restées' : 'est restée'} dans la corbeille — ` +
+                            'voir Corbeille audio.'
+                          : ''),
             });
             setConfirmOpen(false);
             onRestored();

@@ -716,6 +716,16 @@ export function useAudioUpload(bookId: number) {
                             setPhase('idle');
                             return FAILED;
                         }
+                        // Dossier partagé avec une autre fiche : un refus de
+                        // principe, pas un incident — ni nouvelle passe, ni
+                        // bouton « Renvoyer », le message dit quoi faire.
+                        if (res.status === 409 && data?.sharedWith) {
+                            progressRef.current = [];
+                            publish();
+                            setError(String(data.message ?? 'Ce dossier audio est partagé avec une autre fiche.'));
+                            setPhase('error');
+                            return FAILED;
+                        }
                         if (!res.ok) {
                             throw new Error(
                                 String(data?.message ?? 'Préparation de l’envoi impossible'),

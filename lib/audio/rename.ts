@@ -13,9 +13,43 @@ import { refreshBookAudioState } from './state';
  * in trash.ts and for the same reason — if the copy or its verification
  * fails, nothing has been lost; the original is only removed once the new
  * key is confirmed to hold the same bytes.
+ *
+ * ## Never leave the track twice in the folder
+ *
+ * Both halves of the sequence can stop between the copy and the delete. The
+ * copy then sat under its new name next to the original: the book played the
+ * chapter twice, counted, weighed and priced it twice, and a second attempt was
+ * refused (« un fichier porte déjà ce nom ») by the copy it had left behind.
+ *
+ *  - a copy that lands at the wrong size is removed again — the new key was
+ *    free before the copy (checked below), so nothing else lives there;
+ *  - an original B2 will not delete is retried; if it still will not go, the
+ *    copy is removed instead and the rename reported as cancelled. Only if
+ *    BOTH deletes fail does the folder keep the two names — and then the state
+ *    is re-read and the message says so.
  */
 
 export class AudioRenameError extends Error {}
+
+/** Extra attempts on top of the SDK's own retries: B2 sheds load with 5xx by design. */
+const DELETE_ATTEMPTS = 3;
+const RETRY_BASE_MS = 700;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** True once `key` is gone — retried, because a 5xx here is B2 asking again later. */
+async function deleteWithRetry(key: string): Promise<boolean> {
+    for (let attempt = 1; attempt <= DELETE_ATTEMPTS; attempt++) {
+        try {
+            await deleteTrack(key);
+            return true;
+        } catch (e) {
+            console.error(`renameTrack: suppression refusée (essai ${attempt}/${DELETE_ATTEMPTS})`, key, e);
+            if (attempt < DELETE_ATTEMPTS) await sleep(RETRY_BASE_MS * 2 ** (attempt - 1));
+        }
+    }
+    return false;
+}
 
 export async function renameTrack(opts: {
     bookId: number;
@@ -24,6 +58,8 @@ export async function renameTrack(opts: {
     userId: number | null;
 }): Promise<{ newKey: string; sizeBytes: number }> {
     const { bookId, oldKey, newKey, userId } = opts;
+    const oldName = oldKey.slice(oldKey.lastIndexOf('/') + 1);
+    const newName = newKey.slice(newKey.lastIndexOf('/') + 1);
 
     if (newKey === oldKey) {
         throw new AudioRenameError('Le nouveau nom est identique à l’actuel.');
@@ -51,26 +87,55 @@ export async function renameTrack(opts: {
     //    touching the original.
     const copied = await headTrack(newKey);
     if (!copied || copied.sizeBytes !== head.sizeBytes) {
+        // A wrong-size copy is still a second track in the folder. The key was
+        // free a moment ago, so whatever is there is this copy.
+        if (copied && !(await deleteWithRetry(newKey))) await refreshBookAudioState(bookId);
         throw new AudioRenameError(
             'La copie n’a pas pu être vérifiée — renommage annulé, le fichier original est intact.',
         );
     }
 
     // 3. Only now remove the original.
-    await deleteTrack(oldKey);
+    if (!(await deleteWithRetry(oldKey))) {
+        // Undo the copy rather than leave the chapter in the folder twice.
+        const undone = await deleteWithRetry(newKey);
+        if (!undone) await refreshBookAudioState(bookId);
+        throw new AudioRenameError(
+            undone
+                ? 'Le stockage a refusé de retirer l’ancien nom : renommage annulé, le fichier est ' +
+                      'resté sous son nom d’origine. Réessayez dans un instant.'
+                : `Le stockage a refusé de retirer l’ancien nom : la piste est pour l’instant dans le ` +
+                      `dossier sous ses deux noms (« ${oldName} » et « ${newName} »). Supprimez l’un ` +
+                      'des deux depuis l’éditeur audio (il part en corbeille).',
+        );
+    }
 
-    await refreshBookAudioState(bookId);
+    // The measured duration describes the same bytes: it follows the name. A
+    // cache, updated in place (not one of the append-only journals), keyed on
+    // (bookId, filename) — hence the homonym row removed first. Without this
+    // the renamed track read « — » until someone pressed Recalculer.
+    await prisma.$transaction([
+        prisma.audioTrackDuration.deleteMany({ where: { bookId, filename: newName } }),
+        prisma.audioTrackDuration.updateMany({
+            where: { bookId, filename: oldName },
+            data: { filename: newName },
+        }),
+    ]);
 
+    // Before the refresh, which reads RENAME events to carry an upload's
+    // duration over to the new name (resolveTrackDurations).
     await prisma.audioTrackEvent.create({
         data: {
             bookId,
             action: 'RENAME',
-            filename: oldKey.slice(oldKey.lastIndexOf('/') + 1),
-            newFilename: newKey.slice(newKey.lastIndexOf('/') + 1),
+            filename: oldName,
+            newFilename: newName,
             sizeBytes: BigInt(head.sizeBytes),
             performedById: userId,
         },
     });
+
+    await refreshBookAudioState(bookId);
 
     return { newKey, sizeBytes: head.sizeBytes };
 }

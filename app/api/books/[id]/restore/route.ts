@@ -41,7 +41,17 @@ import { isbnConflictMessage, readBookRestorePreview } from '@/lib/books/restore
  * Il n'est unique que parmi les fiches vivantes. Refus nommant la fiche qui le
  * porte, plutôt que l'erreur de contrainte de la base en 500.
  */
-export const maxDuration = 45; // même marge que DELETE /api/books/[id], même raison : jusqu'à ~77 pistes, copiées 10 de front.
+export const maxDuration = 45;
+
+/**
+ * Combien de temps une requête lance encore des tranches de pistes à ramener —
+ * même budget, même raison que la suppression (TRASH_TIME_BUDGET_MS dans
+ * DELETE /api/books/[id]) : les dossiers vont jusqu'à 364 pistes et le stockage
+ * en copie environ cinq par seconde. Ce qui n'a pas tenu revient dans
+ * `remainingTrackIds` ; la fenêtre rappelle avec `continueAudio`, la fiche étant
+ * déjà restaurée par le premier appel.
+ */
+const RESTORE_TIME_BUDGET_MS = 25_000;
 
 async function bookIdFrom(params?: Promise<Record<string, string>>): Promise<number | null> {
     const { id } = (await params) ?? {};
@@ -86,15 +96,51 @@ export const GET = withAdmin(async (_request, { params }) => {
 });
 
 export const POST = withAdmin(async (request, { params, me }) => {
+    const deadline = Date.now() + RESTORE_TIME_BUDGET_MS;
     const bookId = await bookIdFrom(params);
     if (bookId === null) {
         return NextResponse.json({ message: 'Identifiant de livre invalide' }, { status: 400 });
     }
 
-    const body = (await request.json().catch(() => null)) as { audioTrackIds?: unknown } | null;
+    const body = (await request.json().catch(() => null)) as
+        | { audioTrackIds?: unknown; continueAudio?: unknown }
+        | null;
     const requestedIds = Array.isArray(body?.audioTrackIds)
         ? body.audioTrackIds.filter((v): v is number => Number.isInteger(v))
         : [];
+
+    // La suite d'une restauration que le délai a coupée : la fiche est déjà
+    // revenue, il ne reste que des pistes. Seules les lignes de CE livre encore
+    // en corbeille sont reprises — un identifiant d'une autre fiche est ignoré.
+    if (body?.continueAudio === true) {
+        try {
+            const pending = await prisma.deletedAudioTrack.findMany({
+                where: { id: { in: requestedIds }, bookId, restoredAt: null, purgedAt: null },
+                select: { id: true },
+            });
+            const publicBefore = await snapshotPublicBooks([bookId]);
+            const { restored, failed, remainingIds } = await restoreTracksByIds({
+                trashIds: pending.map((r) => r.id),
+                userId: me.id,
+                deadline,
+            });
+            if (restored > 0) await revalidateChangedBooks(publicBefore);
+            return NextResponse.json({
+                restoredId: bookId,
+                audio: { restoredTracks: restored, failedTracks: failed.length },
+                remainingTrackIds: remainingIds,
+            });
+        } catch (error) {
+            return unexpectedErrorResponse({
+                where: `POST /api/books/${bookId}/restore (suite des pistes)`,
+                error,
+                what: 'La fiche est restaurée, mais la restauration des pistes audio s’est interrompue.',
+                outcome:
+                    'Une partie des pistes a pu revenir : ouvrez l’éditeur audio et la Corbeille audio ' +
+                    'pour voir ce qui reste à restaurer.',
+            });
+        }
+    }
 
     // Posé dès que la fiche est réellement ressortie : à partir de là, une
     // exception ne doit plus se lire « la restauration a échoué ».
@@ -153,9 +199,9 @@ export const POST = withAdmin(async (request, { params, me }) => {
 
         // Après, pas avant : la fiche doit déjà exister « active » pour que
         // refreshBookAudioState (appelé dedans) la retrouve normalement.
-        const { restored, failed } = trashIds.length
-            ? await restoreTracksByIds({ trashIds, userId: me.id })
-            : { restored: 0, failed: [] };
+        const { restored, failed, remainingIds } = trashIds.length
+            ? await restoreTracksByIds({ trashIds, userId: me.id, deadline })
+            : { restored: 0, failed: [], remainingIds: [] };
 
         let message = `« ${book.title} » a été restauré. La fiche réapparaît dans les listes et les recherches.`;
         if (restored > 0) {
@@ -172,6 +218,8 @@ export const POST = withAdmin(async (request, { params, me }) => {
             message,
             restoredId: bookId,
             audio: { restoredTracks: restored, failedTracks: failed.length },
+            // Pas encore commencées (délai) : la fenêtre rappelle avec `continueAudio`.
+            remainingTrackIds: remainingIds,
         });
     } catch (error) {
         // La fiche est ressortie même si les pistes ont calé : le site public doit le voir.

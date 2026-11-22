@@ -122,6 +122,23 @@ export function sharedFolderRefusal(books: FolderSharingBook[], action: string):
 }
 
 /**
+ * Le refus d'un ENVOI dans un dossier partagé. Même règle que la suppression et
+ * le renommage, dans l'autre sens : les fichiers s'ajouteraient aussi à
+ * l'enregistrement du jumeau — son ordre de lecture, son poids, son tarif —
+ * sans que son état audio soit relu. Même issue proposée que sharedFolderRefusal.
+ */
+export function sharedFolderUploadRefusal(books: FolderSharingBook[]): string {
+    const plural = books.length > 1;
+    return (
+        `Impossible d'ajouter des fichiers : ce dossier audio est aussi celui de ` +
+        `${describeSharingBooks(books)}. Ils s'ajouteraient aussi à l'enregistrement de ` +
+        `${plural ? 'ces fiches' : 'cette fiche'}. Si les fiches décrivent le même livre, supprimez ` +
+        `celle qui est en trop en choisissant « Laisser le dossier dans le stockage », puis envoyez ` +
+        `depuis l'autre. Sinon, écrivez à ${TECH_CONTACT_EMAIL} pour faire séparer les dossiers.`
+    );
+}
+
+/**
  * Supprimer une fiche dont le dossier est partagé : possible, mais seulement en
  * le laissant en place.
  *
