@@ -21,6 +21,7 @@ import {
     cdOrderConflict,
 } from '../lib/audio/naming';
 import { downloadEntryNames, playlistM3u, windowsSafeName } from '../lib/audio/download-names';
+import { missingInMiddle } from '../lib/audio/folder-selection';
 
 let failures = 0;
 function check(label: string, actual: unknown, expected: unknown) {
@@ -413,6 +414,47 @@ check(
     check('renvoi d’un ancien nom à apostrophe', find({ name: '1000 2 L\'enfant de l\'enfer.mp3', size: 111 }), stored[0].name);
     check('renvoi d’un nom nettoyé pour Windows', find({ name: windowsSafeName(stored[1].name), size: 222 }), stored[1].name);
     check('même titre, autre taille : pas un doublon', find({ name: '002 1000 2 L\'enfant de l\'enfer.mp3', size: 112 }), null);
+}
+
+// --------------------------------- nouveau choix d'un dossier : trou au milieu
+
+{
+    // Premier envoi : les fichiers 1 à 10, sauf le 5, qui a échoué.
+    const originals = Array.from({ length: 10 }, (_, i) => ({
+        name: `${String(i + 1).padStart(2, '0')} Titre.mp3`,
+        size: 1_000 + i,
+    }));
+    const folder: { name: string; sizeBytes: number }[] = [];
+    for (const f of originals) {
+        if (f.name.startsWith('05')) continue;
+        folder.push({ name: nextTrackName(folder.map((t) => t.name), f.name).filename, sizeBytes: f.size });
+    }
+    // Second choix du même dossier, fenêtre refermée entre-temps.
+    const find = alreadyUploadedFinder(folder);
+    const gaps = missingInMiddle(originals, (f) => find(f));
+    check('le fichier 5 manque au milieu', gaps.map((g) => g.file.name), ['05 Titre.mp3']);
+    check('… avant la piste du fichier 6', gaps[0]?.before, folder[4].name);
+    check(
+        'il serait bien joué en dernier sans le renommer',
+        nextTrackName(folder.map((t) => t.name), '05 Titre.mp3').filename,
+        '001 010 05 Titre.mp3',
+    );
+
+    // Il ne manque que la fin : rien à signaler, elle arrive à sa place.
+    const head = folder.slice(0, 3);
+    const findHead = alreadyUploadedFinder(head);
+    const tail = originals.filter((f) => !f.name.startsWith('05'));
+    check('seule la fin manque : pas d’avertissement', missingInMiddle(tail, (f) => findHead(f)), []);
+    check('dossier neuf : pas d’avertissement', missingInMiddle(originals, () => null), []);
+    check(
+        'plusieurs trous : chacun avant la piste suivante déjà en ligne',
+        missingInMiddle(['a', 'b', 'c', 'd', 'e'], (f) => (f === 'c' ? 'C' : f === 'e' ? 'E' : null)),
+        [
+            { file: 'a', before: 'C' },
+            { file: 'b', before: 'C' },
+            { file: 'd', before: 'E' },
+        ],
+    );
 }
 
 // ------------------------------------------------------------------- dossiers

@@ -33,6 +33,7 @@ import { useWarnIfUnsavedChanges } from '@/components/userWarnIfUnsavedChanges';
 import { useAudioUpload, type FileProgress, type UploadPhase } from '@/hooks/useAudioUpload';
 import { safeZipName, useAudioFolderZip, type ZipEntry } from '@/hooks/useAudioFolderZip';
 import {
+    missingInMiddle,
     REJECT_LABELS,
     selectFolderAudio,
     type FolderSelection,
@@ -588,6 +589,14 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     }, [selection, selectionPresent]);
     const selectionToSendBytes = selectionToSend.reduce((sum, f) => sum + f.size, 0);
     const existingTrackCount = data?.tracks.length ?? 0;
+    /**
+     * Missing files that belong between tracks already online — a re-pick after
+     * an interrupted upload. They will play last; see missingInMiddle.
+     */
+    const selectionMisplaced = useMemo(() => {
+        const present = new Map(selectionPresent.map((p) => [p.file, p.existingName]));
+        return missingInMiddle(selection?.files ?? [], (f) => present.get(f) ?? null);
+    }, [selection, selectionPresent]);
     /**
      * The upload that would leave this folder out of order on a CD — see
      * cdOrderConflict. Said before the send, not prevented: the portal order
@@ -1176,6 +1185,48 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                                 `renvoyé${selectionPresent.length > 1 ? 's' : ''}. Pour remplacer une piste, ` +
                                                                 'supprimez-la d’abord.'}
                                                     </p>
+                                                    {selectionMisplaced.length > 0 && (
+                                                        <div className="mt-1">
+                                                            <p className="text-amber-700 dark:text-amber-300">
+                                                                {selectionMisplaced.length === 1 ? (
+                                                                    <>
+                                                                        «{' '}
+                                                                        <span className="font-mono break-all">
+                                                                            {selectionMisplaced[0].file.name}
+                                                                        </span>{' '}
+                                                                        » manque au milieu du dossier, avant «{' '}
+                                                                        <span className="font-mono break-all">
+                                                                            {selectionMisplaced[0].before}
+                                                                        </span>{' '}
+                                                                        » : il sera ajouté après la dernière piste et joué en
+                                                                        dernier. Pour le remettre à sa place, renommez-le après
+                                                                        l’envoi.
+                                                                    </>
+                                                                ) : (
+                                                                    `${selectionMisplaced.length} fichiers manquent au milieu du dossier : ` +
+                                                                    'ils seront ajoutés après la dernière piste et joués en dernier. ' +
+                                                                    'Pour les remettre à leur place, renommez-les après l’envoi.'
+                                                                )}
+                                                            </p>
+                                                            {selectionMisplaced.length > 1 && (
+                                                                <details className="mt-1">
+                                                                    <summary className="cursor-pointer text-xs text-muted-foreground">
+                                                                        Voir où ils manquent
+                                                                    </summary>
+                                                                    <ul className="mt-1 space-y-0.5">
+                                                                        {selectionMisplaced.map((m) => (
+                                                                            <li
+                                                                                key={m.file.name}
+                                                                                className="font-mono text-xs break-all text-muted-foreground"
+                                                                            >
+                                                                                {m.file.name} — avant « {m.before} »
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </details>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     {cdConflict && (
                                                         <p className="mt-1 text-amber-700 dark:text-amber-300">
                                                             Sur un CD gravé depuis ce dossier, «{' '}
@@ -1183,10 +1234,13 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                             passera avant «{' '}
                                                             <span className="font-mono break-all">{cdConflict.playsBefore}</span> » :
                                                             un graveur range les noms caractère par caractère, et après cet envoi
-                                                            les numéros de ce dossier n’auront pas tous le même nombre de chiffres. Dans le
-                                                            portail, l’ordre de lecture reste juste. Pour un CD dans l’ordre,
-                                                            renommez les pistes pour que leurs numéros aient le même nombre de
-                                                            chiffres (« 01 » plutôt que « 1 »).
+                                                            les numéros de ce dossier n’auront pas tous le même nombre de chiffres.
+                                                            {/* Not true when a file is about to land at the end out of
+                                                                place — the paragraph above says so. */}
+                                                            {selectionMisplaced.length === 0 &&
+                                                                ' Dans le portail, l’ordre de lecture reste juste.'}{' '}
+                                                            Pour un CD dans l’ordre, renommez les pistes pour que leurs numéros
+                                                            aient le même nombre de chiffres (« 01 » plutôt que « 1 »).
                                                         </p>
                                                     )}
                                                     {selectionPresent.length > 0 && (

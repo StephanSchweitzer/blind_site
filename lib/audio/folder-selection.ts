@@ -117,3 +117,39 @@ export function selectFolderAudio(raw: File[]): FolderSelection {
         totalBytes: kept.reduce((sum, f) => sum + f.size, 0),
     };
 }
+
+export interface MissingInMiddle<F> {
+    file: F;
+    /** The track already online that comes just after it — the one it should play before. */
+    before: string;
+}
+
+/**
+ * Files about to be sent that belong in the MIDDLE of what is already online.
+ *
+ * Re-picking a folder after an interrupted upload sends only what is missing
+ * (alreadyUploadedFinder). When what is missing is the tail, it lands where it
+ * belongs. When it is a file in the middle — chapter 5 failed, 6 to 40 went
+ * through, and the dialogue was closed before the retry — every new name still
+ * sorts after the folder's last track (nextTrackName), so chapter 5 plays last.
+ * Nothing in the upload can put it back without renaming tracks already there,
+ * which is a permanent's call; this only finds the case so the panel says so
+ * before the send, naming the track the file belongs before.
+ *
+ * `files` in the lecteur's own order (selectFolderAudio's), `existingNameOf`
+ * the stored name of a file that is already online, null for one to be sent.
+ */
+export function missingInMiddle<F>(
+    files: F[],
+    existingNameOf: (file: F) => string | null,
+): MissingInMiddle<F>[] {
+    const stored = files.map(existingNameOf);
+    const out: MissingInMiddle<F>[] = [];
+    // Walked from the end, remembering the nearest file already online.
+    let next: string | null = null;
+    for (let i = files.length - 1; i >= 0; i--) {
+        if (stored[i] !== null) next = stored[i];
+        else if (next !== null) out.unshift({ file: files[i], before: next });
+    }
+    return out;
+}
