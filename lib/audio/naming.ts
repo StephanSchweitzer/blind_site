@@ -242,6 +242,70 @@ export function nextTrackName(existing: string[], originalFilename: string): Nex
     );
 }
 
+/**
+ * The order a CD burner or player puts names in: character by character, by
+ * code point — the same order as comparing their UTF-8 bytes. Not `a < b`,
+ * which compares UTF-16 units and parts from it past U+FFFF; and no
+ * `Buffer`, because the upload panel runs this in the browser.
+ */
+export function byteOrderCompare(a: string, b: string): number {
+    const A = [...a];
+    const B = [...b];
+    for (let i = 0; i < Math.min(A.length, B.length); i++) {
+        const d = A[i].codePointAt(0)! - B[i].codePointAt(0)!;
+        if (d) return d;
+    }
+    return A.length - B.length;
+}
+
+export interface CdOrderConflict {
+    /** The name the upload would give a file… */
+    newName: string;
+    /** …and the track it would play before on a CD, though it comes after it in the portal. */
+    playsBefore: string;
+}
+
+/**
+ * Whether sending `originals` (in the order they will be sent) would put a
+ * folder that is in CD order today out of it.
+ *
+ * nextTrackName keeps the folder's own number width, which keeps nearly every
+ * upload in CD order too. It cannot when the next number no longer fits that
+ * width (`1000 9` → 10, `1000 99` → 100) or the folder already mixes two
+ * widths: no name then sorts last both by naturalCompare and byte by byte
+ * without renaming the tracks already there, and that is a human decision.
+ * The portal order stays right; this finds the case so the upload panel can
+ * say so before anything is sent, instead of a volunteer noticing on a CD.
+ *
+ * Replays the server's naming exactly — same function, same order, each name
+ * fed back before the next — so what it predicts is what upload-url will mint.
+ * Returns null when nothing changes for a CD, when the folder is out of CD
+ * order already (the upload is not what breaks it), or when the server would
+ * refuse the batch anyway (it says why itself).
+ */
+export function cdOrderConflict(existing: string[], originals: string[]): CdOrderConflict | null {
+    const inByteOrder = (names: string[]) =>
+        names.every((n, i) => i === 0 || byteOrderCompare(names[i - 1], n) < 0);
+    if (!inByteOrder(existing)) return null;
+
+    const folder = [...existing];
+    for (const original of originals) {
+        let filename: string;
+        try {
+            filename = nextTrackName(folder, original).filename;
+        } catch {
+            return null;
+        }
+        const after = folder.filter((n) => byteOrderCompare(n, filename) > 0);
+        if (after.length) {
+            const playsBefore = after.reduce((a, b) => (byteOrderCompare(a, b) <= 0 ? a : b));
+            return { newName: filename, playsBefore };
+        }
+        folder.push(filename);
+    }
+    return null;
+}
+
 /** Case and Unicode form are noise here: macOS hands over NFD names, Windows ignores case. */
 const foldName = (s: string) => s.normalize('NFC').toLowerCase();
 

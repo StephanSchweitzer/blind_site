@@ -38,7 +38,7 @@ import {
     type FolderSelection,
     type RejectReason,
 } from '@/lib/audio/folder-selection';
-import { alreadyUploadedFinder } from '@/lib/audio/naming';
+import { alreadyUploadedFinder, cdOrderConflict } from '@/lib/audio/naming';
 import {
     getAudioLinkStatusColor,
     getAudioLinkStatusHint,
@@ -585,6 +585,22 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     }, [selection, selectionPresent]);
     const selectionToSendBytes = selectionToSend.reduce((sum, f) => sum + f.size, 0);
     const existingTrackCount = data?.tracks.length ?? 0;
+    /**
+     * The upload that would leave this folder out of order on a CD — see
+     * cdOrderConflict. Said before the send, not prevented: the portal order
+     * stays right, and the fix (renaming the tracks already there) is the
+     * permanent's to make. 58 live folders were in that position in November 2026.
+     */
+    const cdConflict = useMemo(
+        () =>
+            selectionToSend.length && data?.tracks.length
+                ? cdOrderConflict(
+                      data.tracks.map((t) => t.name),
+                      selectionToSend.map((f) => f.name),
+                  )
+                : null,
+        [data, selectionToSend],
+    );
     const activeTrash = trash.filter((t) => !t.restoredAt);
     const zipping = zip.phase === 'running';
 
@@ -1144,6 +1160,19 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                                 `renvoyé${selectionPresent.length > 1 ? 's' : ''}. Pour remplacer une piste, ` +
                                                                 'supprimez-la d’abord.'}
                                                     </p>
+                                                    {cdConflict && (
+                                                        <p className="mt-1 text-amber-700 dark:text-amber-300">
+                                                            Sur un CD gravé depuis ce dossier, «{' '}
+                                                            <span className="font-mono break-all">{cdConflict.newName}</span> »
+                                                            passera avant «{' '}
+                                                            <span className="font-mono break-all">{cdConflict.playsBefore}</span> » :
+                                                            un graveur range les noms caractère par caractère, et après cet envoi
+                                                            les numéros de ce dossier n’auront pas tous le même nombre de chiffres. Dans le
+                                                            portail, l’ordre de lecture reste juste. Pour un CD dans l’ordre,
+                                                            renommez les pistes pour que leurs numéros aient le même nombre de
+                                                            chiffres (« 01 » plutôt que « 1 »).
+                                                        </p>
+                                                    )}
                                                     {selectionPresent.length > 0 && (
                                                         <details className="mt-1">
                                                             <summary className="cursor-pointer text-xs text-muted-foreground">

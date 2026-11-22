@@ -17,6 +17,8 @@ import {
     isAllowedAudioExtension,
     naturalCompare,
     alreadyUploadedFinder,
+    byteOrderCompare,
+    cdOrderConflict,
 } from '../lib/audio/naming';
 
 let failures = 0;
@@ -126,6 +128,36 @@ check(
         nextTrackName([], '01PND 2109.mp3').filename,
         '001 001 01PND 2109.mp3',
     );
+}
+
+// ------------------------------------------- avertissement ordre CD (panneau)
+
+{
+    const sample = ['1000 9 Chagrin.mp3', '1000 10 Chagrin.mp3', 'É.mp3', 'e.mp3', 'Z 😀.mp3', 'Z �.mp3', '1000  01.mp3'];
+    check(
+        'byteOrderCompare = ordre des octets UTF-8',
+        [...sample].sort(byteOrderCompare),
+        [...sample].sort(bytes),
+    );
+
+    const lagging = ['1000 01 A.mp3', '1000 02 B.mp3'];
+    check('largeur gardée : pas d’avertissement', cdOrderConflict(lagging, ['C.mp3', '04 D.mp3']), null);
+
+    const full = Array.from({ length: 9 }, (_, i) => `1000 ${i + 1} Chagrin.mp3`);
+    check(
+        'passage 9 → 10 : avertissement nommant la piste et sa voisine sur le CD',
+        cdOrderConflict(full, ['Suite.mp3']),
+        { newName: '1000 010 Suite.mp3', playsBefore: '1000 1 Chagrin.mp3' },
+    );
+    check(
+        'passage 9 → 10 au milieu d’un lot',
+        cdOrderConflict(full.slice(0, 7), ['8 A.mp3', '9 B.mp3', '10 C.mp3'])?.newName,
+        '1000 010 10 C.mp3',
+    );
+    const already = ['1000 1 A.mp3', '1000 10 B.mp3', '1000 2 C.mp3'].sort(naturalCompare);
+    check('dossier déjà hors ordre CD : pas d’avertissement', cdOrderConflict(already, ['D.mp3']), null);
+    check('dossier vide : pas d’avertissement', cdOrderConflict([], ['01 A.mp3', '02 B.mp3']), null);
+    check('envoi que le serveur refuserait : pas d’avertissement', cdOrderConflict(lagging, ['x.exe']), null);
 }
 
 // ------------------------------------------------- dossier existant, tiret
