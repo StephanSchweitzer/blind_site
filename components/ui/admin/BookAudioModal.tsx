@@ -39,6 +39,7 @@ import {
     type RejectReason,
 } from '@/lib/audio/folder-selection';
 import { alreadyUploadedFinder, cdOrderConflict } from '@/lib/audio/naming';
+import { downloadEntryNames, playlistM3u, PLAYLIST_NAME } from '@/lib/audio/download-names';
 import {
     getAudioLinkStatusColor,
     getAudioLinkStatusHint,
@@ -301,16 +302,18 @@ function BatchProgressPanel({ phase, progress }: { phase: UploadPhase; progress:
 }
 
 /**
- * Archive entries for a folder. The path is the key relative to the book
- * folder, which keeps any sub-folder structure and guarantees unique entry
- * names even if two sub-folders happen to share a filename.
+ * Archive entries for a folder, in playback order. The names are the bucket
+ * names unless a CD burned from them would play out of order, or Windows could
+ * not create them — see downloadEntryNames. The listing never holds a track in
+ * a sub-folder (toOrderedTracks leaves them out), so a name is a path.
+ *
+ * Deterministic from the listing, which is what lets a re-signing (`resign`
+ * below) find each entry again by its path.
  */
-const toZipEntries = (d: ManageResponse): ZipEntry[] =>
-    d.tracks.map((t) => ({
-        path: (d.prefix && t.key.startsWith(d.prefix) ? t.key.slice(d.prefix.length) : t.name) || t.name,
-        url: t.url,
-        sizeBytes: t.sizeBytes,
-    }));
+const toZipEntries = (d: ManageResponse): ZipEntry[] => {
+    const { names } = downloadEntryNames(d.tracks.map((t) => t.name));
+    return d.tracks.map((t, i) => ({ path: names[i], url: t.url, sizeBytes: t.sizeBytes }));
+};
 
 export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: BookAudioModalProps) {
     const { toast } = useToast();
@@ -655,8 +658,17 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             return toZipEntries((await res.json()) as ManageResponse);
         };
 
-        void zip.start(toZipEntries(data), safeZipName(`${data.title} - ${data.author}`), resign);
+        const entries = toZipEntries(data);
+        void zip.start(entries, safeZipName(`${data.title} - ${data.author}`), resign, [
+            { name: PLAYLIST_NAME, content: playlistM3u(entries.map((e) => e.path)) },
+        ]);
     };
+
+    /** Whether the archive numbers its files — said once it is done, see downloadEntryNames. */
+    const zipNumbered = useMemo(
+        () => (data ? downloadEntryNames(data.tracks.map((t) => t.name)).numbered : false),
+        [data],
+    );
 
     /**
      * Closing mid-archive would leave the download running with nothing left to
@@ -902,7 +914,11 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             )}
                             {zip.phase === 'done' && (
                                 <div className="flex items-center justify-between gap-2 text-xs">
-                                    <span className="text-foreground">Archive téléchargée.</span>
+                                    <span className="text-foreground">
+                                        Archive téléchargée.
+                                        {zipNumbered &&
+                                            ' Les fichiers y sont numérotés dans l’ordre de lecture, pour qu’un CD gravé à partir d’eux les joue dans cet ordre.'}
+                                    </span>
                                     <button
                                         type="button"
                                         onClick={zip.reset}

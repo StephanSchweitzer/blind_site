@@ -54,7 +54,7 @@ import { downloadZip } from 'client-zip';
  */
 
 export interface ZipEntry {
-    /** Path inside the archive — the track's key relative to the book folder. */
+    /** Path inside the archive — see lib/audio/download-names.ts for how it is chosen. */
     path: string;
     /** Presigned URL pointing straight at the bucket. */
     url: string;
@@ -177,10 +177,16 @@ export function useAudioFolderZip() {
      * tracks at the end of a big folder would otherwise be fetched with a URL
      * that expired while the earlier ones were downloading.
      */
+    /**
+     * `extras` are small text files written after the tracks — the playlist
+     * (lib/audio/download-names.ts). Built in memory, never fetched, and not
+     * counted in the progress figures, which are about the recordings.
+     */
     const start = useCallback(async (
         entries: ZipEntry[],
         zipName: string,
         refresh?: () => Promise<ZipEntry[]>,
+        extras: { name: string; content: string }[] = [],
     ) => {
         if (!entries.length) return;
 
@@ -379,6 +385,11 @@ export function useAudioFolderZip() {
 
                 if (signal.aborted) return;
                 yield { name: job.entry.path, input: blob, size: job.entry.sizeBytes };
+            }
+
+            for (const extra of extras) {
+                if (signal.aborted) return;
+                yield { name: extra.name, input: extra.content };
             }
         }
 

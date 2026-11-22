@@ -20,6 +20,7 @@ import {
     byteOrderCompare,
     cdOrderConflict,
 } from '../lib/audio/naming';
+import { downloadEntryNames, playlistM3u, windowsSafeName } from '../lib/audio/download-names';
 
 let failures = 0;
 function check(label: string, actual: unknown, expected: unknown) {
@@ -331,6 +332,67 @@ check(
         'Titre.mp3',
     );
     check('dossier vide : rien de présent', alreadyUploadedFinder([])(originals[0]), null);
+}
+
+// ------------------------------------------- téléchargement ZIP (noms, CD)
+
+{
+    // Dossier déjà dans l'ordre CD : noms du bucket, inchangés.
+    const ordered = ['1000 01 A.mp3', '1000 02 B.mp3', '1000 10 C.mp3'];
+    check('dossier en ordre CD : noms inchangés', downloadEntryNames(ordered), { names: ordered, numbered: false });
+
+    // `1000 2` après `1000 10` : un CD les jouerait 1, 10, 11, 2… — numéroté.
+    const legacy = Array.from({ length: 11 }, (_, i) => `1000 ${i + 1} Gunter.mp3`);
+    const out = downloadEntryNames(legacy);
+    check('dossier hors ordre CD : numéroté', out.numbered, true);
+    check('numéro de position en tête', out.names[1], '002 1000 2 Gunter.mp3');
+    check('ordre CD des noms = ordre de lecture', [...out.names].sort(bytes), out.names);
+    check('ordre naturel des noms = ordre de lecture', [...out.names].sort(naturalCompare), out.names);
+    check(
+        'largeur au-delà de 999 pistes',
+        downloadEntryNames([...Array.from({ length: 1000 }, (_, i) => `x ${i + 1}.mp3`)]).names[0],
+        '0001 x 1.mp3',
+    );
+
+    // Caractères interdits sous Windows (4 dossiers en novembre 2026).
+    check(
+        'point d’interrogation remplacé',
+        windowsSafeName('1000 02 Et ça, ça se met où ? P 7.mp3'),
+        '1000 02 Et ça, ça se met où P 7.mp3',
+    );
+    check(
+        'guillemets avant l’extension',
+        windowsSafeName('1000 01 La maîtresse italienne Présentation "Du même auteur".mp3'),
+        '1000 01 La maîtresse italienne Présentation Du même auteur.mp3',
+    );
+    check('nom sans caractère interdit : intact', windowsSafeName('1000  01 l!abbé.mp3'), '1000  01 l!abbé.mp3');
+    check(
+        'deux noms rendus identiques : le second reçoit un suffixe',
+        // « a (2) » se classe avant « a.mp3 » sur un CD (espace < point) : numéroté.
+        downloadEntryNames(['a?.mp3', 'a*.mp3']).names,
+        ['001 a.mp3', '002 a (2).mp3'],
+    );
+    check(
+        'noms différant par la casse seule : Windows n’en garderait qu’un',
+        downloadEntryNames(['1000 A.mp3', '1000 a.mp3']).names,
+        ['1000 A.mp3', '1000 a (2).mp3'],
+    );
+    check(
+        'liste de lecture M3U, ordre de lecture, fins de ligne Windows',
+        playlistM3u(['001 a.mp3', '002 b.mp3']),
+        '#EXTM3U\r\n001 a.mp3\r\n002 b.mp3\r\n',
+    );
+
+    // Un fichier renvoyé depuis l'archive est reconnu comme la piste d'origine.
+    const stored = [
+        { name: '1000 2 L\'enfant de l\'enfer.mp3', sizeBytes: 111 },
+        { name: '1000 02 Et ça, ça se met où ? P 7.mp3', sizeBytes: 222 },
+    ];
+    const find = alreadyUploadedFinder(stored);
+    check('renvoi d’un fichier numéroté pour le CD', find({ name: '002 1000 2 L\'enfant de l\'enfer.mp3', size: 111 }), stored[0].name);
+    check('renvoi d’un ancien nom à apostrophe', find({ name: '1000 2 L\'enfant de l\'enfer.mp3', size: 111 }), stored[0].name);
+    check('renvoi d’un nom nettoyé pour Windows', find({ name: windowsSafeName(stored[1].name), size: 222 }), stored[1].name);
+    check('même titre, autre taille : pas un doublon', find({ name: '002 1000 2 L\'enfant de l\'enfer.mp3', size: 112 }), null);
 }
 
 // ------------------------------------------------------------------- dossiers

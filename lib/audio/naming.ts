@@ -309,10 +309,27 @@ export function cdOrderConflict(existing: string[], originals: string[]): CdOrde
 /** Case and Unicode form are noise here: macOS hands over NFD names, Windows ignores case. */
 const foldName = (s: string) => s.normalize('NFC').toLowerCase();
 
+/** A title cleaned the way an upload cleans it, then folded — see sanitiseTrackTitle. */
+const titleKey = (title: string, ext: string) => foldName(`${sanitiseTrackTitle(title) || 'piste'}.${ext}`);
+
 /** The title part `nextTrackName` would keep from this original filename. */
 function uploadedTitleOf(originalFilename: string): string {
     const { base, ext } = splitExtension(originalFilename);
-    return foldName(`${sanitiseTrackTitle(base) || 'piste'}.${ext}`);
+    return titleKey(base, ext);
+}
+
+/**
+ * The same file as it comes back from « Tout télécharger (ZIP) » in a folder the
+ * archive numbered for a CD: `003 1000 3 Titre.mp3` for the stored
+ * `1000 3 Titre.mp3` (lib/audio/download-names.ts). The position the archive put
+ * in front is set aside — and what is left has to be the WHOLE stored name, not
+ * one of its shortened variants below, so the lecteur's own number still tells
+ * two tracks apart.
+ */
+function downloadedNameOf(originalFilename: string): string | null {
+    const { base, ext } = splitExtension(originalFilename);
+    const rest = /^\d{3,}\s+(.+)$/.exec(base)?.[1];
+    return rest ? titleKey(rest, ext) : null;
 }
 
 /**
@@ -321,12 +338,15 @@ function uploadedTitleOf(originalFilename: string): string {
  * running number), or the name as is for a file that never went through it.
  * Every variant is offered because the original's own title may start with a
  * number too — `01 Titre.mp3` is stored as `001 040 01 Titre.mp3`.
+ *
+ * Cleaned like an upload, because an old name keeps characters an upload strips:
+ * `1000 3 L'enfant.mp3`, downloaded and sent back, arrives as `3 Lenfant`.
  */
 function storedTitlesOf(storedName: string): string[] {
     const { base, ext } = splitExtension(storedName);
     const once = base.replace(/^\d+\s+/, '');
     const twice = once.replace(/^\d+\s+/, '');
-    return [...new Set([base, once, twice])].filter(Boolean).map((t) => foldName(`${t}.${ext}`));
+    return [...new Set([base, once, twice].filter(Boolean).map((t) => titleKey(t, ext)))];
 }
 
 /**
@@ -349,13 +369,22 @@ export function alreadyUploadedFinder(
     tracks: { name: string; sizeBytes: number }[],
 ): (file: { name: string; size: number }) => string | null {
     const index = new Map<string, string>();
+    const byWholeName = new Map<string, string>();
     for (const t of tracks) {
         for (const title of storedTitlesOf(t.name)) {
             const k = `${t.sizeBytes}|${title}`;
             if (!index.has(k)) index.set(k, t.name);
         }
+        const { base, ext } = splitExtension(t.name);
+        const whole = `${t.sizeBytes}|${titleKey(base, ext)}`;
+        if (!byWholeName.has(whole)) byWholeName.set(whole, t.name);
     }
-    return (file) => index.get(`${file.size}|${uploadedTitleOf(file.name)}`) ?? null;
+    return (file) => {
+        const direct = index.get(`${file.size}|${uploadedTitleOf(file.name)}`);
+        if (direct) return direct;
+        const downloaded = downloadedNameOf(file.name);
+        return downloaded ? (byWholeName.get(`${file.size}|${downloaded}`) ?? null) : null;
+    };
 }
 
 /**
