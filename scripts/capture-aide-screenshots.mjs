@@ -941,12 +941,19 @@ const SPECS = [
         why: 'le bouton soleil / lune qui bascule entre mode clair et mode sombre',
     },
     {
+        // « Site principal » n'est plus un bouton bleu de la barre : il a
+        // rejoint le menu « Pages », sous « Voir le site ». Le menu s'ouvre au
+        // survol ; on le photographie ouvert, la barre au-dessus.
         name: 'page-principale-03.jpg',
         url: '/admin',
         waitFor: 'nav',
-        clip: 'nav',
-        annotations: [{ n: 1, label: 'Site principal', self: true }],
-        why: 'le bouton « Site principal », vers la partie publique',
+        steps: [{ hoverNav: 'Pages' }, { sleep: 500 }],
+        clip: 'nav, nav .group:hover > div',
+        clipUnion: true,
+        // Le lien entier (icone, nom, « Ce que voient les visiteurs »), pastille
+        // a droite : en haut a gauche, elle masquait le titre « Voir le site ».
+        annotations: [{ n: 1, selector: 'nav .group:hover a[href="/"]', coin: 'd' }],
+        why: 'le lien « Site principal », sous « Voir le site » dans le menu Pages',
     },
     {
         name: 'page-principale-04.jpg',
@@ -955,6 +962,14 @@ const SPECS = [
         clip: 'nav',
         annotations: [{ n: 1, label: 'Mon Compte', self: true }],
         why: 'le bouton « Mon Compte », vers ses propres parametres',
+    },
+    {
+        name: 'page-principale-08.jpg',
+        url: '/admin',
+        waitFor: 'nav',
+        clip: 'nav',
+        annotations: [{ n: 1, label: 'Déconnexion', self: true }],
+        why: 'le bouton « Déconnexion », a cote de « Mon Compte »',
     },
     {
         name: 'page-principale-06.jpg',
@@ -1535,6 +1550,28 @@ async function clickSelector(selector) {
 }
 
 /**
+ * Pose la souris sur un element, sans cliquer.
+ *
+ * Les menus de la barre de navigation s'ouvrent au survol, en CSS seul
+ * (`group-hover`) : aucun clic ni evenement JavaScript ne les deplie. Il faut
+ * un vrai mouvement de souris, que CDP envoie comme le ferait la main. Vise
+ * par son texte exact, dans la barre seulement : « Pages » est aussi le debut
+ * d'un titre du tableau de bord.
+ */
+async function hoverNavText(text) {
+    const centre = await evaluate(`(() => {
+        const el = [...document.querySelectorAll('nav span, nav button, nav a')]
+            .find((e) => e.textContent.trim() === ${JSON.stringify(text)}
+                && e.getBoundingClientRect().height > 0);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    })()`);
+    if (!centre) throw new Error(`« ${text} » introuvable dans la barre`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: centre.x, y: centre.y });
+}
+
+/**
  * Depose un fichier dans un <input type="file">, sans passer par la fenetre
  * du systeme — qu'un Chrome sans tete n'ouvre de toute facon pas. Le champ
  * est cache (le bouton « Importer un fichier » le declenche) : on le vise
@@ -1576,11 +1613,22 @@ function wavMuet(secondes = 20) {
 }
 
 /** Le rectangle de l'élément visible, ramené dans la fenêtre. */
-async function clipFor(selector) {
+async function clipFor(selector, union = false) {
     return evaluate(`(() => {
         const els = [...document.querySelectorAll(${JSON.stringify(selector)})]
             .filter((e) => e.getBoundingClientRect().height > 0);
         if (!els.length) return null;
+        // \`clipUnion\` : un menu deroulant deborde de la barre qui le porte, et
+        // \`nav\` seul le couperait. On cadre alors le rectangle qui englobe
+        // tous les elements vises (la barre ET le panneau ouvert).
+        if (${union}) {
+            const rs = els.map((e) => e.getBoundingClientRect());
+            const x = Math.max(0, Math.min(...rs.map((r) => r.left)) - 8);
+            const y = Math.max(0, Math.min(...rs.map((r) => r.top)) - 8);
+            const droite = Math.min(window.innerWidth, Math.max(...rs.map((r) => r.right)) + 8);
+            const bas = Math.min(window.innerHeight, Math.max(...rs.map((r) => r.bottom)) + 8);
+            return { x: x + window.scrollX, y: y + window.scrollY, width: droite - x, height: bas - y };
+        }
         // Le plus grand : le modal ou la carte principale, pas un liseré interne.
         const el = els.sort((a, b) =>
             b.getBoundingClientRect().height * b.getBoundingClientRect().width -
@@ -2003,10 +2051,10 @@ async function anonymiser(pseudonymes = [], prenomFictif = null) {
     }
 }
 
-async function capture(name, clipSelector, annotations = [], densite = 1) {
+async function capture(name, clipSelector, annotations = [], densite = 1, clipUnion = false) {
     let clip;
     if (clipSelector) {
-        clip = await clipFor(clipSelector);
+        clip = await clipFor(clipSelector, clipUnion);
         if (clip) clip = { ...clip, scale: 1 };
     }
     const reperes = annotations.length ? await reperesPour(annotations, clip, densite) : [];
@@ -2183,6 +2231,7 @@ async function main() {
                     if (step.clickText) await clickText(step.clickText);
                     if (step.clickExact) await clickText(step.clickExact, true);
                     if (step.clickSelector) await clickSelector(step.clickSelector);
+                    if (step.hoverNav) await hoverNavText(step.hoverNav);
                     if (step.clickInRow) await clickInRow(step.clickInRow.cell, step.clickInRow.text, step.clickInRow.sauf);
                     if (step.typeIn) await typeIn(step.typeIn.selector, step.typeIn.value);
                     if (step.importAudio) await importFile(step.importAudio, wavMuet());
@@ -2201,7 +2250,7 @@ async function main() {
                 // rien ne peut recharger de vraies donnees par-dessus.
                 await anonymiser(spec.pseudonymes ?? [], spec.prenomFictif ?? null);
                 if (spec.remplacer) await remplacerTextes(spec.remplacer);
-                const size = await capture(spec.name, spec.clip, spec.annotations ?? [], spec.densite ?? 1);
+                const size = await capture(spec.name, spec.clip, spec.annotations ?? [], spec.densite ?? 1, spec.clipUnion ?? false);
                 console.log(`  ✓ ${spec.name.padEnd(26)} ${String(Math.round(size / 1024)).padStart(4)} Ko   ${spec.why}`);
             } catch (error) {
                 failures.push([spec.name, error.message]);
