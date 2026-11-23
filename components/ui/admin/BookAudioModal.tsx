@@ -1182,7 +1182,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                     <span className="text-foreground">
                                         Archive téléchargée.
                                         {zipNumbered &&
-                                            ' Les fichiers y sont numérotés dans l’ordre de lecture, pour qu’un CD gravé à partir d’eux les joue dans cet ordre.'}
+                                            ' Les pistes sont numérotées pour garder l’ordre d’Arbre Rose.'}
                                     </span>
                                     <button
                                         type="button"
