@@ -20,18 +20,27 @@
 /**
  * What one CD is trusted to hold, in bytes.
  *
- * Below the nominal 700 MB on purpose. The 80-minute disc's 700 Mio
- * (734 003 200 bytes) is the most a perfect burn can reach; real capacity varies
- * by disc and burner, and the disc's own file system (ISO 9660 / Joliet tables,
- * lead-in) takes its share before the first track. 680 Mo also fits an older
- * 74-minute disc (650 Mio, 681 574 400 bytes), so a folder cut here burns on
- * whatever is in the cupboard.
+ * The ECA's own practice, measured. The old `1000` / `2000` / `3000` folders
+ * (11 682 of them in November 2026, burned 2012–2025) fill their discs up to
+ * 720 Mo and stop there: 204 discs between 710 and 720 Mo, four above. In nine
+ * cases out of ten the next track would still have fitted the disc, so the
+ * line was drawn on purpose, not by the burner. Cut at this figure, 99 % of
+ * those folders get the same number of CDs they were burned on.
  *
- * Not the billing figure: lib/pricing.ts counts started 700 Mio blocks, which is
- * a tariff, not a promise about what a burner accepts. The two can disagree on
- * a recording just under 700 Mio — billed one CD, cut into two.
+ * It keeps a margin below the disc itself. An 80-minute CD-R (« 700 Mo » on the
+ * box, which means 700 Mio) holds about 360 000 sectors of 2 048 bytes, some
+ * 737 Mo of data; the disc's file system (ISO 9660 / Joliet tables) takes its
+ * share, and real capacity varies a little by disc and burner. 680 Mo, the
+ * first figure chosen, split 169 books volunteers have always burned on one
+ * disc.
+ *
+ * Not the billing figure: lib/pricing.ts counts started 700 Mio blocks
+ * (734 003 200 bytes), a tariff rather than a promise about what a burner
+ * accepts. A recording between 720 and 734 Mo is billed one CD and cut into
+ * two — 45 books in November 2026. Bringing billing onto this figure changes
+ * prices, so it waits on the trésorière.
  */
-export const CD_BURN_CAPACITY_BYTES = 680_000_000;
+export const CD_BURN_CAPACITY_BYTES = 720_000_000;
 
 export interface CdSplit {
     /**
@@ -51,7 +60,7 @@ export interface CdSplit {
  * Cut tracks, given by size in playback order, into as few CDs as possible —
  * then, with that number fixed, make the CDs as even as possible (the largest
  * one as small as it can be). 1,5 Go gives three CDs of about 500 Mo rather than
- * 680 + 680 + 140: same number of discs, and none of them filled to the brim.
+ * 720 + 720 + 60: same number of discs, and none of them filled to the brim.
  *
  * Contiguous linear partition. The greedy fill gives the minimum count for a
  * given ceiling, and that count only goes down as the ceiling goes up, so a

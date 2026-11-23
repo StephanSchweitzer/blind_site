@@ -531,8 +531,11 @@ check(
     check('tient sur un CD : un seul groupe', splitIntoCds([100 * MB, 200 * MB, 300 * MB]).groups, [[0, 1, 2]]);
     check('exactement la capacité : un CD', splitIntoCds([CAP / 2, CAP / 2]).groups, [[0, 1]]);
     check('un octet de trop : deux CD', splitIntoCds([CAP / 2, CAP / 2 + 1]).groups, [[0], [1]]);
+    // La pratique des anciens dossiers 1000/2000 : jusqu'à 720 Mo sur un disque.
+    check('715 Mo : un seul CD, comme les anciens dossiers', splitIntoCds(Array(50).fill(14.3 * MB)).groups.length, 1);
+    check('725 Mo : deux CD', splitIntoCds(Array(50).fill(14.5 * MB)).groups.length, 2);
 
-    // 1,5 Go en 30 pistes de 50 Mo : trois CD de 500 Mo, pas 650 + 650 + 200.
+    // 1,5 Go en 30 pistes de 50 Mo : trois CD de 500 Mo, pas 700 + 700 + 100.
     const fifty = Array.from({ length: 30 }, () => 50 * MB);
     const even = splitIntoCds(fifty);
     check('1,5 Go : trois CD', even.groups.length, 3);
