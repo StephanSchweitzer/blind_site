@@ -230,8 +230,14 @@ export function getTrackUrl(key: string, expiresIn = 3600, downloadAs?: string):
             ...(downloadAs
                 ? {
                       // RFC 5987: the corpus is full of accents, which are not
-                      // legal raw in a header value.
-                      ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(downloadAs)}`,
+                      // legal raw in a header value. encodeURIComponent leaves
+                      // ' ( ) * as they are, and the apostrophe is the one
+                      // that delimits this very parameter (UTF-8''…): every
+                      // « l'abbé » in a name has to be escaped too.
+                      ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(downloadAs).replace(
+                          /['()*]/g,
+                          (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+                      )}`,
                   }
                 : {}),
         }),

@@ -19,6 +19,7 @@ import {
     alreadyUploadedFinder,
     byteOrderCompare,
     cdOrderConflict,
+    predictUploadNames,
     renamePreview,
     WINDOWS_FORBIDDEN_CHARS,
 } from '../lib/audio/naming';
@@ -182,6 +183,18 @@ check(
     check('dossier déjà hors ordre CD : pas d’avertissement', cdOrderConflict(already, ['D.mp3']), null);
     check('dossier vide : pas d’avertissement', cdOrderConflict([], ['01 A.mp3', '02 B.mp3']), null);
     check('envoi que le serveur refuserait : pas d’avertissement', cdOrderConflict(lagging, ['x.exe']), null);
+
+    check(
+        'noms prévus : chaque fichier suit le précédent',
+        predictUploadNames(lagging, ['C.mp3', '04 D.mp3']),
+        ['1000 03 C.mp3', '1000 04 04 D.mp3'],
+    );
+    check(
+        'noms prévus, dossier vide : numérotation du premier fichier',
+        predictUploadNames([], ['01 A.mp3', '02 B.mp3']),
+        ['001 001 01 A.mp3', '001 002 02 B.mp3'],
+    );
+    check('noms prévus, lot refusé : aucun', predictUploadNames(lagging, ['C.mp3', 'x.exe']), null);
 }
 
 // ------------------------------------------------- dossier existant, tiret

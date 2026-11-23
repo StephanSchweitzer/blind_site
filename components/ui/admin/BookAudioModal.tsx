@@ -41,7 +41,14 @@ import {
     type FolderSelection,
     type RejectReason,
 } from '@/lib/audio/folder-selection';
-import { alreadyUploadedFinder, cdOrderConflict, isAllowedAudioExtension, isAppleDoubleName } from '@/lib/audio/naming';
+import {
+    alreadyUploadedFinder,
+    cdOrderConflict,
+    isAllowedAudioExtension,
+    isAppleDoubleName,
+    predictUploadNames,
+} from '@/lib/audio/naming';
+import { bytesToKb, cdCount } from '@/lib/pricing';
 import { downloadEntryNames, playlistM3u, PLAYLIST_NAME } from '@/lib/audio/download-names';
 import {
     getAudioLinkStatusColor,
@@ -117,7 +124,18 @@ const formatSize = (bytes: number) =>
         ? `${(bytes / 1e9).toFixed(2)} Go`
         : bytes >= 1e6
           ? `${(bytes / 1e6).toFixed(1)} Mo`
-          : `${Math.max(1, Math.round(bytes / 1e3))} Ko`;
+          : // Nothing sent yet is « 0 Ko », not « 1 Ko » — the floor is for tiny files.
+            bytes <= 0
+            ? '0 Ko'
+            : `${Math.max(1, Math.round(bytes / 1e3))} Ko`;
+
+/** A whole recording's length: « 4 h 05 », « 47 min ». */
+const formatTotalDuration = (seconds: number) => {
+    const minutes = Math.round(seconds / 60);
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`;
+};
 
 /**
  * Re-sign a little before the hour is up, not on the dot: the player asks the
@@ -562,7 +580,20 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             // Plusieurs appels pour un gros dossier — voir requestDurationMeasure.
             const answer = await requestDurationMeasure(bookId);
             if (!answer.ok) throw new Error(answer.message);
-            setDurationCheck(null);
+            // Every track was tried, and some could not be read: the figure
+            // stays « Non calculée ». This used to end silently, the dialogue
+            // looking exactly as it does after a measurement that worked.
+            const unreadable = answer.data.problems.map((p) => p.filename);
+            if (answer.data.failed > 0) {
+                const n = answer.data.failed;
+                setDurationCheck({
+                    failed:
+                        `${n} piste${n > 1 ? 's' : ''} n’${n > 1 ? 'ont' : 'a'} pas pu être lue${n > 1 ? 's' : ''}` +
+                        (unreadable.length ? ` : ${unreadable.map((f) => `« ${f} »`).join(', ')}.` : '.'),
+                });
+            } else {
+                setDurationCheck(null);
+            }
             await refreshAll();
         } catch (e) {
             // Shown as the server wrote it: lowercasing a whole message to fit it
@@ -733,6 +764,36 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                 : null,
         [data, selectionToSend],
     );
+    /**
+     * The name each file will take in the folder, in send order — shown in the
+     * confirmation panel. « dans l’ordre de lecture » used to be all it said:
+     * nobody could check, before sending, that « 10 » came after « 9 » or what
+     * the files would be called in the folder (and so on a CD).
+     */
+    const predictedNames = useMemo(
+        () =>
+            selectionToSend.length
+                ? predictUploadNames(
+                      (data?.tracks ?? []).map((t) => t.name),
+                      selectionToSend.map((f) => f.name),
+                  )
+                : null,
+        [data, selectionToSend],
+    );
+    /**
+     * The recording's length from its tracks, or null while one of them is
+     * unmeasured — the same all-or-nothing rule as readingDurationMinutes: a
+     * partial sum would understate it.
+     */
+    const totalSeconds = useMemo(() => {
+        if (!data?.tracks.length) return null;
+        let sum = 0;
+        for (const t of data.tracks) {
+            if (t.durationSeconds == null) return null;
+            sum += t.durationSeconds;
+        }
+        return sum;
+    }, [data]);
     const activeTrash = trash.filter((t) => !t.restoredAt);
     const playingTrackName = data?.tracks.find((t) => t.key === playingKey)?.name ?? null;
     const zipping = zip.phase === 'running';
@@ -826,6 +887,28 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             if (!stop) return;
             zip.cancel();
         }
+        // The editor is unmounted on close, and the « Renvoyer » list with it:
+        // closing used to drop the files that did not make it without a word,
+        // leaving a folder with holes that nobody had been told about.
+        if (!open && failedFiles.length > 0) {
+            const n = failedFiles.length;
+            const leave = await confirm({
+                title: `${n} fichier${n > 1 ? 's' : ''} non envoyé${n > 1 ? 's' : ''}`,
+                description:
+                    `${n > 1 ? 'Ces fichiers ne sont' : 'Ce fichier n’est'} pas dans le dossier. En fermant, la liste ` +
+                    'des fichiers à renvoyer est perdue.\n\n' +
+                    // « Remplacer » has moved the old take out before sending
+                    // the new one: its slot may be empty now.
+                    (replaceKeyRef.current
+                        ? 'Si la piste remplacée ne figure plus dans la liste, l’ancienne version est dans la ' +
+                          'corbeille du livre : restaurez-la, puis cliquez de nouveau sur « Remplacer » sur sa ligne.'
+                        : 'Pour les envoyer plus tard, choisissez de nouveau le même dossier : les fichiers déjà ' +
+                          'en ligne seront écartés d’office.'),
+                confirmLabel: 'Fermer quand même',
+                cancelLabel: 'Rester',
+            });
+            if (!leave) return;
+        }
         // An unconfirmed folder selection is scoped to the session that picked
         // it — reopening on another book must not inherit it.
         if (!open) {
@@ -884,6 +967,31 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                 {data.trackCount > 0 && (
                                     <span className="text-sm text-muted-foreground">
                                         {formatSize(data.totalBytes)}
+                                        {/* What a burn needs to know first, and what the
+                                            demande is billed on (lib/pricing.ts). */}
+                                        {' · '}
+                                        {cdCount(bytesToKb(data.totalBytes))} CD
+                                        {totalSeconds !== null && <> · {formatTotalDuration(totalSeconds)}</>}
+                                    </span>
+                                )}
+                                {/* A track shows « — » and nothing in this dialogue could fix
+                                    it: the only « Recalculer » was on the book form. */}
+                                {data.trackCount > 0 && totalSeconds === null && (
+                                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        · Durée non calculée
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={busy || durationCheck === 'running'}
+                                            onClick={() => void measureAfterUpload()}
+                                            className="h-7 bg-field border-border text-foreground hover:bg-muted"
+                                        >
+                                            <RefreshCw
+                                                className={`h-3 w-3 ${durationCheck === 'running' ? 'animate-spin' : ''}`}
+                                            />
+                                            {durationCheck === 'running' ? 'Mesure…' : 'Recalculer'}
+                                        </Button>
                                     </span>
                                 )}
                             </div>
@@ -945,7 +1053,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             aria-pressed={tab === 'corbeille'}
                             className={tab === 'corbeille' ? '' : 'bg-field border-border text-foreground hover:bg-muted'}
                         >
-                            Corbeille ({trashError ? '?' : activeTrash.length})
+                            {/* No count before the first read: « (0) » while loading
+                                said the corbeille was empty before anyone had looked. */}
+                            Corbeille {data ? `(${trashError ? '?' : activeTrash.length})` : ''}
                         </Button>
 
                         {/* Re-fetches the folder listing. Order itself is never cached —
@@ -996,7 +1106,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                disabled={busy}
+                                disabled={busy || zipping}
                                 onClick={() => setDeleteAllOpen(true)}
                                 className="border-red-500/50 bg-card text-red-600 dark:text-red-400 hover:bg-red-500/10"
                             >
@@ -1085,14 +1195,29 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             )}
                             {zip.phase === 'error' && (
                                 <div className="flex items-center justify-between gap-2 text-xs">
-                                    <span className="text-red-600 dark:text-red-400">{zip.error}</span>
-                                    <button
-                                        type="button"
-                                        onClick={zip.reset}
-                                        className="text-muted-foreground underline underline-offset-2"
-                                    >
-                                        Masquer
-                                    </button>
+                                    <span className="text-red-600 dark:text-red-400">
+                                        {zip.error?.replace(/\.\s*$/, '')}. L’archive n’est pas
+                                        utilisable : recommencez le téléchargement.
+                                    </span>
+                                    <span className="flex flex-shrink-0 items-center gap-3">
+                                        {/* The links are re-signed on the way (handleDownloadFolder
+                                            starts from the listing, and expired ones are
+                                            re-signed by the archive itself). */}
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleDownloadFolder()}
+                                            className="font-medium text-foreground underline underline-offset-2"
+                                        >
+                                            Réessayer
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={zip.reset}
+                                            className="text-muted-foreground underline underline-offset-2"
+                                        >
+                                            Masquer
+                                        </button>
+                                    </span>
                                 </div>
                             )}
                         </div>
@@ -1241,6 +1366,34 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                     </strong>
                                                 )}
                                             </p>
+
+                                            {/* The order and the names, checkable before anything
+                                                leaves: the folder's names are what a CD is burned
+                                                from, and the number is the place in the book. */}
+                                            {selectionToSend.length > 0 && (
+                                                <details className="mt-1">
+                                                    <summary className="cursor-pointer text-xs text-muted-foreground">
+                                                        Voir l’ordre d’envoi
+                                                        {predictedNames ? ' et les noms dans le dossier' : ''}
+                                                    </summary>
+                                                    <ol className="mt-1 space-y-0.5">
+                                                        {selectionToSend.map((f, i) => (
+                                                            <li
+                                                                key={f.name}
+                                                                className="font-mono text-xs break-all text-muted-foreground"
+                                                            >
+                                                                <span className="text-foreground">
+                                                                    {existingTrackCount + i + 1}.
+                                                                </span>{' '}
+                                                                {f.name}
+                                                                {predictedNames && predictedNames[i] !== f.name && (
+                                                                    <> → {predictedNames[i]}</>
+                                                                )}
+                                                            </li>
+                                                        ))}
+                                                    </ol>
+                                                </details>
+                                            )}
 
                                             {existingTrackCount > 0 && (
                                                 <div className="mt-2">
@@ -1468,8 +1621,12 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                 {failedFiles.length > 1 ? 's' : ''} à renvoyer
                                             </p>
                                             <p className="mt-1 text-xs text-muted-foreground">
-                                                Les autres fichiers sont bien en ligne : ce bouton ne
-                                                renvoie que ceux qui manquent, sans créer de doublon.
+                                                {/* Only true when some of them did land: said after a
+                                                    batch that failed whole, it claimed files online
+                                                    that were not. */}
+                                                {progress.some((p) => p.status === 'terminé')
+                                                    ? 'Les autres fichiers sont bien en ligne : ce bouton ne renvoie que ceux qui manquent, sans créer de doublon.'
+                                                    : 'Ce bouton les renvoie sans créer de doublon.'}
                                             </p>
                                             <ul className="mt-2 space-y-1">
                                                 {progress
@@ -1519,7 +1676,10 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
 
                                     {progress.length > 0 && (
                                         <div className="mt-3 space-y-2">
-                                            {progress.map((p) => (
+                                            {/* Once the upload is over, a failed file is in the
+                                                « à renvoyer » panel above with what to do about it;
+                                                its row here only repeated it. */}
+                                            {(busy ? progress : progress.filter((p) => p.status !== 'échec')).map((p) => (
                                                 <div key={p.name} className="text-xs">
                                                     <div className="flex justify-between gap-2">
                                                         <span className="truncate text-foreground">
@@ -1590,18 +1750,43 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                     )}
                                 </div>
 
-                                {data.tracks.length === 0 && (
-                                    <p className="text-sm text-muted-foreground">
-                                        {data.hasFolder
-                                            ? 'Ce dossier ne contient aucun fichier audio.'
-                                            : 'Ce livre n’a pas encore de dossier audio. Envoyez un fichier pour en créer un.'}
-                                    </p>
-                                )}
+                                {data.tracks.length === 0 &&
+                                    // « Dossier introuvable » just above, then « ce dossier ne
+                                    // contient aucun fichier » read as two different diagnoses.
+                                    // A folder that is gone is an anomaly (see audio-enums): the
+                                    // recording often still exists under another name, and
+                                    // sending it again would make a second copy.
+                                    (data.status === AudioLinkStatus.FOLDER_MISSING ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            Aucune piste à cet emplacement. Si l’enregistrement existe sous un
+                                            autre nom, rattachez-le depuis{' '}
+                                            <IntentLink
+                                                href="/admin/audio-orphelins"
+                                                target="_blank"
+                                                className="font-medium text-primary underline underline-offset-2"
+                                            >
+                                                Audio orphelin
+                                            </IntentLink>{' '}
+                                            plutôt que de l’envoyer à nouveau.
+                                        </p>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">
+                                            {data.hasFolder
+                                                ? 'Ce dossier ne contient aucun fichier audio.'
+                                                : 'Ce livre n’a pas encore de dossier audio. Envoyez un fichier pour en créer un.'}
+                                        </p>
+                                    ))}
 
                                 {data.tracks.map((t) => (
                                     <div
                                         key={t.key}
-                                        className="flex items-center gap-3 rounded-md border border-border bg-field p-2"
+                                        // The player sits below the list: the row is where the
+                                        // eye is when asking « which one is playing? ».
+                                        className={`flex items-center gap-3 rounded-md border p-2 ${
+                                            playingKey === t.key
+                                                ? 'border-primary bg-primary/10'
+                                                : 'border-border bg-field'
+                                        }`}
                                     >
                                         <span className="w-8 flex-shrink-0 text-right text-xs text-muted-foreground">
                                             {t.order}
@@ -1611,6 +1796,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             variant="outline"
                                             size="icon"
                                             onClick={() => void togglePlay(t)}
+                                            title={playingKey === t.key ? 'Mettre en pause' : 'Écouter'}
                                             aria-label={
                                                 playingKey === t.key ? `Mettre en pause ${t.name}` : `Écouter ${t.name}`
                                             }
@@ -1648,14 +1834,18 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             onClick={(e) => handleDownloadClick(e, t)}
                                             className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted"
                                             aria-label={`Télécharger ${t.name}`}
+                                            title="Télécharger cette piste"
                                         >
                                             <Download className="h-4 w-4" />
                                         </a>
+                                        {/* Locked during an archive too: the archive reads the
+                                            tracks it listed at the start, and one moved or renamed
+                                            meanwhile failed it halfway through. */}
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="icon"
-                                            disabled={busy}
+                                            disabled={busy || zipping}
                                             onClick={() => {
                                                 replaceTargetRef.current = t;
                                                 replaceInputRef.current?.click();
@@ -1670,12 +1860,13 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             type="button"
                                             variant="outline"
                                             size="icon"
-                                            disabled={busy}
+                                            disabled={busy || zipping}
                                             onClick={() => {
                                                 setRenameTarget(t);
                                                 setRenameOpen(true);
                                             }}
                                             aria-label={`Renommer ${t.name}`}
+                                            title="Renommer (change la place dans l’ordre de lecture)"
                                             className="h-8 w-8 flex-shrink-0 bg-card border-border text-foreground hover:bg-muted"
                                         >
                                             <Pencil className="h-4 w-4" />
@@ -1684,12 +1875,13 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             type="button"
                                             variant="outline"
                                             size="icon"
-                                            disabled={busy}
+                                            disabled={busy || zipping}
                                             onClick={() => {
                                                 setTarget(t);
                                                 setDeleteOpen(true);
                                             }}
                                             aria-label={`Supprimer ${t.name}`}
+                                            title="Supprimer (vers la corbeille)"
                                             className="h-8 w-8 flex-shrink-0 border-red-500/50 bg-card text-red-500 hover:bg-red-500/10"
                                         >
                                             <Trash2 className="h-4 w-4" />

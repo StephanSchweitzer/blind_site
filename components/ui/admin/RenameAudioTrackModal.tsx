@@ -84,8 +84,19 @@ export function RenameAudioTrackModal({
     // Même refus : Windows ne sait pas créer ce fichier, ni au téléchargement
     // d'une piste ni en décompressant l'archive.
     const forbidden = WINDOWS_FORBIDDEN_CHARS.test(trimmed);
+    // Le refus de la route (« nom déjà pris »), dit pendant la saisie. Sans
+    // distinction de casse : deux pistes qui ne diffèrent que par elle n'en
+    // font qu'une une fois décompressées sous Windows.
+    const taken =
+        newName !== track?.name &&
+        folderNames.some((n) => n !== track?.name && n.normalize('NFC').toLowerCase() === newName.toLowerCase());
     const valid =
-        trimmed.length > 0 && !trimmed.includes('/') && !appleDouble && !forbidden && newName !== track?.name;
+        trimmed.length > 0 &&
+        !trimmed.includes('/') &&
+        !appleDouble &&
+        !forbidden &&
+        !taken &&
+        newName !== track?.name;
     // Où la piste ira, dans le portail et sur un CD — le but même d'un renommage.
     const preview = useMemo(
         () => (track && valid ? renamePreview(folderNames, track.name, newName) : null),
@@ -93,7 +104,7 @@ export function RenameAudioTrackModal({
     );
 
     const handleRename = async () => {
-        if (!track || !valid) return;
+        if (!track || !valid || isRenaming) return;
         setIsRenaming(true);
         try {
             const res = await fetch(`/api/books/${bookId}/audio/track`, {
@@ -166,6 +177,12 @@ export function RenameAudioTrackModal({
                                     id="new-name"
                                     value={base}
                                     onChange={(e) => setBase(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            void handleRename();
+                                        }
+                                    }}
                                     autoComplete="off"
                                     className="bg-field border-border text-foreground font-mono"
                                 />
@@ -182,6 +199,11 @@ export function RenameAudioTrackModal({
                                 <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                                     Un nom commençant par « ._ » (ou contenant « ._ » après un espace) est celui
                                     d’un fichier de métadonnées Mac : la piste disparaîtrait des listings.
+                                </p>
+                            )}
+                            {taken && (
+                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                                    Une autre piste de ce dossier porte déjà ce nom.
                                 </p>
                             )}
                             {forbidden && (

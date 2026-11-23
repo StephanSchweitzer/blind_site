@@ -64,7 +64,7 @@ export function DeleteAllAudioTracksModal({
     });
 
     const handleDelete = async () => {
-        if (!confirmed) return;
+        if (!confirmed || isDeleting) return;
         setIsDeleting(true);
         setProgress({ done: 0, total: trackCount });
         try {
@@ -218,6 +218,13 @@ export function DeleteAllAudioTracksModal({
                             id="confirm-count"
                             value={typed}
                             onChange={(e) => setTyped(e.target.value)}
+                            // Enter confirms, as in the one-track dialogue.
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    void handleDelete();
+                                }
+                            }}
                             inputMode="numeric"
                             autoComplete="off"
                             placeholder={String(trackCount)}

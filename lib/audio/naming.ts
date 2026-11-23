@@ -313,6 +313,30 @@ export function cdOrderConflict(existing: string[], originals: string[]): CdOrde
     return null;
 }
 
+/**
+ * The name each of `originals` (in the order they will be sent) will take in
+ * the folder — what upload-url will mint, replayed the same way as
+ * cdOrderConflict: same function, each name fed back before the next.
+ *
+ * Null when the server would refuse the batch (nextTrackName throws on one of
+ * the files): the upload says why itself, and a list of names that will never
+ * exist would only mislead.
+ */
+export function predictUploadNames(existing: string[], originals: string[]): string[] | null {
+    const folder = [...existing];
+    const names: string[] = [];
+    for (const original of originals) {
+        try {
+            const { filename } = nextTrackName(folder, original);
+            names.push(filename);
+            folder.push(filename);
+        } catch {
+            return null;
+        }
+    }
+    return names;
+}
+
 /** Characters Windows refuses in a file name — a track named with one cannot be downloaded there. */
 export const WINDOWS_FORBIDDEN_CHARS = /[\\:*?"<>|]/;
 

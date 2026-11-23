@@ -64,7 +64,7 @@ export function DeleteAudioTrackModal({
     const confirmed = track ? typed.trim() === String(track.order) : false;
 
     const handleDelete = async () => {
-        if (!track || !confirmed) return;
+        if (!track || !confirmed || isDeleting) return;
         setIsDeleting(true);
         try {
             const res = await fetch(`/api/books/${bookId}/audio/track`, {
@@ -116,71 +116,78 @@ export function DeleteAudioTrackModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                {track && (
-                    <div className="space-y-4">
-                        <div className="rounded-md border border-border bg-field p-3">
-                            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Piste n° {track.order} · {formatSize(track.sizeBytes)}
+                {/* A form, so Enter in the number field confirms. */}
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        void handleDelete();
+                    }}
+                >
+                    {track && (
+                        <div className="space-y-4">
+                            <div className="rounded-md border border-border bg-field p-3">
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                                    Piste n° {track.order} · {formatSize(track.sizeBytes)}
+                                </div>
+                                {/* Verbatim: double spaces and substituted characters included, so
+                                    the admin sees exactly which file is meant. */}
+                                <div className="mt-1 font-mono text-sm text-foreground break-all whitespace-pre-wrap">
+                                    {track.name}
+                                </div>
                             </div>
-                            {/* Verbatim: double spaces and substituted characters included, so
-                                the admin sees exactly which file is meant. */}
-                            <div className="mt-1 font-mono text-sm text-foreground break-all whitespace-pre-wrap">
-                                {track.name}
+
+                            <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                                <Undo2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>
+                                    Réversible pendant 14 jours : le fichier est copié dans la corbeille
+                                    avant d’être retiré du dossier, et la copie est vérifiée.
+                                </span>
+                            </div>
+
+                            <div>
+                                <label htmlFor="confirm-order" className="text-sm text-foreground">
+                                    Pour confirmer, tapez le numéro de la piste :{' '}
+                                    <span className="font-semibold">{track.order}</span>
+                                </label>
+                                <Input
+                                    id="confirm-order"
+                                    value={typed}
+                                    onChange={(e) => setTyped(e.target.value)}
+                                    inputMode="numeric"
+                                    autoComplete="off"
+                                    placeholder={String(track.order)}
+                                    className="mt-1 bg-field border-border text-foreground"
+                                />
                             </div>
                         </div>
+                    )}
 
-                        <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                            <Undo2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                            <span>
-                                Réversible pendant 14 jours : le fichier est copié dans la corbeille
-                                avant d’être retiré du dossier, et la copie est vérifiée.
-                            </span>
-                        </div>
-
-                        <div>
-                            <label htmlFor="confirm-order" className="text-sm text-foreground">
-                                Pour confirmer, tapez le numéro de la piste :{' '}
-                                <span className="font-semibold">{track.order}</span>
-                            </label>
-                            <Input
-                                id="confirm-order"
-                                value={typed}
-                                onChange={(e) => setTyped(e.target.value)}
-                                inputMode="numeric"
-                                autoComplete="off"
-                                placeholder={String(track.order)}
-                                className="mt-1 bg-field border-border text-foreground"
-                            />
-                        </div>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            disabled={isDeleting}
+                            className="bg-field border-border text-foreground hover:bg-muted"
+                        >
+                            Annuler
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="destructive"
+                            disabled={isDeleting || !confirmed}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            {isDeleting ? (
+                                <span className="flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Suppression...
+                                </span>
+                            ) : (
+                                'Déplacer dans la corbeille'
+                            )}
+                        </Button>
                     </div>
-                )}
-
-                <div className="flex justify-end gap-3 pt-4">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                        disabled={isDeleting}
-                        className="bg-field border-border text-foreground hover:bg-muted"
-                    >
-                        Annuler
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={handleDelete}
-                        disabled={isDeleting || !confirmed}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                        {isDeleting ? (
-                            <span className="flex items-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" /> Suppression...
-                            </span>
-                        ) : (
-                            'Déplacer dans la corbeille'
-                        )}
-                    </Button>
-                </div>
+                </form>
             </DialogContent>
         </Dialog>
     );

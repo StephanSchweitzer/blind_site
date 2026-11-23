@@ -92,6 +92,34 @@ export function safeZipName(raw: string): string {
 const PROGRESS_INTERVAL_MS = 150;
 
 /**
+ * At most one call per PROGRESS_INTERVAL_MS, and always a last one after the
+ * burst. A leading-edge-only throttle dropped the tail of every burst: a track
+ * read from memory is written into the archive in a few milliseconds, then the
+ * writer waits for the next download, and the counter stayed on what it showed
+ * at the start of the burst — « 1 Ko / 208 Mo » with 54 Mo already downloaded.
+ */
+function throttled(fn: () => void): (() => void) & { cancel: () => void } {
+    let last = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const run = () => {
+        timer = null;
+        last = Date.now();
+        fn();
+    };
+    const call = () => {
+        if (timer) return;
+        const wait = PROGRESS_INTERVAL_MS - (Date.now() - last);
+        if (wait <= 0) run();
+        else timer = setTimeout(run, wait);
+    };
+    call.cancel = () => {
+        if (timer) clearTimeout(timer);
+        timer = null;
+    };
+    return call;
+}
+
+/**
  * How many tracks may be downloading ahead of the zip writer.
  *
  * Six rather than the upload path's three because these are GETs of whole
@@ -219,21 +247,14 @@ export function useAudioFolderZip() {
         setError(null);
 
         let count = 0;
-        let lastReport = 0;
 
         // Bytes off the network, as opposed to `count`, which is bytes into the
         // zip. The two used to be the same number; with a look-ahead they are
         // not, and it is this one that tells the admin the transfer is moving —
         // the writer lags it by up to a whole look-ahead window.
         let pulled = 0;
-        let lastPullReport = 0;
-        const reportPulled = () => {
-            const now = Date.now();
-            if (now - lastPullReport >= PROGRESS_INTERVAL_MS) {
-                lastPullReport = now;
-                setFetched(pulled);
-            }
-        };
+        const reportPulled = throttled(() => setFetched(pulled));
+        const reportWritten = throttled(() => setWritten(count));
 
         /**
          * One re-signing for the whole folder, shared by every look-ahead fetch.
@@ -370,7 +391,17 @@ export function useAudioFolderZip() {
                 // prefetched — that is what "Archivage…" claims.
                 setCurrentName(job.entry.path);
 
-                const blob = await job.blob;
+                let blob: Blob;
+                try {
+                    blob = await job.blob;
+                } catch (e) {
+                    // « Annuler » rejects the download in flight. The archive's
+                    // stream is already cancelled by then, so a throw here had
+                    // nobody left to catch it: an « Uncaught (in promise) » on
+                    // every cancel. A real failure still throws.
+                    if (signal.aborted) return;
+                    throw e;
+                }
 
                 // The size below is the listing's, and it decides the entry's
                 // Zip64 shape before a byte is written — so bytes that disagree
@@ -396,11 +427,7 @@ export function useAudioFolderZip() {
         const counter = new TransformStream<Uint8Array, Uint8Array>({
             transform(chunk, ctrl) {
                 count += chunk.byteLength;
-                const now = Date.now();
-                if (now - lastReport >= PROGRESS_INTERVAL_MS) {
-                    lastReport = now;
-                    setWritten(count);
-                }
+                reportWritten();
                 ctrl.enqueue(chunk);
             },
         });
@@ -412,7 +439,13 @@ export function useAudioFolderZip() {
 
             if (handle) {
                 const writable = await handle.createWritable();
-                await counted.pipeTo(writable, { signal });
+                // `preventCancel`: « Annuler » aborts the file being written (the
+                // browser discards it) but does not cancel the archive's stream.
+                // client-zip 2.5 answers a cancel with `iterator.throw(reason)`
+                // and drops the promise — an « Uncaught (in promise) AbortError »
+                // on every cancel. Nothing is left running: the downloads stop
+                // on the same signal, and files() returns once they do.
+                await counted.pipeTo(writable, { signal, preventCancel: true });
             } else {
                 const blob = await new Response(counted).blob();
                 if (signal.aborted) return;
@@ -425,11 +458,15 @@ export function useAudioFolderZip() {
                 setTimeout(() => URL.revokeObjectURL(href), 60_000);
             }
 
+            reportWritten.cancel();
+            reportPulled.cancel();
             setWritten(count);
             setFetched(pulled);
             setCurrentName(null);
             setPhase('done');
         } catch (e) {
+            reportWritten.cancel();
+            reportPulled.cancel();
             const aborted = signal.aborted || (e as Error)?.name === 'AbortError';
             setCurrentName(null);
             setPhase(aborted ? 'idle' : 'error');
