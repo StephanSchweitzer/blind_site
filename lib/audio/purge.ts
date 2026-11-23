@@ -92,6 +92,45 @@ export async function purgeExpiredAudioTrash(): Promise<AudioPurgeResult> {
     return { purged: purgedRows.length, failed: failedRows.length, remaining };
 }
 
+/**
+ * How far back the nightly run looks for restored rows whose corbeille copy may
+ * have survived — two nights, so one missed run is caught up by the next.
+ */
+const RESTORED_SWEEP_MS = 2 * 86_400_000;
+
+/**
+ * Remove the corbeille copies of rows restored recently.
+ *
+ * A restore deletes its corbeille copy only best-effort, once the file is
+ * verifiably back (restoreTrack, restoreTracksByIds): a refused delete is a
+ * storage cost, not a loss. But nothing came back for it — the retention sweep
+ * above only reads rows still IN the corbeille — so such a copy stayed in the
+ * bucket for good, on no screen.
+ *
+ * Safe by construction: the row is restored, so its file is back at its
+ * original key, checked at the right size before the row was marked; a later
+ * deletion of the same file gets a new, timestamped trashKey (trashKeyFor), so
+ * no live corbeille row ever names one of these. DeleteObjects succeeds on a
+ * key already gone, which is the usual case — this mostly deletes nothing.
+ * Never throws: it runs after the purge proper and must not fail the cron.
+ */
+export async function sweepRestoredTrashCopies(): Promise<{ swept: number }> {
+    try {
+        const rows = await prisma.deletedAudioTrack.findMany({
+            where: { restoredAt: { gte: new Date(Date.now() - RESTORED_SWEEP_MS) }, purgedAt: null },
+            take: BATCH_LIMIT,
+            select: { trashKey: true },
+        });
+        if (!rows.length) return { swept: 0 };
+        const { failed } = await deleteTracks(rows.map((r) => r.trashKey));
+        if (failed.length) console.error('[purge-audio-trash] copies de lignes restaurées non supprimées', failed);
+        return { swept: rows.length - failed.length };
+    } catch (e) {
+        console.error('[purge-audio-trash] balayage des copies restaurées impossible', e);
+        return { swept: 0 };
+    }
+}
+
 export interface AudioPurgeNowResult {
     purged: number;
     /** The bucket refused these — the rows stay in the corbeille, restorable. */

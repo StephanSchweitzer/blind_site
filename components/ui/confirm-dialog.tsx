@@ -12,6 +12,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 /**
@@ -37,6 +38,14 @@ export type ConfirmOptions = {
     cancelLabel?: string
     /** Red action button, for deletions and other gestures that lose data. */
     destructive?: boolean
+    /**
+     * Something to type before the action button unlocks — for the gestures
+     * that cannot be undone, where one click on a confirmation is too little
+     * (« Tout supprimer définitivement », a whole book's only copy). A number,
+     * as in the audio editor's delete dialogues: it makes the reader look at
+     * what they are about to lose, where a retyped name only trains pasting.
+     */
+    requireText?: { label: React.ReactNode; value: string }
 }
 
 type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>
@@ -48,6 +57,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     // Kept apart from `pending` so the content doesn't blank out during the
     // close animation.
     const [open, setOpen] = React.useState(false)
+    const [typed, setTyped] = React.useState("")
     const resolveRef = React.useRef<((value: boolean) => void) | null>(null)
 
     const settle = React.useCallback((value: boolean) => {
@@ -61,9 +71,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         return new Promise<boolean>((resolve) => {
             resolveRef.current = resolve
             setPending(options)
+            setTyped("")
             setOpen(true)
         })
     }, [])
+
+    const unlocked = !pending?.requireText || typed.trim() === pending.requireText.value
 
     return (
         <ConfirmContext.Provider value={confirm}>
@@ -80,12 +93,34 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                             </AlertDialogDescription>
                         )}
                     </AlertDialogHeader>
+                    {pending?.requireText && (
+                        <div className="space-y-1">
+                            <label htmlFor="confirm-require-text" className="text-sm text-foreground">
+                                {pending.requireText.label}
+                            </label>
+                            <Input
+                                id="confirm-require-text"
+                                value={typed}
+                                onChange={(e) => setTyped(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && unlocked) {
+                                        e.preventDefault()
+                                        settle(true)
+                                    }
+                                }}
+                                inputMode="numeric"
+                                autoComplete="off"
+                                className="bg-field border-border text-foreground"
+                            />
+                        </div>
+                    )}
                     <AlertDialogFooter>
                         <AlertDialogCancel>
                             {pending?.cancelLabel ?? "Annuler"}
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => settle(true)}
+                            disabled={!unlocked}
                             className={cn(
                                 pending?.destructive &&
                                     "bg-destructive text-destructive-foreground hover:bg-destructive/90"

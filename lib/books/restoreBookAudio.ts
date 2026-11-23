@@ -42,7 +42,10 @@ export async function reattachAudioAfterBookRestore(
 ): Promise<RestoredBookAudio> {
     const { count: reattachedTracks } = await prisma.deletedAudioTrack.updateMany({
         where: { originBookId: bookId, bookId: null },
-        data: { bookId },
+        // L'empreinte s'efface avec : la fiche est de nouveau là pour dire qui
+        // elle est, et la garder séparait ces lignes des suppressions suivantes
+        // sur /admin/audio-corbeille (voir la route de restauration d'une fiche).
+        data: { bookId, originBookId: null, originBookTitle: null },
     });
 
     let clearedOrphan = false;

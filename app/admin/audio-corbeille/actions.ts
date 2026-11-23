@@ -7,6 +7,8 @@ import { revalidateChangedBooks, snapshotPublicBooks, type PublicBooksSnapshot }
 import { restoreTrack, restoreTracksByIds, AudioTrashError } from '@/lib/audio/trash';
 import { purgeTrashNow } from '@/lib/audio/purge';
 import { describeClaimant, findFolderClaimant } from '@/lib/audio/sharedFolder';
+import { listRawObjects } from '@/lib/audio/bucket';
+import { pool } from '@/lib/concurrency';
 
 /**
  * Restaurer une piste depuis la corbeille audio générale.
@@ -49,6 +51,15 @@ async function snapshotTrashedBooks(trashIds: number[]): Promise<PublicBooksSnap
     }
 }
 
+/** Le titre de la fiche supprimée dont viennent ces lignes, s'il y en a une. */
+async function deletedBookOf(trashIds: number[]): Promise<string | null> {
+    const row = await prisma.deletedAudioTrack.findFirst({
+        where: { id: { in: trashIds }, book: { deletedAt: { not: null } } },
+        select: { book: { select: { title: true } } },
+    });
+    return row?.book?.title ?? null;
+}
+
 export async function restoreTrashedTrack(trashId: number): Promise<ActionResult> {
     return asAdminAction(async (me) => {
         if (!Number.isInteger(trashId)) return { ok: false, message: 'Identifiant invalide' };
@@ -59,7 +70,22 @@ export async function restoreTrashedTrack(trashId: number): Promise<ActionResult
             refresh();
             // La durée du livre a pu changer : le catalogue public l'affiche.
             if (bookId) await revalidateChangedBooks(publicBefore);
-            if (bookId) return { ok: true, message: 'Fichier restauré dans le dossier du livre.' };
+            if (bookId) {
+                // Une fiche supprimée (soft delete) garde son dossier : le fichier y
+                // revient, mais rien ne le montre tant que la fiche est supprimée.
+                // « Restauré dans le dossier du livre » laissait le chercher.
+                const book = await prisma.book.findUnique({
+                    where: { id: bookId },
+                    select: { title: true, deletedAt: true },
+                });
+                return {
+                    ok: true,
+                    message: book?.deletedAt
+                        ? `Fichier restauré dans le dossier de la fiche supprimée « ${book.title} » : il ` +
+                          'réapparaîtra avec elle si vous la restaurez.'
+                        : 'Fichier restauré dans le dossier du livre.',
+                };
+            }
 
             // Sans fiche : le dossier a pu être rattaché depuis à un livre, qui
             // vient alors de gagner la piste (settleRestoredFolders l'a relu).
@@ -151,10 +177,15 @@ export async function restoreTrashedGroup(
             const { restored } = total;
             const failedCount = total.failed + step.remainingIds.length;
             const reason = total.firstReason ?? 'interrompu avant la fin — relancez la restauration';
+            // Même précision qu'à l'unité : revenus chez une fiche supprimée.
+            const deletedBook = restored ? await deletedBookOf(ids) : null;
+            const where = deletedBook
+                ? ` Ils sont dans le dossier de la fiche supprimée « ${deletedBook} » : ils réapparaîtront avec elle si vous la restaurez.`
+                : '';
             if (failedCount === 0) {
                 return {
                     ok: true,
-                    message: `${restored} fichier${restored > 1 ? 's' : ''} restauré${restored > 1 ? 's' : ''}.`,
+                    message: `${restored} fichier${restored > 1 ? 's' : ''} restauré${restored > 1 ? 's' : ''}.${where}`,
                 };
             }
             if (restored === 0) {
@@ -165,7 +196,7 @@ export async function restoreTrashedGroup(
             }
             return {
                 ok: true,
-                message: `${restored} fichier${restored > 1 ? 's' : ''} restauré${restored > 1 ? 's' : ''}, ${failedCount} échec${failedCount > 1 ? 's' : ''} (${reason}).`,
+                message: `${restored} fichier${restored > 1 ? 's' : ''} restauré${restored > 1 ? 's' : ''}, ${failedCount} échec${failedCount > 1 ? 's' : ''} (${reason}).${where}`,
             };
         } catch (e) {
             console.error('restoreTrashedGroup error:', e);
@@ -220,5 +251,66 @@ export async function purgeTrashedTracks(trashIds: number[]): Promise<ActionResu
             console.error('purgeTrashedTracks error:', e);
             return { ok: false, message: 'La suppression définitive a échoué.' };
         }
+    });
+}
+
+/**
+ * Ce que le stockage dit aujourd'hui des lignes affichées : celles qui ne
+ * peuvent PAS revenir, pour que l'écran le dise avant le clic.
+ *
+ *  - `occupied` : un fichier occupe de nouveau la clé d'origine — le plus
+ *    souvent la nouvelle version d'un « Remplacer ». La restauration refuse
+ *    d'écraser ; « Restaurer » était proposé quand même, et « Restaurer tout »
+ *    finissait en « 1 restauré, 28 échecs ».
+ *  - `copyMissing` : la copie de corbeille n'est plus dans le stockage. La ligne
+ *    restait « Dans la corbeille » pour toujours, son bouton échouant à chaque
+ *    clic sur « copie introuvable ». « Supprimer définitivement » la range dans
+ *    « Purgées » : la suppression d'une clé absente réussit (voir purge.ts).
+ *
+ * Une LIST par dossier touché (dossier d'origine, dossier de corbeille), jamais
+ * un HEAD par fichier : une page tient des centaines de lignes. Un dossier que
+ * le stockage n'a pas su lister ne signale rien — l'écran reste comme avant.
+ */
+export type TrashStorageState = { ok: true; occupied: number[]; copyMissing: number[] } | { ok: false };
+
+/** Assez pour une page entière de groupes dépliés. */
+const MAX_STORAGE_IDS = 2000;
+/**
+ * Une copie toute neuve peut manquer à une LIST encore en retard sur l'écriture :
+ * une ligne plus jeune que ça n'est jamais dite « copie absente ».
+ */
+const COPY_MISSING_MIN_AGE_MS = 5 * 60 * 1000;
+
+const folderOf = (key: string) => key.slice(0, key.lastIndexOf('/') + 1);
+
+export async function readTrashStorage(trashIds: number[]): Promise<TrashStorageState> {
+    return asAdmin<TrashStorageState>({ ok: false }, async () => {
+        const ids = trashIds.filter((id) => Number.isInteger(id)).slice(0, MAX_STORAGE_IDS);
+        if (!ids.length) return { ok: true, occupied: [], copyMissing: [] };
+        const rows = await prisma.deletedAudioTrack.findMany({
+            where: { id: { in: ids }, restoredAt: null, purgedAt: null },
+            select: { id: true, originalKey: true, trashKey: true, deletedAt: true },
+        });
+        const folders = [...new Set(rows.flatMap((r) => [folderOf(r.originalKey), folderOf(r.trashKey)]))];
+        const listed = new Map<string, Set<string> | null>();
+        await pool(folders, 4, async (folder) => {
+            try {
+                listed.set(folder, new Set((await listRawObjects(folder)).map((o) => o.key)));
+            } catch (e) {
+                console.error('readTrashStorage: dossier non listé', folder, e);
+                listed.set(folder, null);
+            }
+        });
+        const settledBefore = Date.now() - COPY_MISSING_MIN_AGE_MS;
+        return {
+            ok: true,
+            occupied: rows.filter((r) => listed.get(folderOf(r.originalKey))?.has(r.originalKey)).map((r) => r.id),
+            copyMissing: rows
+                .filter((r) => {
+                    const inTrash = listed.get(folderOf(r.trashKey));
+                    return inTrash != null && !inTrash.has(r.trashKey) && r.deletedAt.getTime() < settledBefore;
+                })
+                .map((r) => r.id),
+        };
     });
 }

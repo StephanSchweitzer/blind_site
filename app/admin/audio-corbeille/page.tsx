@@ -104,8 +104,24 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
     const pageSize = parsePageSizeParam(one('perPage'));
     const q = one('q');
 
+    const active = tab === 'a-purger';
+    const now = new Date();
+
+    /**
+     * Ce que la purge prendra d'ici URGENT_DAYS jours. Le bandeau en donnait le
+     * compte sans moyen de les voir : triés du plus récent au plus ancien, ils
+     * sont en fin de liste, parfois sur la dernière page. `?purge=proche` (le
+     * lien du bandeau) n'affiche qu'eux, le plus proche de sa purge d'abord.
+     */
+    const urgentWhere: Prisma.DeletedAudioTrackWhereInput = {
+        retainForever: false,
+        deletedAt: { lte: new Date(now.getTime() - (AUDIO_TRASH_RETENTION_DAYS - URGENT_DAYS) * DAY_MS) },
+    };
+    const urgentOnly = active && one('purge') === 'proche';
+
     const whereFor = (term: string): Prisma.DeletedAudioTrackWhereInput => ({
         ...TAB_WHERE[tab],
+        ...(urgentOnly ? urgentWhere : {}),
         ...(buildSearchWhere(term) ?? {}),
     });
     const where = whereFor(q);
@@ -113,9 +129,6 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         ...TAB_WHERE[(TABS as readonly string[]).includes(scope ?? '') ? (scope as TrashTab) : tab],
         ...(buildSearchWhere(term) ?? {}),
     });
-
-    const active = tab === 'a-purger';
-    const now = new Date();
 
     /**
      * Un livre supprimé en bloc peut laisser 60-80 lignes dans la corbeille —
@@ -138,7 +151,7 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         prisma.deletedAudioTrack.groupBy({
             by: GROUP_BY,
             where,
-            orderBy: { _max: { deletedAt: 'desc' } },
+            orderBy: urgentOnly ? { _min: { deletedAt: 'asc' } } : { _max: { deletedAt: 'desc' } },
             skip: pageSkip(page, pageSize),
             take: pageSize,
         }),
@@ -151,17 +164,7 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
         // pas seulement la page affichée, puisque le tri met ces fichiers-là en
         // fin de liste. Même seuil que `urgent` dans toTrashRow.
         active
-            ? prisma.deletedAudioTrack.count({
-                  where: {
-                      ...TAB_WHERE[tab],
-                      retainForever: false,
-                      deletedAt: {
-                          lte: new Date(
-                              now.getTime() - (AUDIO_TRASH_RETENTION_DAYS - URGENT_DAYS) * DAY_MS,
-                          ),
-                      },
-                  },
-              })
+            ? prisma.deletedAudioTrack.count({ where: { ...TAB_WHERE[tab], ...urgentWhere } })
             : Promise.resolve(0),
     ]);
 
@@ -177,7 +180,12 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
               },
               orderBy: [{ deletedAt: 'desc' }, { id: 'desc' }],
               include: {
-                  book: { select: { id: true, title: true } },
+                  // `deletedAt` : une relation n'est pas filtrée par l'extension
+                  // de lib/prisma.ts, et une fiche supprimée (deleteBookWithAudio)
+                  // s'affichait comme une fiche vivante — lien ordinaire, sans
+                  // « fiche supprimée », alors que restaurer renvoie le fichier
+                  // dans un dossier que plus rien ne montre.
+                  book: { select: { id: true, title: true, deletedAt: true } },
                   deletedBy: { select: { firstName: true, lastName: true, email: true } },
                   restoredBy: { select: { firstName: true, lastName: true, email: true } },
                   purgedBy: { select: { firstName: true, lastName: true, email: true } },
@@ -208,7 +216,7 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
                 r.restoredAt === null &&
                 r.purgedAt === null &&
                 purgeEligibleAt.getTime() - now.getTime() <= URGENT_DAYS * DAY_MS,
-            book: r.book,
+            book: r.book ? { id: r.book.id, title: r.book.title, deletedAt: r.book.deletedAt?.toISOString() ?? null } : null,
             // L'empreinte laissée par markTrashOrigin : c'est tout ce qui reste du
             // livre quand sa fiche a été supprimée.
             originBookId: r.originBookId,
@@ -286,6 +294,7 @@ export default async function AudioCorbeillePage({ searchParams }: PageProps) {
                 purgees: counts[2],
             }}
             urgentCount={urgentCount}
+            urgentOnly={urgentOnly}
             urgentDays={URGENT_DAYS}
             retentionDays={AUDIO_TRASH_RETENTION_DAYS}
             search={q}

@@ -197,6 +197,21 @@ export const POST = withAdmin(async (request, { params, me }) => {
         }
         bookRestored = true;
 
+        // La fiche est de retour : l'empreinte que markTrashOrigin avait posée
+        // sur sa corbeille (« fiche supprimée — … ») ne décrit plus rien. Gardée,
+        // elle coupait le livre en deux cartes sur /admin/audio-corbeille, qui
+        // regroupe sur bookId + empreinte : les pistes supprimées ensuite depuis
+        // l'éditeur, sans empreinte, formaient un second groupe. Une nouvelle
+        // suppression de la fiche la repose. Jamais bloquant.
+        try {
+            await prisma.deletedAudioTrack.updateMany({
+                where: { bookId, OR: [{ originBookId: { not: null } }, { originBookTitle: { not: null } }] },
+                data: { originBookId: null, originBookTitle: null },
+            });
+        } catch (error) {
+            console.error('restore: empreinte de corbeille non effacée', bookId, error);
+        }
+
         // Après, pas avant : la fiche doit déjà exister « active » pour que
         // refreshBookAudioState (appelé dedans) la retrouve normalement.
         const { restored, failed, remainingIds } = trashIds.length

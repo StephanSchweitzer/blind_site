@@ -375,6 +375,22 @@ async function partB() {
         check('restauration, appel suivant : tout est revenu, corbeille vide', [back.restored, (await listed()).length, corbeille()], [13, 23, 0]);
         F.copyDelayMs = 0;
 
+        // --- a restore whose corbeille copy would not go: swept the next night ---
+        console.log('\n  copie restée après une restauration');
+        const { sweepRestoredTrashCopies } = require('../lib/audio/purge.ts');
+        const one = (await listed())[0];
+        await softDeleteTracks({ bookId: lbook, prefix: lp, tracks: [one], userId: me.id });
+        const row = await prisma.deletedAudioTrack.findFirstOrThrow({
+            where: { bookId: lbook, originalKey: one.key, restoredAt: null },
+            select: { id: true, trashKey: true },
+        });
+        F.failDelete.add(row.trashKey);
+        await quiet(() => restoreTrack({ trashId: row.id, userId: me.id }));
+        const stayed = F.objects.has(row.trashKey);
+        F.failDelete.clear();
+        await quiet(() => sweepRestoredTrashCopies());
+        check('copie restée après la restauration, retirée par le balayage', [stayed, F.objects.has(row.trashKey), F.objects.has(one.key)], [true, false, true]);
+
         // --- the dev guard reaches the caller whole ------------------------------
         console.log('\n  refus du serveur de dev');
         const dp = `zzz-test/${ts}-dev/`;
@@ -395,6 +411,12 @@ async function partB() {
         if (created.length) {
             await withoutAudit(() => prisma.book.updateMany({ where: { id: { in: created } }, data: { deletedAt: new Date() } }));
         }
+        // Their corbeille rows name objects that only ever lived in the fake
+        // bucket: left behind, they topped /admin/audio-corbeille on the dev
+        // server (« ZZZ Test remplacer »…), restorable by no one. Only this
+        // harness writes under zzz-test/, so earlier runs' rows go too.
+        // DeletedAudioTrack is a state table, not one of the append-only logs.
+        await prisma.deletedAudioTrack.deleteMany({ where: { originalKey: { startsWith: 'zzz-test/' } } });
         await prisma.$disconnect();
     }
     return true;

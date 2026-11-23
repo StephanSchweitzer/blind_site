@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser, isSuperAdmin } from '@/lib/auth/guards';
-import { purgeExpiredAudioTrash } from '@/lib/audio/purge';
+import { purgeExpiredAudioTrash, sweepRestoredTrashCopies } from '@/lib/audio/purge';
 
 /**
  * Nightly sweep of the audio corbeille past its retention window (14 days,
@@ -47,7 +47,10 @@ async function run(request: NextRequest) {
                 `${result.failed} échec(s), ${result.remaining} restant(s) à traiter`
             );
         }
-        return NextResponse.json(result);
+        // Les copies de corbeille que des restaurations récentes n'ont pas pu
+        // retirer — voir sweepRestoredTrashCopies. Ne lève jamais.
+        const { swept } = await sweepRestoredTrashCopies();
+        return NextResponse.json({ ...result, swept });
     } catch (error) {
         console.error('[cron] purge-audio-trash failed:', error);
         return NextResponse.json({ message: 'La purge a échoué' }, { status: 500 });
