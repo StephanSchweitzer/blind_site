@@ -16,7 +16,8 @@
  */
 
 import { byteOrderCompare, WINDOWS_FORBIDDEN_CHARS } from './naming';
-import { CD_BURN_CAPACITY_BYTES, cdFolderName, splitIntoCds } from './cd-split';
+import { CD_CAPACITY_BYTES } from '../cd-capacity';
+import { cdFolderName, splitIntoCds } from './cd-split';
 
 /** Characters Windows refuses in a file name: its own unzip tool stops on them. Same set the rename refuses. */
 const WINDOWS_FORBIDDEN = new RegExp(WINDOWS_FORBIDDEN_CHARS.source, 'g');
@@ -122,7 +123,7 @@ export interface ArchiveLayout {
 export function archiveLayout(
     tracks: { name: string; sizeBytes: number }[],
     splitByCd: boolean,
-    capacity: number = CD_BURN_CAPACITY_BYTES,
+    capacity: number = CD_CAPACITY_BYTES,
 ): ArchiveLayout {
     const { names, numbered } = downloadEntryNames(tracks.map((t) => t.name));
     const split = splitByCd ? splitIntoCds(tracks.map((t) => t.sizeBytes), capacity) : null;

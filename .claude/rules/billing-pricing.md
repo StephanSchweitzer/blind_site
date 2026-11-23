@@ -10,7 +10,18 @@ paths:
 ### Billing and pricing (handle with care)
 
 - The **tarif is derived from the recording's weight** (`lib/pricing.ts`): 3 € per started
-  700 Mio block, minimum one CD. It is a *proposal* — the field stays hand-editable.
+  CD, minimum one CD. It is a *proposal* — the field stays hand-editable.
+- **What a CD holds is defined once: `CD_CAPACITY_BYTES` in `lib/cd-capacity.ts`** (720 Mo,
+  decimal — the limit the old `1000`/`2000` folders were burned to). Billing (`cdCount`), the
+  audio editor's « N CD » and the ZIP split (`lib/audio/cd-split.ts`) all read it, so the CDs
+  billed are the CDs burned. Never write the figure anywhere else in code.
+- **Changing that figure reprices nothing by itself.** Repricing only runs when a book's weight
+  changes (`refreshBookAudioState` → `repriceOpenOrdersForBook`), and only on adjustable
+  demandes. What the new figure does reach: new demandes, the « Tarif conseillé » hint (with
+  its « apply » button) on an existing one, an existing demande whose book is changed, an open
+  demande whose book's audio later changes, and `scripts/backfill-order-costs.ts --apply` if
+  someone runs it. Issued, paid and soldée factures never move. Moved 700 Mio → 720 Mo on
+  2026-11-23.
 - `repriceOpenOrdersForBook` (`lib/pricing-sync.ts`) is called **from
   `refreshBookAudioState`**, i.e. the one function every weight-changing path already goes
   through. Don't call it from a route: the next audio route written would forget.

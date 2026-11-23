@@ -25,7 +25,9 @@ import {
     trackNameProblem,
 } from '../lib/audio/naming';
 import { archiveLayout, downloadEntryNames, playlistM3u, PLAYLIST_NAME, windowsSafeName } from '../lib/audio/download-names';
-import { CD_BURN_CAPACITY_BYTES, cdFolderName, splitIntoCds } from '../lib/audio/cd-split';
+import { cdFolderName, splitIntoCds } from '../lib/audio/cd-split';
+import { CD_CAPACITY_BYTES, cdCountForBytes } from '../lib/cd-capacity';
+import { cdCount, formatSizeKb } from '../lib/pricing';
 import { missingInMiddle } from '../lib/audio/folder-selection';
 
 let failures = 0;
@@ -520,7 +522,7 @@ check(
 // ------------------------------------------- téléchargement ZIP (un dossier par CD)
 
 {
-    const CAP = CD_BURN_CAPACITY_BYTES;
+    const CAP = CD_CAPACITY_BYTES;
     const MB = 1_000_000;
     const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
     /** Concatenated groups are 0…n-1: contiguous, nothing reordered, nothing lost. */
@@ -534,6 +536,17 @@ check(
     // La pratique des anciens dossiers 1000/2000 : jusqu'à 720 Mo sur un disque.
     check('715 Mo : un seul CD, comme les anciens dossiers', splitIntoCds(Array(50).fill(14.3 * MB)).groups.length, 1);
     check('725 Mo : deux CD', splitIntoCds(Array(50).fill(14.5 * MB)).groups.length, 2);
+
+    // Le tarif compte les CD avec la même capacité que le découpage : les CD facturés sont ceux qu'on grave.
+    check('tarif : 720 Mo pile, un CD', cdCount(CAP / 1024), 1);
+    check('tarif : un Kio de plus, deux CD', cdCount(CAP / 1024 + 1), 2);
+    check('tarif : poids inconnu ou nul, un CD', [cdCount(null), cdCount(0), cdCountForBytes(undefined)], [1, 1, 1]);
+    check(
+        'tarif et découpage d’accord sur des pistes ordinaires',
+        [700, 721, 1500, 2900].map((t) => cdCountForBytes(t * MB) === splitIntoCds(Array(100).fill((t * MB) / 100)).groups.length),
+        [true, true, true, true],
+    );
+    check('poids affiché en Mo décimaux, comme la capacité', formatSizeKb(CAP / 1024), '720.0 Mo');
 
     // 1,5 Go en 30 pistes de 50 Mo : trois CD de 500 Mo, pas 700 + 700 + 100.
     const fifty = Array.from({ length: 30 }, () => 50 * MB);

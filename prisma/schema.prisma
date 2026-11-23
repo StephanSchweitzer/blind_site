@@ -168,13 +168,13 @@ model Book {
 
   /// Total weight of the book's audio folder, in kibioctets (1 Kio = 1024 o),
   /// refreshed alongside audioTrackCount. Feeds the CD-based tarif in
-  /// lib/pricing.ts — a demande costs one CD's worth per 700 Mio started.
+  /// lib/pricing.ts — a demande costs one CD's worth per CD started (lib/cd-capacity.ts).
   ///
   /// Kio rather than bytes on purpose: a byte count overflows Int past 2 Gio and
   /// would force BigInt, which neither NextResponse.json nor the client-component
   /// boundary can serialize — and a raw Book row crosses both (app/catalogue/data.ts,
   /// app/admin/books/page.tsx, /api/books/[id]). Kio keeps it a plain number up to
-  /// 2 Tio, and 1 Kio of precision is nothing next to a 700 Mio block.
+  /// 2 Tio, and 1 Kio of precision is nothing next to a 720 Mo CD.
   audioSizeKb Int?
 
   /// Set when a permanent hits "Impossible de fusionner" on /admin/review: the

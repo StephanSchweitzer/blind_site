@@ -114,7 +114,7 @@ Vous devrez également ajouter un ouvrage. Vous pouvez soit (1) rechercher un ou
 
 Si vous souhaitez gagner du temps et envoyer plusieurs demandes pour le même auditeur en même temps, vous pouvez (3) cliquer sur le bouton « Ajouter un ouvrage » et saisir le titre d'un autre livre. Vous pouvez répéter cette opération autant de fois que vous le souhaitez ; une nouvelle demande sera créée pour chaque livre. Le bouton de validation n'annonce que les lignes où un livre a été choisi (« Créer 3 demandes ») ; parmi plusieurs lignes, une ligne restée vide est signalée « sans livre » et doit être complétée ou retirée avant de valider.
 
-Vous pouvez également saisir un coût spécifique pour la demande. Par défaut, le coût est de **3 € par CD** d'enregistrement, et de 3 € tant que le livre n'est pas encore enregistré.
+Vous pouvez également saisir un coût spécifique pour la demande. Par défaut, le coût est de **3 € par CD** d'enregistrement (un CD par tranche de 720 Mo entamée), et de 3 € tant que le livre n'est pas encore enregistré.
 
 ![Demandes - capture 7](/admin/aide/images/demandes-07.jpg)
 

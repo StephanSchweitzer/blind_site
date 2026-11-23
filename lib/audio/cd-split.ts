@@ -17,30 +17,9 @@
  * before chapter 11 is worse than a CD with room to spare.
  */
 
-/**
- * What one CD is trusted to hold, in bytes.
- *
- * The ECA's own practice, measured. The old `1000` / `2000` / `3000` folders
- * (11 682 of them in November 2026, burned 2012–2025) fill their discs up to
- * 720 Mo and stop there: 204 discs between 710 and 720 Mo, four above. In nine
- * cases out of ten the next track would still have fitted the disc, so the
- * line was drawn on purpose, not by the burner. Cut at this figure, 99 % of
- * those folders get the same number of CDs they were burned on.
- *
- * It keeps a margin below the disc itself. An 80-minute CD-R (« 700 Mo » on the
- * box, which means 700 Mio) holds about 360 000 sectors of 2 048 bytes, some
- * 737 Mo of data; the disc's file system (ISO 9660 / Joliet tables) takes its
- * share, and real capacity varies a little by disc and burner. 680 Mo, the
- * first figure chosen, split 169 books volunteers have always burned on one
- * disc.
- *
- * Not the billing figure: lib/pricing.ts counts started 700 Mio blocks
- * (734 003 200 bytes), a tariff rather than a promise about what a burner
- * accepts. A recording between 720 and 734 Mo is billed one CD and cut into
- * two — 45 books in November 2026. Bringing billing onto this figure changes
- * prices, so it waits on the trésorière.
- */
-export const CD_BURN_CAPACITY_BYTES = 720_000_000;
+import { CD_CAPACITY_BYTES } from '../cd-capacity';
+// What one CD holds is defined once, in lib/cd-capacity.ts — the same figure
+// billing counts (lib/pricing.ts), so the CDs billed are the CDs burned.
 
 export interface CdSplit {
     /**
@@ -69,7 +48,7 @@ export interface CdSplit {
  * A track bigger than the capacity is put alone and flagged; the runs of tracks
  * between such tracks are cut independently, each by the same rule.
  */
-export function splitIntoCds(sizes: number[], capacity: number = CD_BURN_CAPACITY_BYTES): CdSplit {
+export function splitIntoCds(sizes: number[], capacity: number = CD_CAPACITY_BYTES): CdSplit {
     if (sizes.length === 0) return { groups: [], oversized: [] };
 
     const total = sizes.reduce((sum, s) => sum + s, 0);

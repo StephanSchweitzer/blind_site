@@ -2,25 +2,27 @@
 // Type-only, therefore erased at build: this module stays importable from the
 // standalone scripts, which resolve neither the `@/…` aliases nor a Prisma client.
 import type { Prisma } from '@prisma/client';
+import { cdCountForBytes } from './cd-capacity';
 
 /**
  * Tarif d'une demande, calculé sur le poids de l'enregistrement.
  *
- * Un CD contient 700 Mio : chaque tranche de 700 Mio entamée coûte un CD de plus.
+ * Chaque tranche de 720 Mo entamée coûte un CD de plus — la capacité d'un CD est
+ * définie une seule fois, dans lib/cd-capacity.ts, et c'est aussi elle qui
+ * découpe l'archive ZIP en un dossier par CD : les CD facturés sont ceux qu'on
+ * grave.
+ *
  * Le tarif reste toujours modifiable à la main — c'est une proposition, pas une
  * contrainte. Elle existe pour éviter les tarifs oubliés sur les gros livres, pas
  * pour retirer la décision au permanent.
  *
- *   0 – 700 Mio   1 CD    3,00 €
- *   1 Gio         2 CD    6,00 €
- *   2,2 Gio       4 CD   12,00 €
+ *   0 – 720 Mo    1 CD    3,00 €
+ *   1 Go          2 CD    6,00 €
+ *   2,5 Go        4 CD   12,00 €
  *
  * Un livre sans audio (enregistrement à faire) pèse 0 et retombe donc sur le
  * tarif plancher d'un CD, qui est aussi l'ancien tarif par défaut.
  */
-
-/** Capacité d'un CD, en kibioctets — l'unité de Book.audioSizeKb. */
-export const CD_CAPACITY_KB = 700 * 1024;
 
 /** Prix d'un CD entamé, en euros. */
 export const PRICE_PER_CD_EUR = 3;
@@ -30,8 +32,7 @@ export const PRICE_PER_CD_EUR = 3;
  * sans audio connu se facture comme un CD, jamais 0 €.
  */
 export function cdCount(sizeKb: number | null | undefined): number {
-    if (!sizeKb || sizeKb <= 0) return 1;
-    return Math.max(1, Math.ceil(sizeKb / CD_CAPACITY_KB));
+    return cdCountForBytes(sizeKb == null ? sizeKb : sizeKb * 1024);
 }
 
 /** Tarif conseillé en euros pour un poids d'enregistrement donné. */
@@ -44,12 +45,17 @@ export function suggestedCostValue(sizeKb: number | null | undefined): string {
     return suggestedCostEuros(sizeKb).toFixed(2);
 }
 
-/** Poids lisible : « 1,40 Go », « 320,5 Mo », « 48 Ko ». */
+/**
+ * Poids lisible : « 1,40 Go », « 320,5 Mo », « 48 Ko ». En unités décimales
+ * (1 Mo = 10^6 octets), comme l'éditeur audio et comme la capacité d'un CD
+ * (lib/cd-capacity.ts) : « 715,0 Mo — 1 CD » se lit contre « 720 Mo par CD »
+ * sans conversion. Book.audioSizeKb reste en Kio, seul l'affichage change.
+ */
 export function formatSizeKb(sizeKb: number | null | undefined): string {
-    const kb = sizeKb ?? 0;
-    if (kb >= 1024 * 1024) return `${(kb / (1024 * 1024)).toFixed(2)} Go`;
-    if (kb >= 1024) return `${(kb / 1024).toFixed(1)} Mo`;
-    return `${Math.max(1, Math.round(kb))} Ko`;
+    const bytes = (sizeKb ?? 0) * 1024;
+    if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(2)} Go`;
+    if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} Mo`;
+    return `${Math.max(1, Math.round(bytes / 1e3))} Ko`;
 }
 
 /**

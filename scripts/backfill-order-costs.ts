@@ -4,7 +4,7 @@
  *   pnpm tsx scripts/backfill-order-costs.ts            # rapport seul, n'écrit rien
  *   pnpm tsx scripts/backfill-order-costs.ts --apply    # applique
  *
- * Le tarif est de 3 € par tranche de 700 Mio entamée (lib/pricing.ts). Deux
+ * Le tarif est de 3 € par CD de 720 Mo entamé (lib/pricing.ts, lib/cd-capacity.ts). Deux
  * mécanismes le tiennent à jour tout seuls : les formulaires le proposent à la
  * saisie, et repriceOpenOrdersForBook le recalcule dès qu'un enregistrement
  * arrive dans le bucket. Restent deux trous que ce script comble :

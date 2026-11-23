@@ -49,9 +49,9 @@ import {
     predictUploadNames,
 } from '@/lib/audio/naming';
 import { isCloudFinalising } from '@/lib/audio/upload-plan';
-import { bytesToKb, cdCount } from '@/lib/pricing';
 import { archiveLayout, type ArchiveLayout } from '@/lib/audio/download-names';
-import { CD_BURN_CAPACITY_BYTES, splitIntoCds } from '@/lib/audio/cd-split';
+import { splitIntoCds } from '@/lib/audio/cd-split';
+import { CD_CAPACITY_BYTES, cdCountForBytes } from '@/lib/cd-capacity';
 import {
     getAudioLinkStatusColor,
     getAudioLinkStatusHint,
@@ -889,7 +889,7 @@ export function BookAudioModal({
      * many CDs it means.
      */
     const cdSplit = useMemo(() => {
-        if (!data || data.totalBytes <= CD_BURN_CAPACITY_BYTES) return null;
+        if (!data || data.totalBytes <= CD_CAPACITY_BYTES) return null;
         const split = splitIntoCds(data.tracks.map((t) => t.sizeBytes));
         return split.groups.length > 1 ? split : null;
     }, [data]);
@@ -1044,7 +1044,7 @@ export function BookAudioModal({
                                         {/* What a burn needs to know first, and what the
                                             demande is billed on (lib/pricing.ts). */}
                                         {' · '}
-                                        {cdCount(bytesToKb(data.totalBytes))} CD
+                                        {cdCountForBytes(data.totalBytes)} CD
                                         {totalSeconds !== null && <> · {formatTotalDuration(totalSeconds)}</>}
                                     </span>
                                 )}

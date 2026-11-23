@@ -592,7 +592,7 @@ export function OrderFormBackendBase({
         }
     };
 
-    // Tarif conseillé : 3 € par tranche de 700 Mio entamée (lib/pricing.ts). Null
+    // Tarif conseillé : 3 € par CD entamé (lib/pricing.ts, lib/cd-capacity.ts). Null
     // tant que le poids du livre est inconnu — mieux vaut ne rien annoncer qu'un
     // tarif fondé sur un dossier jamais synchronisé.
     const tarif = costSuggestion(selectedBook?.audioSizeKb);

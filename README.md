@@ -249,7 +249,7 @@ The `-core` files omit `server-only` **on purpose**: the maintenance scripts run
 
 ## 6. Pricing, billing and the demande lifecycle
 
-**The tarif is derived from the weight of the recording** (`lib/pricing.ts`): a CD holds 700 Mio, every started 700 Mio block costs 3 €, minimum one CD. It is always a *proposal* — the field stays hand-editable; it exists so large books stop being billed at the default.
+**The tarif is derived from the weight of the recording** (`lib/pricing.ts`): every started CD costs 3 €, minimum one CD. What a CD holds — 720 Mo — is defined once, in `lib/cd-capacity.ts`, and the audio ZIP's one-folder-per-CD split reads the same figure. It is always a *proposal* — the field stays hand-editable; it exists so large books stop being billed at the default.
 
 `repriceOpenOrdersForBook` (`lib/pricing-sync.ts`) is called from `refreshBookAudioState`, i.e. the one function every path that can change the weight already goes through (upload, delete, restore, orphan relink, fusion). It only touches demandes that are still adjustable — `ADJUSTABLE_ORDER_WHERE`: unbilled, not priced by the page, and on no facture or on a `DRAFT` one. An issued facture has been printed and sent; a paid or soldée one is locked.
 
