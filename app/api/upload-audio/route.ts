@@ -25,7 +25,7 @@ export const POST = withAdmin(async (request) => {
         const audioFile = formData.get('audio');
 
         if (!(audioFile instanceof File)) {
-            return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
+            return NextResponse.json({ error: 'Aucun fichier audio reçu.' }, { status: 400 });
         }
 
         // Validate type and size before writing anything.
@@ -69,6 +69,9 @@ export const POST = withAdmin(async (request) => {
         }
     } catch (error) {
         console.error('Upload error:', error);
-        return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'L’envoi de la présentation a échoué. Réessayez dans un instant.' },
+            { status: 500 },
+        );
     }
 });

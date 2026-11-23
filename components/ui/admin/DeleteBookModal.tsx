@@ -25,6 +25,7 @@ import {
 } from '@/lib/user-error';
 import { readNdjson } from '@/lib/ndjson';
 import { AudioDeleteProgress } from './AudioDeleteProgress';
+import { useWarnIfUnsavedChanges } from '@/components/userWarnIfUnsavedChanges';
 import type {
     BookAudioDispositionMode,
     BookDeletionPreflightResponse,
@@ -112,6 +113,19 @@ export function DeleteBookModal({
     const [typedCount, setTypedCount] = useState('');
 
     const [isDeleting, setIsDeleting] = useState(false);
+    // « Envoyer à la corbeille » sur un gros dossier se fait en plusieurs
+    // requêtes : quitter la page s'arrête entre deux, fiche non supprimée.
+    useWarnIfUnsavedChanges({
+        unsaved: isDeleting,
+        prompt: {
+            title: 'Suppression en cours',
+            description:
+                'La suppression du livre est en cours. Si vous quittez la page, elle peut s’arrêter avant ' +
+                'la fin : la fiche ne sera alors pas supprimée, et il faudra la relancer.',
+            confirmLabel: 'Quitter quand même',
+            cancelLabel: 'Rester sur la page',
+        },
+    });
     const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
     const [error, setError] = useState<UserFacingError | null>(null);
     /** Relance le contrôle après une corbeille interrompue : voir la fin de handleDelete. */
@@ -303,6 +317,8 @@ export function DeleteBookModal({
         <Dialog
             open={isOpen}
             onOpenChange={(open) => {
+                // Esc, a click outside and × all land here — see DeleteAllAudioTracksModal.
+                if (!open && isDeleting) return;
                 if (!open) reset();
                 onOpenChange(open);
             }}

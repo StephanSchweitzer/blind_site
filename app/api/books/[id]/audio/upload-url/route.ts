@@ -15,10 +15,22 @@ import { MAX_UPLOAD_BYTES } from '@/lib/audio/folder-selection';
 import { pool } from '@/lib/concurrency';
 import { booksSharingAudioFolder, sharedFolderUploadRefusal } from '@/lib/audio/sharedFolder';
 import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
-import { claimUploadLease, isLeaseToken } from '@/lib/audio/uploadLease';
+import { claimUploadLease, isLeaseToken, UPLOAD_LEASE_SECONDS } from '@/lib/audio/uploadLease';
+import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 
-/** Presigned PUTs are short-lived; a stalled upload asks for a fresh URL. */
-const URL_TTL_SECONDS = 3600;
+/**
+ * A presigned PUT lives no longer than the upload's claim on the book.
+ *
+ * It used to live an hour against a ten-minute claim: a tab asleep for more
+ * than ten minutes (a laptop lid closed mid-upload) lost the book to another
+ * upload, which was given the same « next » name — and on waking, its retry
+ * re-sent the old URL over that upload's file. Expiry is only checked when a
+ * PUT starts, so a long transfer is unaffected; the dialogue re-signs a URL
+ * that is getting old before using it (hooks/useAudioUpload.ts), and that
+ * re-signing request renews the claim — or is refused because the book is
+ * someone else's now.
+ */
+const URL_TTL_SECONDS = UPLOAD_LEASE_SECONDS;
 /** One dialogue action shouldn't be able to queue an unbounded batch. */
 const MAX_FILES_PER_REQUEST = 50;
 
@@ -57,8 +69,10 @@ interface RequestedFile {
     existingKey?: unknown;
     /**
      * « Remplacer » : the bucket key of the track this one file takes the place
-     * of. Honoured on a single-file request only, and only on the FIRST
-     * request — retries come back with `existingKey`. See replaceOne below.
+     * of. Honoured on a single-file request only. The FIRST request moves the
+     * old take (replaceOne below); retries also carry `existingKey`, the slot
+     * they were given, and are never allowed to fall through to a fresh name —
+     * see « A replacement's retry » in the loop.
      */
     replaceKey?: unknown;
     /**
@@ -222,10 +236,8 @@ export const POST = withAdmin(async (req, { params, me }) => {
     }
 
     // --- « Remplacer » : one file, into the slot of an existing track --------
-    const replaceKey = files.length === 1 && typeof files[0].replaceKey === 'string' && typeof files[0].existingKey !== 'string'
-        ? files[0].replaceKey
-        : '';
-    if (replaceKey) {
+    const replaceKey = files.length === 1 && typeof files[0].replaceKey === 'string' ? files[0].replaceKey : '';
+    if (replaceKey && typeof files[0].existingKey !== 'string') {
         return replaceOne({ bookId, prefix, replaceKey, file: files[0], userId: me.id });
     }
 
@@ -335,6 +347,31 @@ export const POST = withAdmin(async (req, { params, me }) => {
             }
         }
 
+        // --- A replacement's retry ---------------------------------------------
+        //
+        // Its slot is the replaced track's place in the playing order. When the
+        // slot now holds something else — typically the OLD take, restored from
+        // the corbeille after the first PUT failed — falling through to a fresh
+        // name put the new take LAST, while the dialogue announced it « à la
+        // place de l'ancienne ». Refused instead: which version stays is the
+        // permanent's call, and « Remplacer » on that line makes it.
+        if (replaceKey) {
+            const slot =
+                isKeyInsidePrefix(replaceKey, prefix) ? `${prefix}${replacementName(prefix, replaceKey, originalName)}` : '';
+            if (!reuseKey || requestedKey !== slot) {
+                return NextResponse.json(
+                    {
+                        message:
+                            'La place de la piste remplacée est de nouveau occupée — l’ancienne version y a sans ' +
+                            'doute été restaurée entre-temps. Rien n’a été envoyé. Pour la remplacer, cliquez de ' +
+                            'nouveau sur « Remplacer » sur sa ligne.',
+                        replaceConflict: true,
+                    },
+                    { status: 409 },
+                );
+            }
+        }
+
         let filename: string;
         let strategy: string;
         let key: string;
@@ -400,16 +437,14 @@ export const POST = withAdmin(async (req, { params, me }) => {
         });
     }
 
-    // One remaining storage-level check, pooled rather than serial, and only
-    // for freshly-minted names: a listing that went stale in the last few
-    // hundred milliseconds — most plausibly a second admin's batch landing
-    // between our listing and this one — could still make one of them
-    // collide even though nothing in memory saw it coming. A reused key is
-    // deliberately NOT re-checked here: finding it already occupied at the
-    // matching size is the expected, harmless case the whole feature exists
-    // to allow, not a clash to reject.
+    // One remaining storage-level check, pooled rather than serial, for every
+    // key about to be signed: the listing could be a few hundred milliseconds
+    // stale. That covers a reused key too — it is only reused when the listing
+    // showed it ABSENT, and « a PUT is only ever signed onto a key that holds
+    // nothing » has to hold at signing time, not at listing time. A key that
+    // already holds this file's bytes is `landed` and signs nothing.
     const checked = await pool(
-        results.filter((r) => !r.reused),
+        results.filter((r) => !r.landed),
         10,
         async (r) => ({ key: r.key, taken: (await headTrack(r.key)) !== null }),
     );
@@ -430,8 +465,34 @@ export const POST = withAdmin(async (req, { params, me }) => {
         r.url = await putTrackUrl(r.key, r.contentType, r.checksum, URL_TTL_SECONDS);
     }
 
-    return NextResponse.json({ prefix, expiresIn: URL_TTL_SECONDS, files: results, skipped });
+    return NextResponse.json({
+        prefix,
+        expiresIn: URL_TTL_SECONDS,
+        // What the dialogue reads; `strategy` and the checksum it sent stay here.
+        files: results.map(({ originalName, filename, key, url, contentType, reused, landed }) => ({
+            originalName,
+            filename,
+            key,
+            url,
+            contentType,
+            reused,
+            landed,
+        })),
+        skipped,
+    });
 });
+
+/**
+ * The name a « Remplacer » gives the new take: the old one's, extension aside.
+ * Same extension: the exact old name, its case included. Otherwise the old base
+ * with the new extension — the base is what decides the place.
+ */
+function replacementName(prefix: string, replaceKey: string, originalName: string): string {
+    const oldName = replaceKey.slice(prefix.length);
+    const oldSplit = splitExtension(oldName);
+    const newExt = splitExtension(originalName).ext;
+    return newExt === oldSplit.ext ? oldName : `${oldSplit.base}.${newExt}`;
+}
 
 /**
  * « Remplacer » : sign ONE file into the place of an existing track.
@@ -471,11 +532,8 @@ async function replaceOne(opts: {
     }
 
     const oldName = replaceKey.slice(prefix.length);
-    const oldSplit = splitExtension(oldName);
     const newExt = splitExtension(originalName).ext;
-    // Same extension: the exact old key, its case included. Otherwise the old
-    // base with the new extension — the base is what decides the place.
-    const filename = newExt === oldSplit.ext ? oldName : `${oldSplit.base}.${newExt}`;
+    const filename = replacementName(prefix, replaceKey, originalName);
     const key = `${prefix}${filename}`;
     if (isAppleDoubleName(filename)) {
         return NextResponse.json({ message: 'Nom de piste invalide.' }, { status: 400 });
@@ -492,6 +550,11 @@ async function replaceOne(opts: {
 
     let replaced: { filename: string; trashId: number } | null = null;
     if (await headTrack(replaceKey)) {
+        // The move rewrites the book's audio columns — one track fewer, so the
+        // duration is blanked and the announcement cleared — and nothing else
+        // on this path told the public pages. If the new take never lands, they
+        // kept the old duration for a day while the fiche said « Non calculée ».
+        const publicBefore = await snapshotPublicBooks([bookId]);
         try {
             const moved = await softDeleteTrack({ bookId, key: replaceKey, filename: oldName, userId });
             replaced = { filename: oldName, trashId: moved.trashId };
@@ -504,28 +567,32 @@ async function replaceOne(opts: {
             }
             throw e;
         }
+        await revalidateChangedBooks(publicBefore);
+    } else {
+        // Absent already. Legitimate when an earlier request of this same
+        // « Remplacer » moved it and lost its answer — then this book's
+        // corbeille holds it, still unrestored: the slot is that track's place.
+        // Otherwise replaceKey names nothing this book ever held, and signing it
+        // would place a file anywhere in the playing order without going
+        // through nextTrackName.
+        const movedOut = await prisma.deletedAudioTrack.findFirst({
+            where: { bookId, originalKey: replaceKey, restoredAt: null, purgedAt: null },
+            select: { id: true },
+        });
+        if (!movedOut) {
+            return NextResponse.json(
+                { message: 'La piste à remplacer n’est plus dans le dossier : actualisez la liste des pistes.' },
+                { status: 409 },
+            );
+        }
     }
-    // Absent already: an earlier request moved it and its answer was lost —
-    // the slot is simply free.
 
     const contentType = MIME[newExt] ?? 'application/octet-stream';
     const url = await putTrackUrl(key, contentType, checksum, URL_TTL_SECONDS);
     return NextResponse.json({
         prefix,
         expiresIn: URL_TTL_SECONDS,
-        files: [
-            {
-                originalName,
-                filename,
-                key,
-                url,
-                contentType,
-                strategy: 'remplacement',
-                reused: false,
-                landed: false,
-                checksum,
-            },
-        ],
+        files: [{ originalName, filename, key, url, contentType, reused: false, landed: false }],
         skipped: [],
         replaced,
     });

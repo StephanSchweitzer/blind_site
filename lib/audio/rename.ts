@@ -3,6 +3,7 @@ import 'server-only';
 import { prisma } from '@/lib/prisma';
 import { copyTrack, deleteTrack, headTrack, MAX_COPY_BYTES } from './bucket';
 import { refreshBookAudioState } from './state';
+import { uploadInProgressRefusal } from './uploadLease';
 
 /**
  * Renaming a track in place — not a corbeille operation, just a key change
@@ -23,10 +24,12 @@ import { refreshBookAudioState } from './state';
  *
  *  - a copy that lands at the wrong size is removed again — the new key was
  *    free before the copy (checked below), so nothing else lives there;
- *  - an original B2 will not delete is retried; if it still will not go, the
- *    copy is removed instead and the rename reported as cancelled. Only if
- *    BOTH deletes fail does the folder keep the two names — and then the state
- *    is re-read and the message says so.
+ *  - an original B2 will not delete is retried; if it still will not go — and
+ *    a HEAD confirms it is still there — the copy is removed instead and the
+ *    rename reported as cancelled. If the original turns out to be gone, the
+ *    delete happened and only its answer was lost: the rename stands. If
+ *    nobody can tell, or BOTH deletes fail, the folder keeps what it holds —
+ *    the state is re-read and the message says so.
  */
 
 export class AudioRenameError extends Error {}
@@ -51,6 +54,16 @@ async function deleteWithRetry(key: string): Promise<boolean> {
     return false;
 }
 
+/** true / false when the storage answered, null when it could not say. */
+async function stillPresent(key: string): Promise<boolean | null> {
+    try {
+        return (await headTrack(key)) !== null;
+    } catch (e) {
+        console.error('renameTrack: présence de l’original non vérifiable', key, e);
+        return null;
+    }
+}
+
 export async function renameTrack(opts: {
     bookId: number;
     oldKey: string;
@@ -64,6 +77,11 @@ export async function renameTrack(opts: {
     if (newKey === oldKey) {
         throw new AudioRenameError('Le nouveau nom est identique à l’actuel.');
     }
+
+    // An upload may hold a signed PUT on the new name: it would land on the
+    // renamed track. See uploadInProgressRefusal.
+    const busy = await uploadInProgressRefusal(bookId, 'Renommage impossible');
+    if (busy) throw new AudioRenameError(busy);
 
     const head = await headTrack(oldKey);
     if (!head) throw new AudioRenameError('Ce fichier n’existe plus dans le dossier.');
@@ -96,18 +114,29 @@ export async function renameTrack(opts: {
     }
 
     // 3. Only now remove the original.
+    //
+    // A refused delete is not proof the original is still there: B2 can carry
+    // out a delete and lose the answer, three times over. Undoing the copy then
+    // removed the ONLY remaining copy, under a message saying the file had
+    // stayed under its old name. So the original is looked for before the copy
+    // is touched: gone means the rename happened; unknown means hands off.
     if (!(await deleteWithRetry(oldKey))) {
-        // Undo the copy rather than leave the chapter in the folder twice.
-        const undone = await deleteWithRetry(newKey);
-        if (!undone) await refreshBookAudioState(bookId);
-        throw new AudioRenameError(
-            undone
-                ? 'Le stockage a refusé de retirer l’ancien nom : renommage annulé, le fichier est ' +
-                      'resté sous son nom d’origine. Réessayez dans un instant.'
-                : `Le stockage a refusé de retirer l’ancien nom : la piste est pour l’instant dans le ` +
-                      `dossier sous ses deux noms (« ${oldName} » et « ${newName} »). Supprimez l’un ` +
-                      'des deux depuis l’éditeur audio (il part en corbeille).',
-        );
+        const originalThere = await stillPresent(oldKey);
+        if (originalThere !== false) {
+            // Undo the copy rather than leave the chapter in the folder twice —
+            // but only when the original is known to be there.
+            const undone = originalThere === true && (await deleteWithRetry(newKey));
+            if (!undone) await refreshBookAudioState(bookId);
+            throw new AudioRenameError(
+                undone
+                    ? 'Le stockage a refusé de retirer l’ancien nom : renommage annulé, le fichier est ' +
+                          'resté sous son nom d’origine. Réessayez dans un instant.'
+                    : `Le stockage a refusé de retirer l’ancien nom : la piste est peut-être pour l’instant ` +
+                          `dans le dossier sous ses deux noms (« ${oldName} » et « ${newName} »). Actualisez ` +
+                          'la liste ; si les deux y sont, supprimez l’un des deux depuis l’éditeur audio ' +
+                          '(il part en corbeille).',
+            );
+        }
     }
 
     // The measured duration describes the same bytes: it follows the name. A

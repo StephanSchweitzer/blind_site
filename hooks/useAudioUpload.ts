@@ -61,13 +61,6 @@ export interface FileProgress {
     name: string;
     /** Name the server assigned in the bucket, once known. */
     assignedName?: string;
-    /**
-     * Full bucket key the server assigned, once known. Offered back as
-     * `existingKey` on any later signing request for this same file — see
-     * `assignedKeysRef` — so a retry re-signs the identical key instead of
-     * being renamed into a fresh slot.
-     */
-    assignedKey?: string;
     loaded: number;
     total: number;
     status: FileStatus;
@@ -152,7 +145,24 @@ interface SignedFile {
      * straight to the commit. See upload-url's reuse rule.
      */
     landed?: boolean;
+    /** When `url` was signed, on this machine's clock — see RESIGN_MARGIN_MS. */
+    signedAt: number;
+    /** How long `url` lives (the response's `expiresIn`). */
+    ttlMs: number;
 }
+
+/**
+ * A URL this close to expiry is signed again before a PUT starts on it.
+ *
+ * URLs live as long as the upload's claim on the book (ten minutes, see
+ * upload-url's URL_TTL_SECONDS): a chunk of fifty files three at a time can
+ * reach its last files later than that, and a tab woken from sleep holds URLs
+ * signed before someone else may have taken the book. Re-signing goes through
+ * upload-url with `existingKey` — same key when it is still free — and renews
+ * the claim on the way, or answers 409 because the book is someone else's now.
+ * A PUT already under way is unaffected: expiry is checked when it starts.
+ */
+const RESIGN_MARGIN_MS = 120_000;
 
 /**
  * Above this, a file is hashed on its own. `sha256Base64` holds a whole file
@@ -491,6 +501,13 @@ function putOnce(file: File, signed: SignedFile, checksum: string, cbs: PutCallb
  * — the first PUT having landed while its response was lost — is a superseded
  * version of a byte-identical object, not a corrupt or duplicated track.
  */
+/**
+ * What `prepare` decided before an attempt: send on the (possibly re-signed)
+ * URL, or nothing to send — the bytes are already at the key (`landed`), or
+ * already in the folder under another name (`present`).
+ */
+type PutPlan = 'send' | 'landed' | 'present';
+
 async function putWithRetry(
     file: File,
     signed: SignedFile,
@@ -498,7 +515,14 @@ async function putWithRetry(
     checksum: string,
     publish: () => void,
     publishProgress: () => void,
-): Promise<void> {
+    /**
+     * Run before EVERY attempt, retries included: refuses once the claim on
+     * the book is lost, and re-signs a URL near its expiry (mutating `signed`).
+     * A retry after a laptop's sleep used to re-send a URL signed before
+     * another upload took the book.
+     */
+    prepare: () => Promise<PutPlan>,
+): Promise<PutPlan> {
     for (let attempt = 1; ; attempt++) {
         // Each attempt restarts the transfer, so the bar restarts with it —
         // leaving it where the failed attempt died would overstate progress.
@@ -508,6 +532,8 @@ async function putWithRetry(
         publish();
 
         try {
+            const plan = await prepare();
+            if (plan !== 'send') return plan;
             await putOnce(file, signed, checksum, {
                 onProgress: (loaded, total) => {
                     row.loaded = loaded;
@@ -522,7 +548,7 @@ async function putWithRetry(
                     publish();
                 },
             });
-            return;
+            return 'send';
         } catch (e) {
             const err = e instanceof PutError ? e : null;
             if (!err?.retryable || attempt >= PUT_ATTEMPTS) throw e;
@@ -670,6 +696,27 @@ export function useAudioUpload(bookId: number) {
 
             // Names are unique: a selection always comes from one folder.
             const byName = new Map(files.map((f) => [f.name, f]));
+            const replaceKey = opts.replaceKey && files.length === 1 ? opts.replaceKey : null;
+
+            /**
+             * One file of a signing request. A file already given a key offers it
+             * back (`existingKey`), so a retry re-signs that key instead of being
+             * renamed into a fresh slot. « Remplacer » sends its `replaceKey` on
+             * every request: alone, the first time, it moves the old take; with
+             * `existingKey`, on a retry, it tells the server this slot must not
+             * fall through to a fresh name — the new take would play last — so the
+             * NEW take is never trashed and never misplaced.
+             */
+            const signingRequest = (f: File, checksum: string) => {
+                const existingKey = assignedKeysRef.current.get(f.name);
+                return {
+                    name: f.name,
+                    size: f.size,
+                    checksum,
+                    ...(existingKey ? { existingKey } : {}),
+                    ...(replaceKey ? { replaceKey } : {}),
+                };
+            };
             const rowOf = (name: string) => progressRef.current.find((p) => p.name === name);
 
             const fail = (name: string, message: string, hint: string, recoverable: boolean) => {
@@ -687,6 +734,25 @@ export function useAudioUpload(bookId: number) {
             const leaseToken = crypto.randomUUID();
             /** Set when another upload took the book over: no new PUT starts. */
             let leaseLost: string | null = null;
+
+            // Claimed BEFORE hashing, not by the first signing request: hashing a
+            // chunk reads up to fifty files whole, and a busy book was only
+            // refused once that was done. A network failure here is not a
+            // refusal — the signing request claims the book as before.
+            const claim = await fetch(`/api/books/${bookId}/audio/upload-lease`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: leaseToken, action: 'renew' }),
+            }).catch(() => null);
+            if (claim?.status === 409) {
+                const data = await claim.json().catch(() => null);
+                progressRef.current = [];
+                publish();
+                setError(String(data?.message ?? 'Un autre envoi est en cours sur ce livre.'));
+                setPhase('error');
+                return FAILED;
+            }
+
             const renewal = setInterval(() => {
                 void fetch(`/api/books/${bookId}/audio/upload-lease`, {
                     method: 'POST',
@@ -701,6 +767,56 @@ export function useAudioUpload(bookId: number) {
                     // A missed renewal is retried two minutes later; the claim lives ten.
                     .catch(() => undefined);
             }, LEASE_RENEW_MS);
+
+            /**
+             * Before each PUT attempt: stop once the book is someone else's, and
+             * re-sign a URL near its expiry — see RESIGN_MARGIN_MS. Updates `s`
+             * in place, so the commit names the key that was actually written.
+             */
+            const prepareSigned = async (
+                s: SignedFile,
+                file: File,
+                row: FileProgress,
+                checksum: string,
+            ): Promise<PutPlan> => {
+                if (leaseLost) throw new PutError('Envoi interrompu', false, leaseLost);
+                if (Date.now() < s.signedAt + s.ttlMs - RESIGN_MARGIN_MS) return 'send';
+
+                let answer: JsonResult;
+                try {
+                    answer = await fetchJsonWithRetry(`/api/books/${bookId}/audio/upload-url`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ leaseToken, files: [signingRequest(file, checksum)] }),
+                    });
+                } catch (e) {
+                    throw new PutError(e instanceof Error ? e.message : 'Le serveur est injoignable', true, HINT_CONNECTION);
+                }
+                const { res, data } = answer;
+                if (res.status === 409 && data?.uploadLease) {
+                    leaseLost = String(data.message ?? 'Un autre envoi a repris ce livre.');
+                    throw new PutError('Envoi interrompu', false, leaseLost);
+                }
+                if (!res.ok) {
+                    const message = String(data?.message ?? 'Préparation de l’envoi impossible');
+                    // A refusal by principle stays one; anything else may pass later.
+                    throw new PutError(message, res.status >= 500, res.status >= 500 ? HINT_TRANSIENT : message);
+                }
+                const present = ((data?.skipped ?? []) as { originalName: string; existingName: string }[])[0];
+                if (present) {
+                    row.alreadyPresent = true;
+                    row.assignedName = present.existingName;
+                    return 'present';
+                }
+                const fresh = ((data?.files ?? []) as Omit<SignedFile, 'signedAt' | 'ttlMs'>[])[0];
+                if (!fresh) {
+                    throw new PutError('Le serveur n’a pas préparé l’envoi de ce fichier.', true, HINT_TRANSIENT);
+                }
+                Object.assign(s, fresh, { signedAt: Date.now(), ttlMs: Number(data?.expiresIn ?? 600) * 1000 });
+                assignedKeysRef.current.set(file.name, s.key);
+                row.assignedName = s.filename;
+                return s.landed ? 'landed' : 'send';
+            };
 
             try {
                 let becameAvailable = false;
@@ -757,18 +873,7 @@ export function useAudioUpload(bookId: number) {
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
                                         leaseToken,
-                                        files: chunk.map((f) => {
-                                            const existingKey = assignedKeysRef.current.get(f.name);
-                                            const checksum = checksumByName.get(f.name)!;
-                                            if (existingKey) return { name: f.name, size: f.size, existingKey, checksum };
-                                            // « Remplacer » : la première demande seulement. Une fois la clé
-                                            // attribuée, les reprises passent par existingKey ci-dessus — le
-                                            // serveur ne remet donc jamais la NOUVELLE prise en corbeille.
-                                            if (opts.replaceKey && files.length === 1) {
-                                                return { name: f.name, size: f.size, checksum, replaceKey: opts.replaceKey };
-                                            }
-                                            return { name: f.name, size: f.size, checksum };
-                                        }),
+                                        files: chunk.map((f) => signingRequest(f, checksumByName.get(f.name)!)),
                                     }),
                                 },
                             );
@@ -783,13 +888,15 @@ export function useAudioUpload(bookId: number) {
                                 setPhase('idle');
                                 return FAILED;
                             }
-                            // Dossier partagé avec une autre fiche : un refus de
-                            // principe, pas un incident — ni nouvelle passe, ni
-                            // bouton « Renvoyer », le message dit quoi faire.
-                            if (res.status === 409 && data?.sharedWith) {
+                            // Des refus de principe, pas des incidents — ni nouvelle
+                            // passe, ni bouton « Renvoyer », le message dit quoi faire :
+                            // dossier partagé avec une autre fiche, place d'une piste
+                            // remplacée reprise entre-temps, écriture refusée au
+                            // serveur de développement.
+                            if (res.status === 409 && (data?.sharedWith || data?.replaceConflict || data?.devBucketRefused)) {
                                 progressRef.current = [];
                                 publish();
-                                setError(String(data.message ?? 'Ce dossier audio est partagé avec une autre fiche.'));
+                                setError(String(data.message ?? 'Envoi refusé.'));
                                 setPhase('error');
                                 return FAILED;
                             }
@@ -812,7 +919,13 @@ export function useAudioUpload(bookId: number) {
                                     String(data?.message ?? 'Préparation de l’envoi impossible'),
                                 );
                             }
-                            signed = (data?.files ?? []) as SignedFile[];
+                            const signedAt = Date.now();
+                            const ttlMs = Number(data?.expiresIn ?? 600) * 1000;
+                            signed = ((data?.files ?? []) as Omit<SignedFile, 'signedAt' | 'ttlMs'>[]).map((s) => ({
+                                ...s,
+                                signedAt,
+                                ttlMs,
+                            }));
                             skipped = (data?.skipped ?? []) as typeof skipped;
                         } catch (e) {
                             // Signing is per-chunk, so this kills this chunk and
@@ -908,11 +1021,6 @@ export function useAudioUpload(bookId: number) {
                                     publish();
                                     continue;
                                 }
-                                if (leaseLost) {
-                                    fail(s.originalName, 'Envoi interrompu', leaseLost, false);
-                                    publish();
-                                    continue;
-                                }
                                 try {
                                     // Computed once, back in step 0, and reused
                                     // across every retry attempt here — a retry
@@ -922,10 +1030,13 @@ export function useAudioUpload(bookId: number) {
                                     // `signed` came from `chunk`, which is exactly
                                     // what checksumByName was built from.
                                     const checksum = checksumByName.get(s.originalName)!;
-                                    await putWithRetry(file, s, row, checksum, publish, publishProgress);
+                                    const plan = await putWithRetry(file, s, row, checksum, publish, publishProgress, () =>
+                                        prepareSigned(s, file, row, checksum),
+                                    );
                                     row.status = 'terminé';
                                     row.loaded = row.total;
-                                    sent.push({ key: s.key, size: file.size, name: s.originalName });
+                                    // Already in the folder under another name: nothing to commit.
+                                    if (plan !== 'present') sent.push({ key: s.key, size: file.size, name: s.originalName });
                                 } catch (e) {
                                     const err = e instanceof PutError ? e : null;
                                     fail(
@@ -961,12 +1072,18 @@ export function useAudioUpload(bookId: number) {
                         );
                         // Publier un livre « en attente », seulement sur le dernier envoi d'un
                         // lot arrivé EN ENTIER (voir le commit) : dernière tranche de la passe,
-                        // et plus aucun fichier en échec ni en attente hors de cette tranche.
-                        const sentNames = new Set(sent.map((s) => s.name));
+                        // et tous les fichiers du lot réglés — envoyés, ou déjà présents.
+                        // (Un ancien `sent.length === chunk.length` ne comptait pas les
+                        // fichiers que le serveur trouvait déjà dans le dossier : un lot
+                        // complet ne publiait alors jamais.)
+                        //
+                        // Jamais sur « Remplacer » : une prise refaite n'est pas la fin d'un
+                        // enregistrement. Après « Rouvrir l'attribution », reprendre un
+                        // chapitre publiait une lecture que l'on savait incomplète.
                         const publishBook =
+                            !replaceKey &&
                             c === chunks.length - 1 &&
-                            sent.length === chunk.length &&
-                            progressRef.current.every((p) => p.status === 'terminé' || sentNames.has(p.name));
+                            progressRef.current.every((p) => p.status === 'terminé');
                         try {
                             const { res, data } = await fetchJsonWithRetry(
                                 `/api/books/${bookId}/audio/commit`,

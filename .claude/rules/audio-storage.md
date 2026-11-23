@@ -109,15 +109,24 @@ of that.
   dialogues call again with what remains. Never record only after all the copies — a
   timeout then leaves copies no row names (« Abysses », 3.8 GB, November 2026).
 - **« Remplacer » is the way to swap a take**, not delete-then-upload (which plays the new
-  take last). `upload-url` with `replaceKey`: the old take goes through `softDeleteTrack`
-  first, then the PUT is signed on the same name; retries use `existingKey`, never
-  `replaceKey`, so a landed new take is never trashed.
+  take last). `upload-url` with `replaceKey` alone: the old take goes through
+  `softDeleteTrack` first (public pages revalidated around it), then the PUT is signed on
+  the same name. Retries send `existingKey` WITH `replaceKey`, so a landed new take is never
+  trashed — and a slot taken back in between (the old take restored) is refused 409
+  `replaceConflict`, never renamed to a fresh slot at the end. A `replaceKey` that is absent
+  is only signed when this book's corbeille still holds it (a lost answer). A replacement
+  never publishes an « en attente » book.
 - **One upload at a time per book** (`AudioUploadLease`, `lib/audio/uploadLease.ts`). Two
   uploads signing at once get the same « next » name and the second PUT overwrites the first.
   `upload-url` claims the book with the dialogue's per-upload token (refused 409 `uploadLease`
   for any other token, a second tab of the same permanent included), the dialogue renews it
   every 2 min and releases it at the end; an abandoned claim lapses after 10 min. Any new path
-  that signs PUTs must claim it too.
+  that signs PUTs must claim it too. The dialogue claims it before hashing (`upload-lease`
+  `renew`), so a busy book is refused before any file is read. Presigned PUTs live no longer
+  than the claim (`URL_TTL_SECONDS = UPLOAD_LEASE_SECONDS`), and the dialogue re-signs a URL
+  near expiry before each attempt — which renews the claim or finds it lost — so a tab woken
+  from sleep cannot PUT onto a name given to another upload since. Paths that put a file
+  BACK into a folder (restore, rename) refuse while a claim is live: `uploadInProgressRefusal`.
 - **A PUT is only ever signed onto a key that holds nothing.** A retry's `existingKey` is
   re-signed only when the object is absent; when it is present with the file's own SHA-256
   (`headTrackChecksum` — B2 returns it on HEAD) it comes back `landed` and the dialogue skips
@@ -127,8 +136,15 @@ of that.
   `putTrackUrl`, `copyTrack`, `deleteTrack(s)` and `ensureFolderPlaceholder` throw
   `DevBucketWriteRefused` under `NODE_ENV=development` (the bucket is the real one, the
   database a stale copy). Reads stay open; `scripts/` (plain Node) are unaffected. Never set
-  the variable to get a test through — use the fake-bucket harness.
+  the variable to get a test through — use the fake-bucket harness
+  (`scripts/audio-fake-bucket.test.ts`). Per-track catches rethrow it, and
+  `unexpectedErrorResponse` answers it 409 `devBucketRefused`, which the dialogue does not retry.
+- **A rename never undoes its copy on a refused delete alone.** B2 can carry out a delete and
+  lose the answer: `renameTrack` HEADs the original first — gone means the rename happened,
+  unknown means both names are left in place.
 - **An upload publishes a book « en attente » only once it has landed in full** (`publish`
   on the last commit) — never on a first chunk. This holds even when the folder already had
   tracks: « Rouvrir l'attribution » (content/aide/07-attributions.md) relies on the rest of a
   recording republishing the book. Don't restrict it to empty folders (decided 2026-11-22).
+  « In full » means every file of the upload settled — sent, landed, or already present — and
+  never on a « Remplacer ».

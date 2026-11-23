@@ -313,7 +313,7 @@ function BatchProgressPanel({ phase, progress }: { phase: UploadPhase; progress:
                     )}
                     {retrying > 0 && failed > 0 && ' · '}
                     {failed > 0 && (
-                        <span className="text-red-500">
+                        <span className="text-red-600 dark:text-red-400">
                             {failed} en échec pour l’instant
                         </span>
                     )}
@@ -561,11 +561,13 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         try {
             // Plusieurs appels pour un gros dossier — voir requestDurationMeasure.
             const answer = await requestDurationMeasure(bookId);
-            if (!answer.ok) throw new Error(answer.message.replace(/\.$/, '').toLowerCase());
+            if (!answer.ok) throw new Error(answer.message);
             setDurationCheck(null);
             await refreshAll();
         } catch (e) {
-            setDurationCheck({ failed: e instanceof Error ? e.message : 'la mesure a échoué' });
+            // Shown as the server wrote it: lowercasing a whole message to fit it
+            // inside parentheses turned « … mesurées. Réessayez » into « réessayez ».
+            setDurationCheck({ failed: e instanceof Error ? e.message : 'La mesure a échoué.' });
         }
     }, [bookId, refreshAll]);
 
@@ -996,7 +998,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                 size="sm"
                                 disabled={busy}
                                 onClick={() => setDeleteAllOpen(true)}
-                                className="border-red-500/50 bg-card text-red-500 hover:bg-red-500/10"
+                                className="border-red-500/50 bg-card text-red-600 dark:text-red-400 hover:bg-red-500/10"
                             >
                                 <span className="flex items-center gap-2">
                                     <Trash2 className="h-4 w-4" /> Tout supprimer
@@ -1083,7 +1085,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                             )}
                             {zip.phase === 'error' && (
                                 <div className="flex items-center justify-between gap-2 text-xs">
-                                    <span className="text-red-500">{zip.error}</span>
+                                    <span className="text-red-600 dark:text-red-400">{zip.error}</span>
                                     <button
                                         type="button"
                                         onClick={zip.reset}
@@ -1415,26 +1417,44 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                         </div>
                                     )}
 
-                                    {uploadError && (
-                                        <p className="mt-3 text-sm text-red-500">{uploadError}</p>
-                                    )}
+                                    {/* Mounted at all times, like the archive's status above: a
+                                        live region that appears together with its text is not
+                                        announced, and these are the outcome of an upload — its
+                                        failure, or another upload holding the book. */}
+                                    <div role="alert">
+                                        {uploadError && (
+                                            <p className="mt-3 text-sm text-red-600 dark:text-red-400">{uploadError}</p>
+                                        )}
+                                    </div>
+                                    <p className="sr-only" role="status" aria-live="polite">
+                                        {busy ? 'Envoi en cours.' : ''}
+                                    </p>
 
-                                    {durationCheck === 'running' && (
-                                        <p
-                                            className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"
-                                            role="status"
-                                        >
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                            Calcul de la durée de lecture…
-                                        </p>
-                                    )}
-                                    {durationCheck && durationCheck !== 'running' && (
-                                        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-                                            Les fichiers sont bien en ligne, mais la durée de lecture n’a pas
-                                            pu être calculée ({durationCheck.failed}). Utilisez « Recalculer »
-                                            à côté de « Durée de la lecture » sur la fiche du livre.
-                                        </p>
-                                    )}
+                                    <div role="status" aria-live="polite">
+                                        {durationCheck === 'running' && (
+                                            <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                                Calcul de la durée de lecture…
+                                            </p>
+                                        )}
+                                        {durationCheck && durationCheck !== 'running' && (
+                                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+                                                <span>
+                                                    Les fichiers sont bien en ligne, mais la durée de lecture n’a pas
+                                                    pu être calculée. {durationCheck.failed}
+                                                </span>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => void measureAfterUpload()}
+                                                    className="h-7 bg-field border-border text-foreground hover:bg-muted"
+                                                >
+                                                    <RefreshCw className="h-3 w-3" /> Recalculer la durée
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     {/* The one-click way out of a partial failure.
                                         Re-picking the folder would re-send every file
@@ -1462,7 +1482,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                                 {p.name}
                                                             </span>
                                                             {p.error && (
-                                                                <span className="text-red-500">
+                                                                <span className="text-red-600 dark:text-red-400">
                                                                     {' '}
                                                                     — {p.error}
                                                                 </span>
@@ -1508,7 +1528,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                         <span
                                                             className={
                                                                 p.status === 'échec'
-                                                                    ? 'text-red-500'
+                                                                    ? 'text-red-600 dark:text-red-400'
                                                                     : p.status === 'finalisation'
                                                                       ? 'text-blue-600 dark:text-blue-300'
                                                                       : p.status === 'nouvelle tentative'
@@ -1563,7 +1583,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                             }}
                                                         />
                                                     </div>
-                                                    {p.error && <p className="mt-1 text-red-500">{p.error}</p>}
+                                                    {p.error && <p className="mt-1 text-red-600 dark:text-red-400">{p.error}</p>}
                                                 </div>
                                             ))}
                                         </div>

@@ -216,10 +216,18 @@ export default function TrashClient({
         startTransition(async () => {
             // Un gros groupe revient en plusieurs appels : chacun rend ce qu'il
             // n'a pas commencé (remainingIds) et ce qu'il a déjà fait (carry).
+            // Entre deux appels, un message dit où on en est : le bouton seul
+            // tournait sans rien dire pendant des dizaines de secondes.
             let res = await restoreTrashedGroup(trashIds);
+            let progress: ReturnType<typeof toast> | null = null;
             while (res.remainingIds?.length && res.carry) {
+                const done = res.carry.restored;
+                const title = `${done} fichier${done > 1 ? 's' : ''} sur ${trashIds.length} restauré${done > 1 ? 's' : ''}…`;
+                if (progress) progress.update({ id: progress.id, title, duration: Infinity });
+                else progress = toast({ title, duration: Infinity });
                 res = await restoreTrashedGroup(res.remainingIds, res.carry);
             }
+            progress?.dismiss();
             toast({
                 title: res.message,
                 variant: res.ok ? undefined : 'destructive',
@@ -522,7 +530,7 @@ function FileRowBody({ item, restoringId, purgingId, busy, onRestore, onPurge, h
                 {item.restoredAt ? (
                     <span className="text-xs text-muted-foreground">Restauré</span>
                 ) : item.purgedAt ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs text-red-500">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
                         <Trash2 className="h-3.5 w-3.5" aria-hidden /> Purgé
                     </span>
                 ) : (

@@ -16,6 +16,7 @@ import { apiErrorToast } from '@/admin/ApiErrorMessage';
 import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
 import { readNdjson } from '@/lib/ndjson';
 import { AudioDeleteProgress } from './AudioDeleteProgress';
+import { useWarnIfUnsavedChanges } from '@/components/userWarnIfUnsavedChanges';
 
 interface DeleteAllAudioTracksModalProps {
     isOpen: boolean;
@@ -46,6 +47,21 @@ export function DeleteAllAudioTracksModal({
     const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
     const confirmed = typed.trim() === String(trackCount);
+
+    // A large folder takes several requests: leaving the page stops between two
+    // of them. Nothing is lost (every slice is recorded), but the folder is left
+    // half-moved, so the browser asks first.
+    useWarnIfUnsavedChanges({
+        unsaved: isDeleting,
+        prompt: {
+            title: 'Suppression en cours',
+            description:
+                'Les pistes sont en cours de déplacement vers la corbeille. Si vous quittez la page, ' +
+                'celles qui restent resteront dans le dossier : il faudra relancer la suppression.',
+            confirmLabel: 'Quitter quand même',
+            cancelLabel: 'Rester sur la page',
+        },
+    });
 
     const handleDelete = async () => {
         if (!confirmed) return;
@@ -164,6 +180,9 @@ export function DeleteAllAudioTracksModal({
         <Dialog
             open={isOpen}
             onOpenChange={(open) => {
+                // Esc, a click outside and × all land here. Closed mid-run, the
+                // requests went on unseen while the bar said « Ne fermez pas ».
+                if (!open && isDeleting) return;
                 if (!open) setTyped('');
                 onOpenChange(open);
             }}

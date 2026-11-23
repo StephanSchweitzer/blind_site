@@ -34,6 +34,18 @@ export function extensionForMimeType(type: string): string {
  * them. A plain-MPEG frame sync (0xFFE…) covers both MP3 without an ID3 tag and
  * ADTS AAC.
  */
+/**
+ * Major brands of an MP4 container that may hold audio: the iTunes audio
+ * brands (M4A, audiobook M4B, protected M4P, Flash F4A/F4B) and the generic
+ * ones encoders write for plain AAC. A generic brand can also carry video —
+ * the sniff keeps out images and QuickTime, not every film.
+ */
+const AUDIO_FTYP_BRANDS = new Set([
+    'M4A ', 'M4B ', 'M4P ', 'F4A ', 'F4B ',
+    'mp41', 'mp42', 'isom', 'iso2', 'iso4', 'iso5', 'iso6', 'dash',
+    '3gp4', '3gp5', '3gp6', '3g2a',
+]);
+
 export function sniffAudioContainer(head: Uint8Array): string | null {
     const ascii = (at: number, s: string) =>
         head.length >= at + s.length && [...s].every((c, i) => head[at + i] === c.charCodeAt(0));
@@ -41,7 +53,9 @@ export function sniffAudioContainer(head: Uint8Array): string | null {
     if (head.length >= 4 && head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3) return 'webm';
     if (ascii(0, 'OggS')) return 'ogg';
     if (ascii(0, 'fLaC')) return 'flac';
-    if (ascii(4, 'ftyp')) return 'mp4';
+    // ISO base media is a family: an iPhone photo (heic), an AVIF image and a
+    // QuickTime film all start with `ftyp` too. Only the audio brands pass.
+    if (ascii(4, 'ftyp')) return AUDIO_FTYP_BRANDS.has(String.fromCharCode(...head.slice(8, 12))) ? 'mp4' : null;
     if (ascii(0, 'FORM') && (ascii(8, 'AIFF') || ascii(8, 'AIFC'))) return 'aiff';
     if (ascii(0, 'ID3')) return 'mp3';
     if (head.length >= 2 && head[0] === 0xff && (head[1] & 0xe0) === 0xe0) return 'mpeg';

@@ -20,9 +20,16 @@ import { parisDate } from '@/lib/paris-day';
  * dialogue renews it every two minutes while it works and releases it at the
  * end (`POST /api/books/[id]/audio/upload-lease`).
  *
- * A tab that dies keeps the book for at most UPLOAD_LEASE_SECONDS. That is
- * safe because its PUTs died with it: a presigned URL is only ever held by the
- * browser it was handed to.
+ * A tab that dies keeps the book for at most UPLOAD_LEASE_SECONDS. A tab that
+ * only SLEEPS (a laptop lid closed mid-upload) is the harder case: its PUTs
+ * wake up with it. So a presigned PUT lives no longer than a claim
+ * (upload-url's URL_TTL_SECONDS), and the dialogue re-signs a URL that is
+ * getting old before using it — a re-signing request that is itself a renewal,
+ * refused 409 once someone else holds the book. A woken tab therefore cannot
+ * PUT onto a name another upload has been given since.
+ *
+ * Restores and renames ask uploadInProgressRefusal (below) before putting a
+ * file into a held book: the lease is what says a PUT may still land there.
  *
  * No raw SQL: a conditional `updateMany`, then a `createMany` that skips a
  * duplicate (ON CONFLICT DO NOTHING) rather than raising one — this runs every
@@ -76,15 +83,48 @@ export async function releaseUploadLease(bookId: number, token: string): Promise
     await prisma.audioUploadLease.deleteMany({ where: { bookId, token } });
 }
 
-async function refusal(holderId: number | null, meId: number, until: Date): Promise<LeaseClaim> {
-    const isMe = holderId === meId;
-    const holder = holderId && !isMe
+/**
+ * Why a write that puts a file BACK into this book's folder must wait, or null
+ * when no upload holds the book.
+ *
+ * The lease only kept two uploads apart. A restore (or a rename) landing while
+ * an upload holds signed PUTs went unchecked: « Remplacer » moves the old take
+ * to the corbeille and signs a PUT on the very same key, so restoring that take
+ * from /admin/audio-corbeille, a second tab or a second permanent before the PUT
+ * landed copied it back, deleted its corbeille copy as « restored » — and the
+ * PUT then overwrote it. Same with an ordinary upload whose next name is the
+ * key being restored or renamed to. So those paths ask here first.
+ *
+ * `action` opens the sentence (« Restauration impossible »…).
+ */
+export async function uploadInProgressRefusal(bookId: number, action: string): Promise<string | null> {
+    const held = await prisma.audioUploadLease.findUnique({
+        where: { bookId },
+        select: { userId: true, expiresAt: true },
+    });
+    if (!held || held.expiresAt.getTime() <= Date.now()) return null;
+    const name = await holderName(held.userId, null);
+    const at = parisDate(held.expiresAt, { hour: '2-digit', minute: '2-digit' });
+    return (
+        `${action} pour l’instant : ${name} envoie des fichiers sur ce livre, et l’envoi pourrait ` +
+        `écraser ce fichier. Réessayez une fois l’envoi terminé (le livre se libère au plus tard à ${at}).`
+    );
+}
+
+async function holderName(holderId: number | null, meId: number | null): Promise<string> {
+    if (holderId !== null && holderId === meId) return 'vous';
+    const holder = holderId
         ? await prisma.user.findUnique({
               where: { id: holderId },
               select: { firstName: true, lastName: true, email: true },
           })
         : null;
-    const name = isMe ? 'vous' : getUserNameOnly(holder) || holder?.email || 'un autre permanent';
+    return getUserNameOnly(holder) || holder?.email || 'un autre permanent';
+}
+
+async function refusal(holderId: number | null, meId: number, until: Date): Promise<LeaseClaim> {
+    const isMe = holderId === meId;
+    const name = await holderName(holderId, meId);
     const at = parisDate(until, { hour: '2-digit', minute: '2-digit' });
     const who = isMe
         ? 'Un autre envoi est déjà en cours sur ce livre depuis votre compte (un autre onglet ou une autre fenêtre).'

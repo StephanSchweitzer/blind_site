@@ -53,8 +53,21 @@ export function notFoundResponse(message: string): NextResponse {
  * partir. Par défaut, on ne sait pas.
  */
 export function unexpectedErrorResponse(opts: UnexpectedErrorInput): NextResponse {
+    // Dev server only (lib/audio/bucket-core.ts): not an unknown fault but a
+    // refusal by design, the same on every retry. A 409 the upload dialogue does
+    // not retry, rather than a 500 it would try nine times over (three attempts
+    // per pass, three passes), re-hashing the files each pass.
+    if (isDevBucketRefusal(opts.error)) {
+        const message = opts.error.message;
+        return NextResponse.json({ error: message, message, devBucketRefused: true }, { status: 409 });
+    }
     const { message, ref } = unexpectedErrorResult(opts);
     return NextResponse.json({ error: message, message, unexpected: true, ref }, { status: 500 });
+}
+
+/** By name, not instanceof: this module must not import the bucket client. */
+function isDevBucketRefusal(error: unknown): error is Error {
+    return error instanceof Error && error.name === 'DevBucketWriteRefused';
 }
 
 interface UnexpectedErrorInput {
@@ -79,10 +92,7 @@ export function unexpectedErrorResult(opts: UnexpectedErrorInput): {
     console.error(`[${ref}] ${opts.where}`, opts.error);
     // Dev server only (lib/audio/bucket-core.ts): a refusal by design, which
     // explains itself — routes and server actions both end up here.
-    const what =
-        opts.error instanceof Error && opts.error.name === 'DevBucketWriteRefused'
-            ? opts.error.message
-            : opts.what;
+    const what = isDevBucketRefusal(opts.error) ? opts.error.message : opts.what;
     const message =
         `${what ?? 'Une erreur inattendue s’est produite sur le serveur.'} ` +
         `${opts.outcome ?? OUTCOME_UNKNOWN}`;

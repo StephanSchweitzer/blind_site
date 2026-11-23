@@ -30,13 +30,13 @@ Chaque fichier indique qui l'a supprimé, quand, et dans combien de jours il ser
 
 ## Restaurer
 
-(1) « **Restaurer tout** » remet en place tous les fichiers du livre. (2) « **Réduire** » masque le détail. (3) « **Restaurer** » remet en place un seul fichier.
+(1) « **Restaurer tout** » remet en place tous les fichiers du livre. (2) « **Réduire** » masque le détail. (3) « **Restaurer** » remet en place un seul fichier. Sur un livre qui a beaucoup de fichiers, « Restaurer tout » se fait en plusieurs étapes : un message indique combien sont déjà revenus.
 
 ![Corbeille audio - un groupe déplié, fichier par fichier](/admin/aide/images/corbeille-audio-02.jpg)
 
 Si le livre n'existe plus, la carte le signale avant le clic : le fichier restauré apparaît dans la page [Audio orphelin](/admin/aide/audio-orphelin), où vous pourrez le rattacher à un livre. Si une fiche a repris ce dossier entre-temps, le fichier rejoint son enregistrement, et le message de restauration la nomme.
 
-Un fichier ne revient que dans le dossier audio que sa fiche utilise aujourd'hui. Si la fiche a changé de dossier depuis la suppression — son enregistrement a été transféré à un autre livre, ou la fiche a absorbé un doublon dont elle n'a pas gardé le dossier —, la restauration est refusée et le motif s'affiche : le fichier irait sinon grossir l'enregistrement d'un autre livre. Elle est refusée de même quand le dossier est aussi celui d'une autre fiche.
+Un fichier ne revient que dans le dossier audio que sa fiche utilise aujourd'hui. Si la fiche a changé de dossier depuis la suppression — son enregistrement a été transféré à un autre livre, ou la fiche a absorbé un doublon dont elle n'a pas gardé le dossier —, la restauration est refusée et le motif s'affiche : le fichier irait sinon grossir l'enregistrement d'un autre livre. Elle est refusée de même quand le dossier est aussi celui d'une autre fiche. Pendant qu'un envoi de fichiers est en cours sur le livre, la restauration est refusée elle aussi, le temps que l'envoi se termine : il pourrait écraser le fichier restauré.
 
 ## Supprimer définitivement
 

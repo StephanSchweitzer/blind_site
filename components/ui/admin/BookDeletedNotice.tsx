@@ -15,7 +15,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useToast, toast as showToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { parisDateTimeDisplay } from '@/lib/paris-day';
 import { formatSizeKb } from '@/lib/pricing';
 import { ApiErrorMessage, apiErrorToast } from '@/admin/ApiErrorMessage';
@@ -103,6 +104,99 @@ function TrackGroup({
     );
 }
 
+interface TrackRestoreTally {
+    restored: number;
+    failed: number;
+    /** Pistes pas encore commencées — à repasser avec `continueAudio`. */
+    remaining: number[];
+    interrupted: boolean;
+}
+
+/**
+ * Rappelle POST /api/books/[id]/restore avec `continueAudio` tant qu'il reste des
+ * pistes et que chaque appel en ramène. Hors du composant : « Reprendre », dans
+ * le message qui suit, s'en sert alors que l'encadré a déjà disparu.
+ */
+async function continueTrackRestore(
+    bookId: number,
+    start: TrackRestoreTally,
+    onStep: (restored: number) => void,
+): Promise<TrackRestoreTally> {
+    const tally = { ...start, interrupted: false };
+    while (tally.remaining.length) {
+        const next = await fetch(`/api/books/${bookId}/restore`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audioTrackIds: tally.remaining, continueAudio: true }),
+        }).catch(() => null);
+        const data = next ? await next.json().catch(() => null) : null;
+        if (!next?.ok || !data) {
+            tally.interrupted = true;
+            break;
+        }
+        const step: number = data.audio?.restoredTracks ?? 0;
+        tally.restored += step;
+        tally.failed += data.audio?.failedTracks ?? 0;
+        tally.remaining = Array.isArray(data.remainingTrackIds) ? data.remainingTrackIds : [];
+        onStep(tally.restored);
+        // Rien n'est revenu : une requête de plus referait la même chose.
+        if (!step && tally.remaining.length) {
+            tally.interrupted = true;
+            break;
+        }
+    }
+    return tally;
+}
+
+/**
+ * Le message de fin. Interrompue, la restauration garde ce qui reste à ramener :
+ * « Reprendre » relance exactement ces pistes-là — auparavant le message
+ * renvoyait vers la Corbeille audio, où il fallait les retrouver et les cocher.
+ */
+function reportTrackRestore(bookId: number, title: string, tally: TrackRestoreTally): void {
+    const s = (n: number) => (n > 1 ? 's' : '');
+    const left = tally.failed + (tally.interrupted ? tally.remaining.length : 0);
+    const resumable = tally.interrupted && tally.remaining.length > 0;
+    showToast({
+        title: 'Fiche restaurée',
+        ...(tally.interrupted ? { variant: 'destructive' as const, duration: Infinity } : {}),
+        description:
+            `« ${title} » a été restauré. ${tally.restored} piste${s(tally.restored)} audio ` +
+            `restaurée${s(tally.restored)} depuis la corbeille.` +
+            (left > 0
+                ? ` ${left} piste${s(left)} ${left > 1 ? 'sont restées' : 'est restée'} dans la corbeille` +
+                  (resumable ? '.' : ' — voir Corbeille audio.')
+                : ''),
+        action: resumable ? (
+            <ToastAction
+                altText="Reprendre la restauration des pistes"
+                onClick={() => void resumeTrackRestore(bookId, title, tally)}
+            >
+                Reprendre
+            </ToastAction>
+        ) : undefined,
+    });
+}
+
+async function resumeTrackRestore(bookId: number, title: string, from: TrackRestoreTally): Promise<void> {
+    const total = from.remaining.length;
+    const progress = showToast({ title: 'Restauration des pistes…', description: `0 sur ${total}`, duration: Infinity });
+    const base = from.restored;
+    const tally = await continueTrackRestore(
+        bookId,
+        from,
+        (restored) =>
+            progress.update({
+                id: progress.id,
+                title: 'Restauration des pistes…',
+                description: `${restored - base} sur ${total}`,
+                duration: Infinity,
+            }),
+    );
+    progress.dismiss();
+    reportTrackRestore(bookId, title, tally);
+}
+
 export default function BookDeletedNotice({
     bookId,
     title,
@@ -116,6 +210,8 @@ export default function BookDeletedNotice({
     const [previewError, setPreviewError] = useState<UserFacingError | null>(null);
     const [withDeletionChecked, setWithDeletionChecked] = useState(true);
     const [earlierChecked, setEarlierChecked] = useState(false);
+    /** Pistes revenues jusqu'ici, quand la restauration prend plusieurs requêtes. */
+    const [trackProgress, setTrackProgress] = useState<{ restored: number; total: number } | null>(null);
 
     const on = new Date(deletedAt).toLocaleDateString('fr-FR', {
         day: '2-digit',
@@ -164,47 +260,22 @@ export default function BookDeletedNotice({
             // la fiche et ce qui tient dans son délai, les suivantes (continueAudio)
             // le reste. La fiche est déjà revenue — une panne ici ne la remet pas
             // en cause, d'où un message à part plutôt que l'erreur ci-dessous.
-            let remaining: number[] = Array.isArray(body?.remainingTrackIds) ? body.remainingTrackIds : [];
-            let restoredTracks: number = body?.audio?.restoredTracks ?? 0;
-            let failedTracks: number = body?.audio?.failedTracks ?? 0;
-            const continued = remaining.length > 0;
-            let interrupted = false;
-            while (remaining.length) {
-                const next = await fetch(`/api/books/${bookId}/restore`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ audioTrackIds: remaining, continueAudio: true }),
-                }).catch(() => null);
-                const data = next ? await next.json().catch(() => null) : null;
-                if (!next?.ok || !data) {
-                    interrupted = true;
-                    break;
-                }
-                const step: number = data.audio?.restoredTracks ?? 0;
-                restoredTracks += step;
-                failedTracks += data.audio?.failedTracks ?? 0;
-                remaining = Array.isArray(data.remainingTrackIds) ? data.remainingTrackIds : [];
-                // Rien n'est revenu : une requête de plus referait la même chose.
-                if (!step && remaining.length) {
-                    interrupted = true;
-                    break;
-                }
+            const remaining: number[] = Array.isArray(body?.remainingTrackIds) ? body.remainingTrackIds : [];
+            const first: TrackRestoreTally = {
+                restored: body?.audio?.restoredTracks ?? 0,
+                failed: body?.audio?.failedTracks ?? 0,
+                remaining,
+                interrupted: false,
+            };
+            if (!remaining.length) {
+                toast({ title: 'Fiche restaurée', description: body?.message ?? `« ${title} » a été restauré.` });
+            } else {
+                setTrackProgress({ restored: first.restored, total: chosen.length });
+                const tally = await continueTrackRestore(bookId, first, (restored) =>
+                    setTrackProgress({ restored, total: chosen.length }),
+                );
+                reportTrackRestore(bookId, title, tally);
             }
-
-            const s = (n: number) => (n > 1 ? 's' : '');
-            const left = failedTracks + (interrupted ? remaining.length : 0);
-            toast({
-                title: 'Fiche restaurée',
-                ...(interrupted ? { variant: 'destructive' as const, duration: Infinity } : {}),
-                description: !continued
-                    ? (body?.message ?? `« ${title} » a été restauré.`)
-                    : `« ${title} » a été restauré. ${restoredTracks} piste${s(restoredTracks)} audio ` +
-                      `restaurée${s(restoredTracks)} depuis la corbeille.` +
-                      (left > 0
-                          ? ` ${left} piste${s(left)} ${left > 1 ? 'sont restées' : 'est restée'} dans la corbeille — ` +
-                            'voir Corbeille audio.'
-                          : ''),
-            });
             setConfirmOpen(false);
             onRestored();
         } catch (error) {
@@ -216,6 +287,7 @@ export default function BookDeletedNotice({
             );
         } finally {
             setIsRestoring(false);
+            setTrackProgress(null);
         }
     };
 
@@ -339,6 +411,16 @@ export default function BookDeletedNotice({
                             </p>
                         </div>
                     )}
+
+                    {/* Monté en permanence : une région qui apparaît avec son texte n'est pas annoncée. */}
+                    <div role="status">
+                        {trackProgress && (
+                            <p className="text-sm text-muted-foreground">
+                                {trackProgress.restored} piste{trackProgress.restored > 1 ? 's' : ''} sur{' '}
+                                {trackProgress.total} revenue{trackProgress.restored > 1 ? 's' : ''} dans le dossier…
+                            </p>
+                        )}
+                    </div>
 
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isRestoring}>Annuler</AlertDialogCancel>

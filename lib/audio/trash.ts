@@ -10,7 +10,9 @@ import {
     listRawObjects,
     toOrderedTracks,
     MAX_COPY_BYTES,
+    DevBucketWriteRefused,
 } from './bucket';
+import { uploadInProgressRefusal } from './uploadLease';
 import { booksSharingAudioFolder, describeSharingBooks, findFolderClaimant } from './sharedFolder';
 import { queueOrphanFolder } from './orphanFolders';
 import { refreshBookAudioState, resolvePrefix, isKeyInsidePrefix } from './state';
@@ -370,6 +372,11 @@ export async function softDeleteTracks(opts: {
             }
             return { ...track, trashKey };
         } catch (e) {
+            // Dev server only, and the same answer for every track: let it
+            // reach the caller whole (lib/api-errors.ts words it) rather than
+            // become N × « copie vers la corbeille impossible ». Nothing was
+            // copied, so nothing is left behind.
+            if (e instanceof DevBucketWriteRefused) throw e;
             console.error('softDeleteTracks: copie impossible', track.key, e);
             failed.push({ filename: track.name, reason: 'copie vers la corbeille impossible' });
             return null;
@@ -566,11 +573,26 @@ export async function restoreTracksByIds(opts: {
     const rows: typeof found = [];
     const claimedKeys = new Set<string>();
     const folderByBook: DestinationCache = new Map();
+    const uploadingByFolder = new Map<string, boolean>();
     for (const row of found) {
         // Avant toute copie — voir restoreDestinationRefusal.
         const wrongFolder = await restoreDestinationRefusal(row.bookId, row.originalKey, folderByBook);
         if (wrongFolder) {
             failed.push({ filename: row.filename, reason: wrongFolder });
+            continue;
+        }
+        // Un envoi en cours pourrait écraser la piste revenue — voir
+        // uploadInProgressRefusal. Une fois par dossier.
+        const folder = folderOf(row.originalKey);
+        if (!uploadingByFolder.has(folder)) {
+            const dest = await destinationBookId(row.bookId, folder);
+            uploadingByFolder.set(folder, dest != null && (await uploadInProgressRefusal(dest, '')) !== null);
+        }
+        if (uploadingByFolder.get(folder)) {
+            failed.push({
+                filename: row.filename,
+                reason: 'un envoi de fichiers est en cours sur ce livre : réessayez une fois l’envoi terminé',
+            });
             continue;
         }
         if (claimedKeys.has(row.originalKey)) {
@@ -617,6 +639,7 @@ export async function restoreTracksByIds(opts: {
             }
             return row;
         } catch (e) {
+            if (e instanceof DevBucketWriteRefused) throw e; // see softDeleteTracks' copyOne
             console.error('restoreTracksByIds: copie impossible', row.originalKey, e);
             failed.push({ filename: row.filename, reason: 'copie depuis la corbeille impossible' });
             return null;
@@ -761,6 +784,18 @@ export async function markTrashOrigin(bookId: number, title: string): Promise<nu
 }
 
 
+const folderOf = (key: string) => key.slice(0, key.lastIndexOf('/') + 1);
+
+/**
+ * La fiche dans le dossier de laquelle une piste va revenir : la sienne, ou —
+ * ligne sans livre — celle qui revendique aujourd'hui le dossier, s'il y en a
+ * une (voir settleRestoredFolders).
+ */
+async function destinationBookId(bookId: number | null, folder: string): Promise<number | null> {
+    if (bookId != null) return bookId;
+    return (await findFolderClaimant(folder))?.id ?? null;
+}
+
 /** Dossier revendiqué par une fiche, et le refus éventuel qui en découle. */
 type DestinationCache = Map<number, { prefix: string; shared: string | null }>;
 
@@ -832,6 +867,12 @@ export async function restoreTrack(opts: {
     if (wrongFolder) {
         throw new AudioTrashError(`Restauration refusée : ${wrongFolder}.`);
     }
+
+    // See uploadInProgressRefusal: a pending PUT on this key would overwrite
+    // the track the moment after its corbeille copy is gone.
+    const dest = await destinationBookId(row.bookId, folderOf(row.originalKey));
+    const busy = dest != null ? await uploadInProgressRefusal(dest, 'Restauration impossible') : null;
+    if (busy) throw new AudioTrashError(busy);
 
     const inTrash = await headTrack(row.trashKey);
     if (!inTrash) {
