@@ -48,6 +48,7 @@ import {
     isAppleDoubleName,
     predictUploadNames,
 } from '@/lib/audio/naming';
+import { isCloudFinalising } from '@/lib/audio/upload-plan';
 import { bytesToKb, cdCount } from '@/lib/pricing';
 import { downloadEntryNames, playlistM3u, PLAYLIST_NAME } from '@/lib/audio/download-names';
 import {
@@ -817,9 +818,15 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         },
     });
 
-    /** Second phase: bytes sent, storage not done. See CloudFinalisingPanel. */
-    const finalising =
-        phase === 'finalising' || progress.some((p) => p.status === 'finalisation');
+    /**
+     * Second phase: every byte of the batch sent, storage not done. See
+     * CloudFinalisingPanel — and isCloudFinalising for why a single file
+     * waiting on the storage is not enough.
+     */
+    const finalising = useMemo(
+        () => isCloudFinalising(phase, progress.map((p) => p.status)),
+        [phase, progress],
+    );
 
     /**
      * Zip the whole folder. Nobody wants to click Download forty times.

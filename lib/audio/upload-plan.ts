@@ -34,6 +34,31 @@ export function needsResign(signed: { signedAt: number; ttlMs: number }, now: nu
  * « Rouvrir l'attribution », re-taking one chapter published a reading known to
  * be incomplete.
  */
+/**
+ * Whether the upload is in its silent tail — every byte of the batch sent, the
+ * storage (or the commit) still to answer — which is what the editor's
+ * « Préparation de l’audio dans le cloud » panel says.
+ *
+ * It used to be « any file waiting on the storage, or a commit under way ».
+ * Three transfers at a time on a folder of small tracks put a file in that wait
+ * every few hundred milliseconds and took it out again, and every chunk's commit
+ * did the same between two hashings: the panel mounted and unmounted dozens of
+ * times a minute, the list under it jumping each time, its clock back at 0:00.
+ * And its « Vos fichiers ont quitté votre ordinateur » was false at every one
+ * of those moments but the last.
+ *
+ * So nothing may still be waiting to go, going, or about to go again. Once that
+ * holds it stays held until the upload ends — unless a recovery pass really
+ * does send files again, which is the one time the panel should give way.
+ * `uploading` counts as well as `finalising`: between the last file's answer
+ * and the commit there is a render with every row settled and the phase not yet
+ * moved, and leaving it out unmounted the panel for that one frame.
+ */
+export function isCloudFinalising(phase: string, statuses: readonly string[]): boolean {
+    if (!statuses.length || (phase !== 'uploading' && phase !== 'finalising')) return false;
+    return statuses.every((s) => s === 'finalisation' || s === 'terminé' || s === 'échec');
+}
+
 export function shouldPublishBook(opts: {
     replacing: boolean;
     isLastChunk: boolean;

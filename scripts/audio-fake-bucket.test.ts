@@ -93,6 +93,20 @@ async function partA() {
         ],
         [true, false, false, false],
     );
+    const { isCloudFinalising } = require('../lib/audio/upload-plan.ts');
+    check(
+        'panneau « cloud » : seulement quand tout est parti — pas pour un fichier en attente du stockage parmi d’autres à envoyer',
+        [
+            isCloudFinalising('uploading', ['finalisation', 'en cours', 'en attente']),
+            isCloudFinalising('finalising', ['terminé', 'en attente']), // commit d'une tranche, d'autres suivent
+            isCloudFinalising('uploading', ['terminé', 'finalisation', 'échec']),
+            isCloudFinalising('uploading', ['terminé', 'terminé']), // entre la dernière réponse et le commit
+            isCloudFinalising('finalising', ['terminé', 'terminé']),
+            isCloudFinalising('preparing', ['échec', 'échec']), // pause avant une nouvelle passe
+            isCloudFinalising('uploading', ['terminé', 'nouvelle tentative']),
+        ],
+        [false, false, true, true, true, false, false],
+    );
 
     // --- key tickets (lib/audio/keyTicket.ts) ----------------------------------
     if (!process.env.NEXTAUTH_SECRET && !process.env.AUTH_SECRET) {
