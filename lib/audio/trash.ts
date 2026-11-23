@@ -871,7 +871,7 @@ export async function restoreTrack(opts: {
     // See uploadInProgressRefusal: a pending PUT on this key would overwrite
     // the track the moment after its corbeille copy is gone.
     const dest = await destinationBookId(row.bookId, folderOf(row.originalKey));
-    const busy = dest != null ? await uploadInProgressRefusal(dest, 'Restauration impossible') : null;
+    const busy = dest != null ? await uploadInProgressRefusal(dest, 'Restauration impossible', userId) : null;
     if (busy) throw new AudioTrashError(busy);
 
     const inTrash = await headTrack(row.trashKey);

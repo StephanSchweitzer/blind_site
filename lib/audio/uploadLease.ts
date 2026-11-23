@@ -95,18 +95,28 @@ export async function releaseUploadLease(bookId: number, token: string): Promise
  * PUT then overwrote it. Same with an ordinary upload whose next name is the
  * key being restored or renamed to. So those paths ask here first.
  *
- * `action` opens the sentence (« Restauration impossible »…).
+ * `action` opens the sentence (« Restauration impossible »…). `meId`, the
+ * permanent asking: when the upload is their own (another tab, or one whose
+ * release never arrived) the sentence says so, rather than naming them to
+ * themselves in the third person.
  */
-export async function uploadInProgressRefusal(bookId: number, action: string): Promise<string | null> {
+export async function uploadInProgressRefusal(
+    bookId: number,
+    action: string,
+    meId: number | null = null,
+): Promise<string | null> {
     const held = await prisma.audioUploadLease.findUnique({
         where: { bookId },
         select: { userId: true, expiresAt: true },
     });
     if (!held || held.expiresAt.getTime() <= Date.now()) return null;
-    const name = await holderName(held.userId, null);
     const at = parisDate(held.expiresAt, { hour: '2-digit', minute: '2-digit' });
+    const who =
+        meId !== null && held.userId === meId
+            ? 'un envoi de fichiers est en cours sur ce livre depuis votre compte (cet onglet ou un autre)'
+            : `${await holderName(held.userId, null)} envoie des fichiers sur ce livre`;
     return (
-        `${action} pour l’instant : ${name} envoie des fichiers sur ce livre, et l’envoi pourrait ` +
+        `${action} pour l’instant : ${who}, et l’envoi pourrait ` +
         `écraser ce fichier. Réessayez une fois l’envoi terminé (le livre se libère au plus tard à ${at}).`
     );
 }

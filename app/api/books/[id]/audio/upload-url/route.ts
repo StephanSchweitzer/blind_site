@@ -411,7 +411,9 @@ export const POST = withAdmin(async (req, { params, me }) => {
             try {
                 named = nextTrackName(names, originalName);
             } catch (e) {
-                return NextResponse.json({ message: (e as Error).message }, { status: 409 });
+                // A name that cannot sort after the last track stays so on a
+                // retry: `namingRefused` tells the dialogue not to retry it.
+                return NextResponse.json({ message: (e as Error).message, namingRefused: true }, { status: 409 });
             }
 
             if (nameSet.has(named.filename)) {

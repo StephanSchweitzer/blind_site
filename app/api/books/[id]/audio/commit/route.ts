@@ -47,7 +47,12 @@ export const maxDuration = 45;
  * Re-running used to insert a second UPLOAD event per filename — harmless for
  * the duration sum (last-wins) but not for an append-only trail meant to
  * describe what actually happened. Filenames that already have an UPLOAD
- * event at the same size are skipped rather than re-recorded.
+ * event at the same size are skipped rather than re-recorded — but only an
+ * event still describing the file there now: one followed by a DELETE (the
+ * corbeille, « Remplacer ») or a RENAME away from that name belonged to a file
+ * that has since left. Matching any UPLOAD ever, a take deleted and sent again
+ * under the same name and size (the last track, re-sent) was never journaled,
+ * and its browser-read duration was dropped with the event.
  *
  * ## Duration is measured afterwards, by a separate call
  *
@@ -155,17 +160,21 @@ export const POST = withAdmin(async (req, { params, me }) => {
     }
 
     // Skip filenames a previous, retried attempt already recorded at the same
-    // size — see the idempotency note above.
-    const already = candidates.length
+    // size — see the idempotency note above. Read in insertion order: an
+    // UPLOAD (or a RESTORE, which puts a recorded file back) marks the name as
+    // held at that size; a DELETE or a RENAME away from it empties it again.
+    const history = candidates.length
         ? await prisma.audioTrackEvent.findMany({
-              where: { bookId, action: 'UPLOAD', filename: { in: candidates.map((c) => c.filename) } },
-              select: { filename: true, sizeBytes: true },
+              where: { bookId, filename: { in: candidates.map((c) => c.filename) } },
+              select: { filename: true, action: true, sizeBytes: true },
+              orderBy: { id: 'asc' },
           })
         : [];
     const alreadyRecorded = new Map<string, Set<string>>();
-    for (const e of already) {
+    for (const e of history) {
         const sizes = alreadyRecorded.get(e.filename) ?? new Set<string>();
-        sizes.add(String(e.sizeBytes));
+        if (e.action === 'UPLOAD' || e.action === 'RESTORE') sizes.add(String(e.sizeBytes));
+        else sizes.clear();
         alreadyRecorded.set(e.filename, sizes);
     }
     const fresh = candidates.filter((c) => !alreadyRecorded.get(c.filename)?.has(String(c.sizeBytes)));

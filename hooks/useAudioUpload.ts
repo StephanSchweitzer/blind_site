@@ -203,6 +203,9 @@ const FETCH_ATTEMPTS = 3;
  */
 const LEASE_RENEW_MS = 120_000;
 
+/** How long the end of an upload waits for the book to be released before handing back. */
+const RELEASE_TIMEOUT_MS = 5_000;
+
 const RETRY_BASE_MS = 700;
 const MAX_BACKOFF_MS = 15_000;
 
@@ -606,6 +609,15 @@ async function fetchJsonWithRetry(url: string, init: RequestInit): Promise<JsonR
     );
 }
 
+/**
+ * The server refused a signing request for a reason a retry cannot change: a
+ * malformed request (400), or no name that sorts after the folder's last track
+ * (409 `namingRefused`). These used to go round every recovery pass and end as
+ * « échec côté serveur … prévenez l'informaticien », when the server's own
+ * message already said what to do.
+ */
+class SigningRefused extends Error {}
+
 export function useAudioUpload(bookId: number) {
     const [phase, setPhase] = useState<UploadPhase>('idle');
     const [progress, setProgress] = useState<FileProgress[]>([]);
@@ -673,6 +685,25 @@ export function useAudioUpload(bookId: number) {
         setFolderConflict(null);
         setFailedFiles([]);
         setPhase('idle');
+    }, []);
+
+    /**
+     * A track of the folder was renamed: if it is a file this upload had
+     * landed, it is no longer « to resend ».
+     *
+     * A file whose PUT landed but whose commit failed stays in `failedFiles`
+     * with the key it was given. Renamed meanwhile — say, to put it in its
+     * place — that key is empty again, and « Renvoyer » re-signed it
+     * (existingKey + ticket): the same take landed a second time, under its old
+     * name. The file IS in the folder, under its new name; forgetting it here
+     * is the truth, not a shortcut.
+     */
+    const forgetLandedKey = useCallback((key: string) => {
+        let name: string | null = null;
+        for (const [n, a] of assignedKeysRef.current) if (a.key === key) name = n;
+        if (name === null) return;
+        assignedKeysRef.current.delete(name);
+        setFailedFiles((files) => files.filter((f) => f.name !== name));
     }, []);
 
     const upload = useCallback(
@@ -915,9 +946,11 @@ export function useAudioUpload(bookId: number) {
                                 throw new Error(message);
                             }
                             if (!res.ok) {
-                                throw new Error(
-                                    String(data?.message ?? 'Préparation de l’envoi impossible'),
-                                );
+                                const message = String(data?.message ?? 'Préparation de l’envoi impossible');
+                                if (res.status === 400 || (res.status === 409 && data?.namingRefused)) {
+                                    throw new SigningRefused(message);
+                                }
+                                throw new Error(message);
                             }
                             const signedAt = Date.now();
                             const ttlMs = Number(data?.expiresIn ?? 600) * 1000;
@@ -932,14 +965,22 @@ export function useAudioUpload(bookId: number) {
                             // everything queued behind it — but not what already
                             // landed, and not the retry offer.
                             const message = e instanceof Error ? e.message : 'Erreur inattendue';
+                            // A refusal by principle: no recovery pass, and the
+                            // files behind it are held back too — sending them
+                            // alone would land them before the refused ones.
+                            const refused = e instanceof SigningRefused;
                             for (const f of [...chunk, ...downstream]) {
                                 fail(
                                     f.name,
                                     message,
-                                    'La préparation de l’envoi a échoué côté serveur. Relancez ' +
-                                        'les fichiers en échec avec le bouton ci-dessous ; s’ils ' +
-                                        'échouent encore, prévenez l’informaticien.',
-                                    true,
+                                    refused
+                                        ? 'Le serveur a refusé ce lot de fichiers pour la raison indiquée : ' +
+                                              'réessayer tel quel n’y changera rien. Corrigez d’abord ce qu’elle ' +
+                                              'désigne, puis relancez-les avec le bouton ci-dessous.'
+                                        : 'La préparation de l’envoi a échoué côté serveur. Relancez ' +
+                                              'les fichiers en échec avec le bouton ci-dessous ; s’ils ' +
+                                              'échouent encore, prévenez l’informaticien.',
+                                    !refused,
                                 );
                             }
                             publish();
@@ -1193,16 +1234,21 @@ export function useAudioUpload(bookId: number) {
                 clearInterval(renewal);
                 // `keepalive` : la fenêtre peut se fermer juste après. Un échec
                 // ici ne coûte qu'une attente — le livre se libère de lui-même.
-                void fetch(`/api/books/${bookId}/audio/upload-lease`, {
+                // Attendu, pas lancé en l'air : l'envoi rendait la main avant que
+                // le livre soit libéré, et un « Renommer » cliqué aussitôt était
+                // refusé au nom d'un envoi qui venait de se terminer.
+                await fetch(`/api/books/${bookId}/audio/upload-lease`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token: leaseToken, action: 'release' }),
                     keepalive: true,
+                    // Borné : un serveur muet ne doit pas laisser l'envoi « en cours ».
+                    signal: AbortSignal.timeout(RELEASE_TIMEOUT_MS),
                 }).catch(() => undefined);
             }
         },
         [bookId, publish, publishProgress],
     );
 
-    return { phase, progress, error, folderConflict, failedFiles, upload, reset };
+    return { phase, progress, error, folderConflict, failedFiles, upload, reset, forgetLandedKey };
 }

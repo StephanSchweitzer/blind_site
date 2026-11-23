@@ -14,7 +14,7 @@ import { Loader2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiErrorToast } from '@/admin/ApiErrorMessage';
 import { toUserFacingError, userErrorFromResponse } from '@/lib/user-error';
-import { isAppleDoubleName, renamePreview, WINDOWS_FORBIDDEN_CHARS } from '@/lib/audio/naming';
+import { isAllowedAudioExtension, isAppleDoubleName, renamePreview, trackNameProblem } from '@/lib/audio/naming';
 
 export interface AudioTrackRenameTarget {
     order: number;
@@ -76,14 +76,23 @@ export function RenameAudioTrackModal({
 
     const ext = track ? splitName(track.name).ext : '';
     // Composé (NFC), comme un envoi : voir sanitiseTrackTitle.
-    const trimmed = base.trim().normalize('NFC');
+    const typed = base.trim().normalize('NFC');
+    // Le nom complet collé, extension comprise — le geste naturel quand on copie
+    // un nom de fichier. Gardé tel quel, la piste devenait « ….mp3.mp3 » sans
+    // un mot : l'extension tapée est retirée, puisqu'elle est ajoutée d'office.
+    const extTyped =
+        !!ext && typed.length > ext.length + 1 && typed.toLowerCase().endsWith(`.${ext.toLowerCase()}`);
+    const trimmed = extTyped ? typed.slice(0, -(ext.length + 1)).trimEnd() : typed;
+    // Une AUTRE extension audio tapée : « x.wav » deviendrait « x.wav.mp3 ».
+    const otherExt = !!ext && isAllowedAudioExtension(trimmed);
     const newName = ext ? `${trimmed}.${ext}` : trimmed;
     // Le refus de la route, dit avant l'envoi : un nom en « ._ » est celui d'un
     // fichier de métadonnées Mac, que tous les listings ignorent (isAudioKey).
     const appleDouble = isAppleDoubleName(newName);
-    // Même refus : Windows ne sait pas créer ce fichier, ni au téléchargement
-    // d'une piste ni en décompressant l'archive.
-    const forbidden = WINDOWS_FORBIDDEN_CHARS.test(trimmed);
+    // Même règle que la route (trackNameProblem) : « / », « .. », un nom que
+    // Windows ne sait pas créer — ni au téléchargement d'une piste ni en
+    // décompressant l'archive. Rien tant que le champ est vide.
+    const problem = trimmed ? trackNameProblem(newName) : null;
     // Le refus de la route (« nom déjà pris »), dit pendant la saisie. Sans
     // distinction de casse : deux pistes qui ne diffèrent que par elle n'en
     // font qu'une une fois décompressées sous Windows.
@@ -92,9 +101,9 @@ export function RenameAudioTrackModal({
         folderNames.some((n) => n !== track?.name && n.normalize('NFC').toLowerCase() === newName.toLowerCase());
     const valid =
         trimmed.length > 0 &&
-        !trimmed.includes('/') &&
+        !problem &&
+        !otherExt &&
         !appleDouble &&
-        !forbidden &&
         !taken &&
         newName !== track?.name;
     // Où la piste ira, dans le portail et sur un CD — le but même d'un renommage.
@@ -144,7 +153,14 @@ export function RenameAudioTrackModal({
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+                // Not closable mid-request — see DeleteAudioTrackModal.
+                if (!open && isRenaming) return;
+                onOpenChange(open);
+            }}
+        >
             <DialogContent className="max-w-lg bg-card border-border">
                 <DialogHeader>
                     <DialogTitle className="text-foreground flex items-center gap-2">
@@ -206,11 +222,20 @@ export function RenameAudioTrackModal({
                                     Une autre piste de ce dossier porte déjà ce nom.
                                 </p>
                             )}
-                            {forbidden && (
-                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                                    Les caractères \ : * ? &quot; &lt; &gt; | ne sont pas acceptés : Windows ne peut pas
-                                    créer un fichier qui en contient, la piste ne se téléchargerait pas.
+                            {extTyped && !otherExt && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    L’extension « .{ext} » tapée à la fin est ignorée : elle est ajoutée d’office.
                                 </p>
+                            )}
+                            {otherExt && (
+                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                                    Ce nom se termine déjà par une extension audio : la piste s’appellerait «{' '}
+                                    <span className="font-mono break-all">{newName}</span> ». Retirez-la — l’extension
+                                    reste « .{ext} ».
+                                </p>
+                            )}
+                            {problem && (
+                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{problem}</p>
                             )}
                             {preview && (
                                 <p className="mt-2 text-sm text-foreground">

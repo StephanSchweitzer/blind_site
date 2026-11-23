@@ -22,6 +22,7 @@ import {
     predictUploadNames,
     renamePreview,
     WINDOWS_FORBIDDEN_CHARS,
+    trackNameProblem,
 } from '../lib/audio/naming';
 import { downloadEntryNames, playlistM3u, windowsSafeName } from '../lib/audio/download-names';
 import { missingInMiddle } from '../lib/audio/folder-selection';
@@ -465,6 +466,13 @@ check(
         true,
         false,
     ]);
+    check(
+        'noms de piste refusés au renommage',
+        ['1000 3 Fin.mp3', 'a/b.mp3', 'Partie 3...mp3', 'a?b.mp3', 'a	b.mp3', 'CON.mp3', 'lpt1 .mp3', 'Concert.mp3', ' '].map(
+            (n) => trackNameProblem(n) !== null,
+        ),
+        [false, true, true, true, true, true, true, false, true],
+    );
 }
 
 // --------------------------------- nouveau choix d'un dossier : trou au milieu

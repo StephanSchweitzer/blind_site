@@ -54,10 +54,16 @@ export function DeleteAudioTrackModal({
     const [typed, setTyped] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Reset when a different track is targeted, without a state-setting effect.
-    const [lastKey, setLastKey] = useState<string | null>(null);
-    if (track && track.key !== lastKey) {
-        setLastKey(track.key);
+    // Reset for each fresh opening, without a state-setting effect.
+    //
+    // Keyed on the track AND on the dialogue being open, as in
+    // RenameAudioTrackModal: keyed on the track alone, cancelling and reopening
+    // the SAME row brought back the number typed before — the button already
+    // armed, one Enter away from a move the permanent had backed out of.
+    const [lastOpened, setLastOpened] = useState<string | null>(null);
+    const openFor = isOpen && track ? track.key : null;
+    if (openFor !== lastOpened) {
+        setLastOpened(openFor);
         setTyped('');
     }
 
@@ -104,7 +110,16 @@ export function DeleteAudioTrackModal({
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+                // Esc, a click outside and × all land here. Closed mid-request, the
+                // move went on unseen and its answer arrived as a stray toast — the
+                // same rule as « Tout supprimer ».
+                if (!open && isDeleting) return;
+                onOpenChange(open);
+            }}
+        >
             <DialogContent className="max-w-lg bg-card border-border">
                 <DialogHeader>
                     <DialogTitle className="text-foreground flex items-center gap-2">

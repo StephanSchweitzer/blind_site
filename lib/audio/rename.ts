@@ -80,7 +80,7 @@ export async function renameTrack(opts: {
 
     // An upload may hold a signed PUT on the new name: it would land on the
     // renamed track. See uploadInProgressRefusal.
-    const busy = await uploadInProgressRefusal(bookId, 'Renommage impossible');
+    const busy = await uploadInProgressRefusal(bookId, 'Renommage impossible', userId);
     if (busy) throw new AudioRenameError(busy);
 
     const head = await headTrack(oldKey);

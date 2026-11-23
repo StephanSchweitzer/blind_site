@@ -67,6 +67,8 @@ export function DeleteAllAudioTracksModal({
         if (!confirmed || isDeleting) return;
         setIsDeleting(true);
         setProgress({ done: 0, total: trackCount });
+        // Hors du try : le catch doit savoir si des pistes ont déjà quitté le dossier.
+        let moved = 0;
         try {
             // Un gros dossier se vide en plusieurs requêtes : chacune fait ce qui
             // tient dans son délai et répond `remaining` (voir TIME_BUDGET_MS dans
@@ -80,7 +82,6 @@ export function DeleteAllAudioTracksModal({
                 trackCountAfter?: number;
             };
             let confirmCount = trackCount;
-            let moved = 0;
             let data: Done;
             for (;;) {
                 // Ce qui a déjà quitté le dossier avant cette requête : la barre
@@ -155,17 +156,41 @@ export function DeleteAllAudioTracksModal({
             onOpenChange(false);
             setTyped('');
         } catch (err) {
+            const known = toUserFacingError(err).kind === 'known';
+            const base = apiErrorToast(err, {
+                title: 'Suppression impossible',
+                action: `Supprimer les ${trackCount} pistes du livre #${bookId}`,
+            });
+            // Un refus qui arrive sur une requête de relance (un dossier modifié
+            // entre-temps : 409) n'est pas « rien n'a changé » : les requêtes
+            // précédentes ont déjà vidé une partie du dossier. Le toast ne le
+            // disait pas, la liste n'était pas relue et la fenêtre restait sur l'ancien
+            // compte — chaque nouvel essai retombait sur le même refus.
+            const s = (n: number) => (n > 1 ? 's' : '');
             toast(
-                apiErrorToast(err, {
-                    title: 'Suppression impossible',
-                    action: `Supprimer les ${trackCount} pistes du livre #${bookId}`,
-                }),
+                moved > 0
+                    ? {
+                          ...base,
+                          duration: Infinity,
+                          title: known ? 'Suppression interrompue' : base.title,
+                          description: (
+                              <span>
+                                  <span className="block mb-1">
+                                      {`${moved} piste${s(moved)} déjà déplacée${s(moved)} dans la corbeille avant ` +
+                                          'l’interruption. Les autres sont encore dans le dossier : relancez la ' +
+                                          'suppression depuis la liste à jour.'}
+                                  </span>
+                                  {base.description}
+                              </span>
+                          ),
+                      }
+                    : base,
             );
-            // Issue inconnue : le fichier a pu bouger malgré l'erreur. On referme et
-            // on relit le dossier, pour que la liste montre l'état réel plutôt
-            // que celui d'avant la tentative. Un refus connu, lui, n'a rien
-            // changé — la fenêtre reste ouverte.
-            if (toUserFacingError(err).kind !== 'known') {
+            // Issue inconnue, ou pistes déjà déplacées : on referme et on relit
+            // le dossier, pour que la liste montre l'état réel plutôt que celui
+            // d'avant la tentative. Un refus connu à la première requête, lui,
+            // n'a rien changé — la fenêtre reste ouverte.
+            if (!known || moved > 0) {
                 onDeleted?.();
                 onOpenChange(false);
                 setTyped('');

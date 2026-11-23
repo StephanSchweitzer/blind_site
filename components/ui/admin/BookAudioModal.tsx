@@ -383,6 +383,8 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     const [durationCheck, setDurationCheck] = useState<'running' | { failed: string } | null>(null);
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    /** The track whose link the player holds, playing or paused — see stopPlaybackOf. */
+    const loadedKeyRef = useRef<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     /** « Remplacer » : the picker for the one new take, and the track it replaces. */
     const replaceInputRef = useRef<HTMLInputElement | null>(null);
@@ -403,6 +405,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         failedFiles,
         upload,
         reset,
+        forgetLandedKey,
     } = useAudioUpload(bookId);
     const zip = useAudioFolderZip();
     const confirm = useConfirm();
@@ -522,12 +525,31 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         const fresh = await freshTrack(track);
         if (!fresh) return;
         el.src = fresh.url;
+        loadedKeyRef.current = fresh.key;
         setPlayingKey(fresh.key);
         // A source that won't load is reported by the player's onError below;
         // only a refusal to start (the browser's autoplay rule) lands here.
         void el.play().catch((e: unknown) => {
             if (e instanceof DOMException && e.name === 'NotAllowedError') notifyError('Lecture impossible.');
         });
+    };
+
+    /**
+     * Unload the player when the track it holds leaves its key — moved to the
+     * corbeille, renamed, replaced. It used to keep playing a link to an object
+     * that no longer existed (until the next range request failed, with a
+     * « Lecture impossible » about a track nobody was asking for), and its
+     * controls could resume it. `null`: whatever it holds.
+     */
+    const stopPlaybackOf = (key: string | null) => {
+        const el = audioRef.current;
+        if (!el || !loadedKeyRef.current || (key !== null && key !== loadedKeyRef.current)) return;
+        el.pause();
+        // No src, then load(): the element empties without firing onError.
+        el.removeAttribute('src');
+        el.load();
+        loadedKeyRef.current = null;
+        setPlayingKey(null);
     };
 
     /** A download link past its hour leads to a storage error page: re-sign it first. */
@@ -682,6 +704,7 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             confirmLabel: 'Remplacer',
         });
         if (!ok) return;
+        stopPlaybackOf(target.key);
         reset();
         replaceKeyRef.current = target.key;
         await handleFilesChosen([file]);
@@ -796,6 +819,13 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         return sum;
     }, [data]);
     const activeTrash = trash.filter((t) => !t.restoredAt);
+    /**
+     * Keys the folder holds today. A corbeille row whose original key is among
+     * them cannot come back — the restore refuses to overwrite — and the usual
+     * reason is « Remplacer »: the new take took the old one's name. The button
+     * used to be offered anyway, and only the refusal said why.
+     */
+    const liveKeys = useMemo(() => new Set((data?.tracks ?? []).map((t) => t.key)), [data]);
     const playingTrackName = data?.tracks.find((t) => t.key === playingKey)?.name ?? null;
     const zipping = zip.phase === 'running';
 
@@ -1922,7 +1952,9 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                         Aucun fichier supprimé pour ce livre.
                                     </p>
                                 )}
-                                {trash.map((item) => (
+                                {trash.map((item) => {
+                                    const slotTaken = !item.restoredAt && liveKeys.has(item.originalKey);
+                                    return (
                                     <div
                                         key={item.id}
                                         className="flex items-center gap-3 rounded-md border border-border bg-field p-2"
@@ -1945,6 +1977,16 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                     <> · {retentionLabel(item)}</>
                                                 )}
                                             </div>
+                                            {slotTaken && (
+                                                <div
+                                                    id={`trash-slot-${item.id}`}
+                                                    className="mt-1 text-xs text-amber-700 dark:text-amber-300"
+                                                >
+                                                    Une piste du dossier porte aujourd’hui ce nom — souvent la nouvelle
+                                                    version qui l’a remplacée. Pour restaurer celle-ci, renommez ou
+                                                    supprimez d’abord la piste actuelle.
+                                                </div>
+                                            )}
                                         </div>
                                         {item.restoredAt ? (
                                             <span className="text-xs text-muted-foreground">Restauré</span>
@@ -1954,7 +1996,8 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => void handleRestore(item)}
-                                                disabled={restoringId === item.id}
+                                                disabled={restoringId === item.id || slotTaken}
+                                                aria-describedby={slotTaken ? `trash-slot-${item.id}` : undefined}
                                                 className="bg-card border-border text-foreground hover:bg-muted"
                                             >
                                                 {restoringId === item.id ? (
@@ -1969,7 +2012,8 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                             </Button>
                                         )}
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -2003,7 +2047,10 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                 onOpenChange={setDeleteOpen}
                 bookId={bookId}
                 track={target}
-                onDeleted={() => void refreshAll()}
+                onDeleted={() => {
+                    if (target) stopPlaybackOf(target.key);
+                    void refreshAll();
+                }}
             />
 
             <DeleteAllAudioTracksModal
@@ -2011,7 +2058,10 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                 onOpenChange={setDeleteAllOpen}
                 bookId={bookId}
                 trackCount={data?.trackCount ?? 0}
-                onDeleted={() => void refreshAll()}
+                onDeleted={() => {
+                    stopPlaybackOf(null);
+                    void refreshAll();
+                }}
             />
 
             <RenameAudioTrackModal
@@ -2020,7 +2070,13 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                 bookId={bookId}
                 track={renameTarget}
                 folderNames={data?.tracks.map((t) => t.name) ?? []}
-                onRenamed={() => void refreshAll()}
+                onRenamed={() => {
+                    if (renameTarget) {
+                        stopPlaybackOf(renameTarget.key);
+                        forgetLandedKey(renameTarget.key);
+                    }
+                    void refreshAll();
+                }}
             />
         </>
     );

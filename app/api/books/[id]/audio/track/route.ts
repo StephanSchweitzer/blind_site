@@ -6,7 +6,7 @@ import { resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
 import { booksSharingAudioFolder, sharedFolderRefusal } from '@/lib/audio/sharedFolder';
 import { renameTrack, AudioRenameError } from '@/lib/audio/rename';
-import { splitExtension, isAppleDoubleName, WINDOWS_FORBIDDEN_CHARS } from '@/lib/audio/naming';
+import { splitExtension, isAppleDoubleName, trackNameProblem } from '@/lib/audio/naming';
 import { isAudioKey } from '@/lib/audio/bucket';
 import { unexpectedErrorResponse } from '@/lib/api-errors';
 
@@ -142,22 +142,13 @@ export const PATCH = withAdmin(async (req, { params, me }) => {
     if (!key) {
         return NextResponse.json({ message: 'Clé manquante' }, { status: 400 });
     }
-    if (!newName) {
-        return NextResponse.json({ message: 'Le nouveau nom est vide.' }, { status: 400 });
-    }
-    if (newName.includes('/') || newName.includes('..') || newName.length > 255) {
-        return NextResponse.json({ message: 'Nom de fichier invalide.' }, { status: 400 });
-    }
-    // Un nom que Windows ne sait pas créer : la piste ne se téléchargerait plus
-    // sur la plupart des postes des bénévoles.
-    if (WINDOWS_FORBIDDEN_CHARS.test(newName)) {
-        return NextResponse.json(
-            {
-                message:
-                    'Les caractères \\ : * ? " < > | ne sont pas acceptés : Windows ne peut pas créer un fichier qui en contient.',
-            },
-            { status: 400 },
-        );
+    // Vide, « / », « .. », trop long, ou un nom que Windows ne sait pas créer
+    // (la piste ne se téléchargerait plus sur la plupart des postes des
+    // bénévoles) : la même règle que la fenêtre de renommage, qui le dit pendant
+    // la saisie. « Nom de fichier invalide » ne disait pas lequel.
+    const nameProblem = trackNameProblem(newName);
+    if (nameProblem) {
+        return NextResponse.json({ message: nameProblem }, { status: 400 });
     }
 
     const book = await prisma.book.findUnique({

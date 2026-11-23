@@ -340,6 +340,44 @@ export function predictUploadNames(existing: string[], originals: string[]): str
 /** Characters Windows refuses in a file name — a track named with one cannot be downloaded there. */
 export const WINDOWS_FORBIDDEN_CHARS = /[\\:*?"<>|]/;
 
+/** Control characters: Windows refuses them too, and they are invisible in every list. */
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
+/** Device names Windows reserves, whatever the extension (`CON.mp3` included). */
+const WINDOWS_RESERVED_NAMES = /^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])$/i;
+
+/**
+ * Why a track cannot take this name, or null — the one definition read by the
+ * rename dialogue (said while typing) and by PATCH /api/books/[id]/audio/track
+ * (the guard).
+ *
+ * The forbidden characters alone let through two other names Windows will not
+ * create — control characters (a tab pasted with the text) and reserved device
+ * names like `CON` — so the track would not download, nor unzip from the
+ * archive, on most volunteers' machines. `..` is refused because
+ * isKeyInsidePrefix refuses any key containing it: the track would drop out of
+ * every write path the moment it had that name.
+ */
+export function trackNameProblem(name: string): string | null {
+    if (!name.trim()) return 'Le nouveau nom est vide.';
+    if (name.length > 255) return 'Ce nom est trop long (255 caractères au plus).';
+    if (name.includes('/')) return 'La barre oblique « / » n’est pas acceptée dans un nom de piste.';
+    if (name.includes('..')) {
+        return 'Deux points qui se suivent (« .. ») ne sont pas acceptés dans un nom de piste : utilisez un seul point ou « … ».';
+    }
+    if (WINDOWS_FORBIDDEN_CHARS.test(name)) {
+        return 'Les caractères \\ : * ? " < > | ne sont pas acceptés : Windows ne peut pas créer un fichier qui en contient.';
+    }
+    if (CONTROL_CHARS.test(name)) {
+        return 'Ce nom contient un caractère invisible (tabulation ou caractère de contrôle, souvent collé avec le texte) : Windows ne peut pas créer ce fichier.';
+    }
+    const stem = name.split('.')[0].replace(/[ .]+$/, '');
+    if (WINDOWS_RESERVED_NAMES.test(stem)) {
+        return `« ${stem} » est un nom réservé par Windows : la piste ne pourrait pas y être enregistrée.`;
+    }
+    return null;
+}
+
 export interface RenamePreview {
     /** 1-based playback position the track would take under its new name. */
     position: number;

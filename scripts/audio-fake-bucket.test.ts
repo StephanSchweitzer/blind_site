@@ -324,6 +324,27 @@ async function partB() {
             [200, [[C1.slice(pp.length), null], [K.slice(pp.length), 999]]],
         );
 
+        // A retried commit is not journaled twice; the same file sent again
+        // after its deletion, under the same name and size, is.
+        const commitK = () =>
+            quiet(() =>
+                commit.POST(
+                    new NextRequest(`http://localhost/api/books/${pbook}/audio/commit`, {
+                        method: 'POST',
+                        body: JSON.stringify({ uploaded: [{ key: K, size: 300, durationSeconds: 999, ticket: kTicket }] }),
+                    }),
+                    { params: Promise.resolve({ id: String(pbook) }) },
+                ),
+            );
+        const uploadsOfK = () =>
+            prisma.audioTrackEvent.count({ where: { bookId: pbook, action: 'UPLOAD', filename: K.slice(pp.length) } });
+        await commitK();
+        const afterRetry = await uploadsOfK();
+        await softDeleteTracks({ bookId: pbook, prefix: pp, tracks: [{ key: K, name: K.slice(pp.length), sizeBytes: 300 }], userId: me.id });
+        F.objects.set(K, { size: 300, checksum: fresh.checksum });
+        await commitK();
+        check('commit relancé : pas de second UPLOAD ; renvoyé après suppression : journalisé', [afterRetry, await uploadsOfK()], [1, 2]);
+
         // --- slices under a deadline: recorded as they go, resumed cleanly --------
         console.log('\n  tranches sous délai');
         const lp = `zzz-test/${ts}-slices/`;
