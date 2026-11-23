@@ -131,13 +131,18 @@ of that.
   re-signed only when the object is absent; when it is present with the file's own SHA-256
   (`headTrackChecksum` — B2 returns it on HEAD) it comes back `landed` and the dialogue skips
   the PUT and commits it. Anything else gets a fresh name. Same size used to be enough, which let
-  a crafted key overwrite another track of the same size.
+  a crafted key overwrite another track of the same size. An ABSENT key skips `nextTrackName`,
+  so it is only re-signed with the ticket `upload-url` handed out with it
+  (`lib/audio/keyTicket.ts`, an HMAC over book + key, 24 h, on `NEXTAUTH_SECRET`); `commit`
+  believes the browser's `durationSeconds` only for a ticketed key — a legacy track's event
+  carries none.
 - **The dev server cannot write to the bucket** unless `AUDIO_DEV_BUCKET_WRITES=1`:
   `putTrackUrl`, `copyTrack`, `deleteTrack(s)` and `ensureFolderPlaceholder` throw
   `DevBucketWriteRefused` under `NODE_ENV=development` (the bucket is the real one, the
   database a stale copy). Reads stay open; `scripts/` (plain Node) are unaffected. Never set
   the variable to get a test through — use the fake-bucket harness
-  (`scripts/audio-fake-bucket.test.ts`). Per-track catches rethrow it, and
+  (`scripts/audio-fake-bucket.test.ts`, which also covers slicing under a deadline). The real-
+  bucket e2e (`scripts/audio-manage.e2e.ts`) only runs with `--real-bucket`. Per-track catches rethrow it, and
   `unexpectedErrorResponse` answers it 409 `devBucketRefused`, which the dialogue does not retry.
 - **A rename never undoes its copy on a refused delete alone.** B2 can carry out a delete and
   lose the answer: `renameTrack` HEADs the original first — gone means the rename happened,

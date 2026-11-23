@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { listRawObjects } from '@/lib/audio/bucket';
 import { refreshBookAudioState, resolvePrefix, isKeyInsidePrefix } from '@/lib/audio/state';
 import { softDeleteTracks } from '@/lib/audio/trash';
+import { verifyKeyTicket } from '@/lib/audio/keyTicket';
 import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 
 /** An upload that lands more than this far off the announced size is suspect. */
@@ -84,7 +85,7 @@ export const POST = withAdmin(async (req, { params, me }) => {
     }
 
     const body = await req.json().catch(() => null);
-    const uploaded: { key?: unknown; size?: unknown; durationSeconds?: unknown }[] = Array.isArray(
+    const uploaded: { key?: unknown; size?: unknown; durationSeconds?: unknown; ticket?: unknown }[] = Array.isArray(
         body?.uploaded,
     )
         ? body.uploaded
@@ -137,8 +138,17 @@ export const POST = withAdmin(async (req, { params, me }) => {
             continue;
         }
 
+        // The browser's reading of the length is believed only for a key
+        // upload-url handed out (its ticket, lib/audio/keyTicket.ts). Any key
+        // in the folder passes the checks above — a legacy track included — and
+        // a crafted duration on one of those fed the public reading time until
+        // someone pressed « Recalculer ». Without a ticket the event is still
+        // recorded; it just carries no duration.
         const durationSeconds =
-            typeof u.durationSeconds === 'number' && Number.isFinite(u.durationSeconds) && u.durationSeconds > 0
+            typeof u.durationSeconds === 'number' &&
+            Number.isFinite(u.durationSeconds) &&
+            u.durationSeconds > 0 &&
+            verifyKeyTicket(bookId, key, u.ticket)
                 ? Math.round(u.durationSeconds)
                 : null;
         candidates.push({ key, filename: key.slice(prefix.length), sizeBytes: actual, durationSeconds });

@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { pool } from '@/lib/concurrency';
+import { needsResign, shouldPublishBook } from '@/lib/audio/upload-plan';
 
 /**
  * Uploads audio files straight from the browser to the storage bucket.
@@ -145,24 +146,22 @@ interface SignedFile {
      * straight to the commit. See upload-url's reuse rule.
      */
     landed?: boolean;
-    /** When `url` was signed, on this machine's clock — see RESIGN_MARGIN_MS. */
+    /**
+     * upload-url's proof that it assigned `key` (lib/audio/keyTicket.ts): sent
+     * back with `existingKey` on a retry, and with the key to the commit.
+     */
+    ticket?: string;
+    /** When `url` was signed, on this machine's clock — see needsResign. */
     signedAt: number;
     /** How long `url` lives (the response's `expiresIn`). */
     ttlMs: number;
 }
 
-/**
- * A URL this close to expiry is signed again before a PUT starts on it.
- *
- * URLs live as long as the upload's claim on the book (ten minutes, see
- * upload-url's URL_TTL_SECONDS): a chunk of fifty files three at a time can
- * reach its last files later than that, and a tab woken from sleep holds URLs
- * signed before someone else may have taken the book. Re-signing goes through
- * upload-url with `existingKey` — same key when it is still free — and renews
- * the claim on the way, or answers 409 because the book is someone else's now.
- * A PUT already under way is unaffected: expiry is checked when it starts.
- */
-const RESIGN_MARGIN_MS = 120_000;
+/** A key the server assigned to a picked file, kept for retries. */
+interface AssignedKey {
+    key: string;
+    ticket?: string;
+}
 
 /**
  * Above this, a file is hashed on its own. `sha256Base64` holds a whole file
@@ -630,7 +629,8 @@ export function useAudioUpload(bookId: number) {
     const progressRef = useRef<FileProgress[]>([]);
     const lastProgressPublishRef = useRef(0);
     /**
-     * originalName → the key the server assigned it, surviving across both
+     * originalName → the key the server assigned it, with the ticket that
+     * proves so (an absent key is only re-signed with it), surviving across both
      * the internal recovery passes of one `upload()` call AND a later,
      * separate call from "Renvoyer les fichiers en échec" — `progressRef` is
      * rebuilt from scratch on every `upload()` invocation, so the mapping
@@ -638,7 +638,7 @@ export function useAudioUpload(bookId: number) {
      * the naming-collision note in putWithRetry's caller for why this is
      * what makes a retry idempotent instead of a duplicate.
      */
-    const assignedKeysRef = useRef<Map<string, string>>(new Map());
+    const assignedKeysRef = useRef<Map<string, AssignedKey>>(new Map());
 
     const publish = useCallback(() => {
         setProgress([...progressRef.current]);
@@ -708,12 +708,12 @@ export function useAudioUpload(bookId: number) {
              * NEW take is never trashed and never misplaced.
              */
             const signingRequest = (f: File, checksum: string) => {
-                const existingKey = assignedKeysRef.current.get(f.name);
+                const assigned = assignedKeysRef.current.get(f.name);
                 return {
                     name: f.name,
                     size: f.size,
                     checksum,
-                    ...(existingKey ? { existingKey } : {}),
+                    ...(assigned ? { existingKey: assigned.key, keyTicket: assigned.ticket } : {}),
                     ...(replaceKey ? { replaceKey } : {}),
                 };
             };
@@ -770,7 +770,7 @@ export function useAudioUpload(bookId: number) {
 
             /**
              * Before each PUT attempt: stop once the book is someone else's, and
-             * re-sign a URL near its expiry — see RESIGN_MARGIN_MS. Updates `s`
+             * re-sign a URL near its expiry — see needsResign. Updates `s`
              * in place, so the commit names the key that was actually written.
              */
             const prepareSigned = async (
@@ -780,7 +780,7 @@ export function useAudioUpload(bookId: number) {
                 checksum: string,
             ): Promise<PutPlan> => {
                 if (leaseLost) throw new PutError('Envoi interrompu', false, leaseLost);
-                if (Date.now() < s.signedAt + s.ttlMs - RESIGN_MARGIN_MS) return 'send';
+                if (!needsResign(s, Date.now())) return 'send';
 
                 let answer: JsonResult;
                 try {
@@ -813,7 +813,7 @@ export function useAudioUpload(bookId: number) {
                     throw new PutError('Le serveur n’a pas préparé l’envoi de ce fichier.', true, HINT_TRANSIENT);
                 }
                 Object.assign(s, fresh, { signedAt: Date.now(), ttlMs: Number(data?.expiresIn ?? 600) * 1000 });
-                assignedKeysRef.current.set(file.name, s.key);
+                assignedKeysRef.current.set(file.name, { key: s.key, ticket: s.ticket });
                 row.assignedName = s.filename;
                 return s.landed ? 'landed' : 'send';
             };
@@ -956,7 +956,7 @@ export function useAudioUpload(bookId: number) {
                             // "Renvoyer les fichiers en échec" call — asks the
                             // server to re-sign this exact key instead of being
                             // renamed into a new slot.
-                            assignedKeysRef.current.set(s.originalName, s.key);
+                            assignedKeysRef.current.set(s.originalName, { key: s.key, ticket: s.ticket });
                         }
                         // Already in the folder: nothing to send, nothing to verify.
                         // Settled here as done rather than failed, so re-picking a
@@ -990,7 +990,7 @@ export function useAudioUpload(bookId: number) {
 
                         // --- 2. PUT straight to the bucket -----------------------
                         setPhase('uploading');
-                        const sent: { key: string; size: number; name: string }[] = [];
+                        const sent: { key: string; size: number; name: string; ticket?: string }[] = [];
                         let queue = 0;
 
                         // Kicked off now, in parallel with signing and every PUT
@@ -1017,7 +1017,7 @@ export function useAudioUpload(bookId: number) {
                                 if (s.landed) {
                                     row.status = 'terminé';
                                     row.loaded = row.total;
-                                    sent.push({ key: s.key, size: file.size, name: s.originalName });
+                                    sent.push({ key: s.key, size: file.size, name: s.originalName, ticket: s.ticket });
                                     publish();
                                     continue;
                                 }
@@ -1036,7 +1036,7 @@ export function useAudioUpload(bookId: number) {
                                     row.status = 'terminé';
                                     row.loaded = row.total;
                                     // Already in the folder under another name: nothing to commit.
-                                    if (plan !== 'present') sent.push({ key: s.key, size: file.size, name: s.originalName });
+                                    if (plan !== 'present') sent.push({ key: s.key, size: file.size, name: s.originalName, ticket: s.ticket });
                                 } catch (e) {
                                     const err = e instanceof PutError ? e : null;
                                     fail(
@@ -1070,20 +1070,12 @@ export function useAudioUpload(bookId: number) {
                                 durationSeconds: await (durationPromises.get(s.name) ?? Promise.resolve(null)),
                             })),
                         );
-                        // Publier un livre « en attente », seulement sur le dernier envoi d'un
-                        // lot arrivé EN ENTIER (voir le commit) : dernière tranche de la passe,
-                        // et tous les fichiers du lot réglés — envoyés, ou déjà présents.
-                        // (Un ancien `sent.length === chunk.length` ne comptait pas les
-                        // fichiers que le serveur trouvait déjà dans le dossier : un lot
-                        // complet ne publiait alors jamais.)
-                        //
-                        // Jamais sur « Remplacer » : une prise refaite n'est pas la fin d'un
-                        // enregistrement. Après « Rouvrir l'attribution », reprendre un
-                        // chapitre publiait une lecture que l'on savait incomplète.
-                        const publishBook =
-                            !replaceKey &&
-                            c === chunks.length - 1 &&
-                            progressRef.current.every((p) => p.status === 'terminé');
+                        // Publier un livre « en attente » : voir shouldPublishBook.
+                        const publishBook = shouldPublishBook({
+                            replacing: replaceKey !== null,
+                            isLastChunk: c === chunks.length - 1,
+                            statuses: progressRef.current.map((p) => p.status),
+                        });
                         try {
                             const { res, data } = await fetchJsonWithRetry(
                                 `/api/books/${bookId}/audio/commit`,
@@ -1091,10 +1083,11 @@ export function useAudioUpload(bookId: number) {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
-                                        uploaded: sentWithDurations.map(({ key, size, durationSeconds }) => ({
+                                        uploaded: sentWithDurations.map(({ key, size, durationSeconds, ticket }) => ({
                                             key,
                                             size,
                                             durationSeconds,
+                                            ticket,
                                         })),
                                         ...(publishBook ? { publish: true } : {}),
                                     }),

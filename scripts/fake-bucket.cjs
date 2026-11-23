@@ -11,6 +11,7 @@
  *   failDelete     Set<key> — delete refused (5xx), object kept
  *   deleteThenFail Set<key> — delete CARRIED OUT, answer lost (5xx) — B2 does this
  *   copyError      Error thrown by every copy (e.g. a DevBucketWriteRefused)
+ *   copyDelayMs    every copy takes this long — to stage a deadline
  */
 const core = require('../lib/audio/bucket-core.ts');
 
@@ -51,6 +52,7 @@ module.exports = {
     },
     getTrackUrl: async (key) => `fake://get/${encodeURIComponent(key)}`,
     copyTrack: async (from, to) => {
+        if (F.copyDelayMs) await new Promise((r) => setTimeout(r, F.copyDelayMs));
         if (F.copyError) throw F.copyError;
         const o = F.objects.get(from);
         if (!o) throw new Error(`NoSuchKey ${from}`);

@@ -29,6 +29,7 @@ const F = (globalThis as unknown as {
         failDelete: Set<string>;
         deleteThenFail: Set<string>;
         copyError: Error | null;
+        copyDelayMs?: number;
     };
 }).__fake;
 
@@ -72,6 +73,51 @@ async function partA() {
     const res = await quiet(async () => unexpectedErrorResponse({ where: 'test', error: new DevBucketWriteRefused('envoi') }));
     const body = await res.json();
     check('refus du serveur de dev : 409, pas 500, et dit pourquoi', [res.status, body.devBucketRefused, /AUDIO_DEV_BUCKET_WRITES/.test(body.message)], [409, true, true]);
+
+    // --- the dialogue's decisions (lib/audio/upload-plan.ts) ------------------
+    const { needsResign, shouldPublishBook } = require('../lib/audio/upload-plan.ts');
+    const now = Date.now();
+    check(
+        'URL signée il y a 1 min (10 min de vie) : gardée ; il y a 8 min 30 : re-signée',
+        [needsResign({ signedAt: now - 60_000, ttlMs: 600_000 }, now), needsResign({ signedAt: now - 510_000, ttlMs: 600_000 }, now)],
+        [false, true],
+    );
+    const pub = (replacing: boolean, isLastChunk: boolean, statuses: string[]) => shouldPublishBook({ replacing, isLastChunk, statuses });
+    check(
+        'publication : envoi complet (fichiers déjà présents compris) oui ; échec, tranche non finale, « Remplacer » non',
+        [
+            pub(false, true, ['terminé', 'terminé']),
+            pub(false, true, ['terminé', 'échec']),
+            pub(false, false, ['terminé', 'terminé']),
+            pub(true, true, ['terminé']),
+        ],
+        [true, false, false, false],
+    );
+
+    // --- key tickets (lib/audio/keyTicket.ts) ----------------------------------
+    if (!process.env.NEXTAUTH_SECRET && !process.env.AUTH_SECRET) {
+        console.log('   tickets ignorés : NEXTAUTH_SECRET absent de l’environnement.');
+        return;
+    }
+    const { issueKeyTicket, verifyKeyTicket } = require('../lib/audio/keyTicket.ts');
+    const t = issueKeyTicket(12, 'dirt/x/1000 01 A.mp3');
+    const tampered = t.slice(0, -2) + (t.endsWith('AA') ? 'BB' : 'AA');
+    check(
+        'ticket : valide pour sa clé, refusé pour un autre livre, une autre clé, une signature altérée',
+        [
+            verifyKeyTicket(12, 'dirt/x/1000 01 A.mp3', t),
+            verifyKeyTicket(13, 'dirt/x/1000 01 A.mp3', t),
+            verifyKeyTicket(12, 'dirt/x/1000 02 B.mp3', t),
+            verifyKeyTicket(12, 'dirt/x/1000 01 A.mp3', tampered),
+            verifyKeyTicket(12, 'dirt/x/1000 01 A.mp3', undefined),
+        ],
+        [true, false, false, false, false],
+    );
+    const realNow = Date.now;
+    Date.now = () => realNow() + 25 * 60 * 60 * 1000;
+    const expired = verifyKeyTicket(12, 'dirt/x/1000 01 A.mp3', t);
+    Date.now = realNow;
+    check('ticket : périmé après 24 h', expired, false);
 }
 
 async function partB() {
@@ -201,8 +247,11 @@ async function partB() {
             [r.status, r.signed, F.objects.has(C5), r.data.expiresIn, 'strategy' in (r.data.files?.[0] ?? {}), 'checksum' in (r.data.files?.[0] ?? {})],
             [200, [C5], false, 600, false, false],
         );
+        const slotTicket = r.data.files?.[0]?.ticket;
         r = await sign({ ...take, replaceKey: C5, existingKey: C5 });
-        check('reprise, place encore libre : même clé re-signée', [r.status, r.signed], [200, [C5]]);
+        check('reprise sans ticket, place libre : 409, rien signé', [r.status, r.signed], [409, []]);
+        r = await sign({ ...take, replaceKey: C5, existingKey: C5, keyTicket: slotTicket });
+        check('reprise avec ticket, place encore libre : même clé re-signée', [r.status, r.signed], [200, [C5]]);
 
         // The old take comes back from the corbeille before the new one lands.
         F.objects.set(C5, { size: 500, checksum: sha('5') });
@@ -215,7 +264,81 @@ async function partB() {
 
         r = await sign({ ...take, replaceKey: `${pp}0000 00 Nulle part.mp3` });
         check('remplacer une piste qui n’a jamais existé : 409, rien signé', [r.status, r.signed], [409, []]);
+
+        // --- an absent existingKey needs the ticket that came with it -----------
+        console.log('\n  reprise d’une clé absente');
+        const fresh = { name: 'nouveau.mp3', size: 300, checksum: sha('f') };
+        r = await sign(fresh);
+        const K = r.data.files?.[0]?.key as string;
+        const kTicket = r.data.files?.[0]?.ticket as string;
+        check('envoi neuf : nommé après la dernière piste, avec un ticket', [r.status, K > C9, typeof kTicket], [200, true, 'string']);
+        r = await sign({ ...fresh, existingKey: K, keyTicket: kTicket });
+        check('reprise avec son ticket (PUT jamais arrivé) : même clé re-signée', [r.signed, r.data.files?.[0]?.reused], [[K], true]);
+        const CRAFTED = `${pp}1000 00 Avant tout.mp3`;
+        r = await sign({ ...fresh, existingKey: CRAFTED });
+        check('clé absente inventée, sans ticket : jamais signée, nom neuf', [r.signed.includes(CRAFTED), r.data.files?.[0]?.reused], [false, false]);
+        r = await sign({ ...fresh, existingKey: CRAFTED, keyTicket: kTicket });
+        check('clé absente inventée, ticket d’une autre clé : jamais signée', r.signed.includes(CRAFTED), false);
         await releaseUploadLease(pbook, lease);
+
+        // --- commit believes a browser duration only with a ticket ---------------
+        console.log('\n  durée transmise au commit');
+        const commit = require('../app/api/books/[id]/audio/commit/route.ts');
+        F.objects.set(K, { size: 300, checksum: fresh.checksum });
+        const res: Response = await quiet(() =>
+            commit.POST(
+                new NextRequest(`http://localhost/api/books/${pbook}/audio/commit`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        uploaded: [
+                            { key: K, size: 300, durationSeconds: 999, ticket: kTicket },
+                            { key: C1, size: 500, durationSeconds: 777 },
+                        ],
+                    }),
+                }),
+                { params: Promise.resolve({ id: String(pbook) }) },
+            ),
+        );
+        const events = await prisma.audioTrackEvent.findMany({
+            where: { bookId: pbook, action: 'UPLOAD' },
+            select: { filename: true, durationSeconds: true },
+            orderBy: { filename: 'asc' },
+        });
+        check(
+            'piste envoyée (ticket) : durée gardée ; piste ancienne sans ticket : durée ignorée',
+            [res.status, events.map((e: { filename: string; durationSeconds: number | null }) => [e.filename, e.durationSeconds])],
+            [200, [[C1.slice(pp.length), null], [K.slice(pp.length), 999]]],
+        );
+
+        // --- slices under a deadline: recorded as they go, resumed cleanly --------
+        console.log('\n  tranches sous délai');
+        const lp = `zzz-test/${ts}-slices/`;
+        const lbook = await newBook('tranches', lp);
+        const names = Array.from({ length: 23 }, (_, i) => `1000 ${String(i + 1).padStart(2, '0')} Piste.mp3`);
+        for (const n of names) F.objects.set(`${lp}${n}`, { size: 1000, checksum: null, lastModified: new Date(Date.now() - 86_400_000) });
+        const listed = async () => (await bucket.listBookTracks(lp)).map((t: { key: string; name: string; sizeBytes: number }) => ({ key: t.key, name: t.name, sizeBytes: t.sizeBytes }));
+        const corbeille = () => [...F.objects.keys()].filter((k) => k.startsWith(`corbeille/${lbook}/`)).length;
+        const rows = () => prisma.deletedAudioTrack.count({ where: { bookId: lbook } });
+        F.copyDelayMs = 300; // one slice (ten copies side by side) outlasts the 150 ms deadline below
+
+        let step = await softDeleteTracks({ bookId: lbook, prefix: lp, tracks: await listed(), userId: me.id, deadline: Date.now() - 1 });
+        check('délai déjà passé : rien commencé, tout « remaining »', [step.moved, step.remaining, corbeille(), await rows()], [0, 23, 0, 0]);
+        step = await softDeleteTracks({ bookId: lbook, prefix: lp, tracks: await listed(), userId: me.id, deadline: Date.now() + 150 });
+        check('délai court : une tranche de 10, enregistrée, le reste intact', [step.moved, step.remaining, corbeille(), await rows(), (await listed()).length], [10, 13, 10, 10, 13]);
+        step = await softDeleteTracks({ bookId: lbook, prefix: lp, tracks: await listed(), userId: me.id });
+        check('appel suivant : finit, sans recopier', [step.moved, step.remaining, corbeille(), await rows(), (await listed()).length], [13, 0, 23, 23, 0]);
+        check(
+            'journal : une entrée DELETE par piste',
+            await prisma.audioTrackEvent.count({ where: { bookId: lbook, action: 'DELETE' } }),
+            23,
+        );
+
+        const ids = (await prisma.deletedAudioTrack.findMany({ where: { bookId: lbook }, select: { id: true } })).map((x: { id: number }) => x.id);
+        let back = await restoreTracksByIds({ trashIds: ids, userId: me.id, deadline: Date.now() + 150 });
+        check('restauration sous délai : une tranche, le reste rendu', [back.restored, back.remainingIds.length, (await listed()).length], [10, 13, 10]);
+        back = await restoreTracksByIds({ trashIds: back.remainingIds, userId: me.id });
+        check('restauration, appel suivant : tout est revenu, corbeille vide', [back.restored, (await listed()).length, corbeille()], [13, 23, 0]);
+        F.copyDelayMs = 0;
 
         // --- the dev guard reaches the caller whole ------------------------------
         console.log('\n  refus du serveur de dev');

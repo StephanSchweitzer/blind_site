@@ -14,7 +14,7 @@
  * actions (upload-url, commit, track, tracks, upload-lease, the orphan
  * linking), which need the session and cache stubs of e2e-next-stubs.cjs:
  *
- *   node --env-file=.env --conditions=react-server --require ./scripts/e2e-next-stubs.cjs --import tsx scripts/audio-manage.e2e.ts
+ *   node --env-file=.env --conditions=react-server --require ./scripts/e2e-next-stubs.cjs --import tsx scripts/audio-manage.e2e.ts --real-bucket
  *
  * Never calls purgeExpiredAudioTrash: the dev database is a stale copy whose
  * old corbeille rows name production's real corbeille copies.
@@ -116,6 +116,18 @@ async function main() {
     if (SCRATCHES.some((p) => p.startsWith('dirt/'))) throw new Error('Refus : le scratch ne doit jamais viser dirt/.');
     if (!(globalThis as { __e2eNextStubs?: boolean }).__e2eNextStubs) {
         throw new Error('Lancez avec --require ./scripts/e2e-next-stubs.cjs (voir l’en-tête).');
+    }
+    // This one writes to the REAL bucket (scratch prefixes under 2022/), to
+    // prove B2 itself behaves — checksums on HEAD, copy sizes, DeleteObjects.
+    // Ordinary checks of the audio code belong in scripts/audio-fake-bucket.test.ts,
+    // which touches no bucket at all. So the real one takes an explicit flag:
+    // a leftover from a run that died (four `_eca-test-objectlock-retest-*`
+    // objects were still there in November 2026) is a cost paid for nothing.
+    if (!process.argv.includes('--real-bucket')) {
+        throw new Error(
+            'Ce test écrit dans le VRAI stockage. Ajoutez --real-bucket pour le lancer ; sinon, ' +
+                'utilisez scripts/audio-fake-bucket.test.ts.',
+        );
     }
 
     console.log(`Bucket ${AUDIO_BUCKET}, scratch ${SCRATCH}\n`);

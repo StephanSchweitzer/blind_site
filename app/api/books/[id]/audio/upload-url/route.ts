@@ -16,6 +16,7 @@ import { pool } from '@/lib/concurrency';
 import { booksSharingAudioFolder, sharedFolderUploadRefusal } from '@/lib/audio/sharedFolder';
 import { softDeleteTrack, AudioTrashError } from '@/lib/audio/trash';
 import { claimUploadLease, isLeaseToken, UPLOAD_LEASE_SECONDS } from '@/lib/audio/uploadLease';
+import { issueKeyTicket, verifyKeyTicket } from '@/lib/audio/keyTicket';
 import { revalidateChangedBooks, snapshotPublicBooks } from '@/lib/revalidate-public';
 
 /**
@@ -67,6 +68,12 @@ interface RequestedFile {
      * into a fresh slot; see the loop below for when it's honoured.
      */
     existingKey?: unknown;
+    /**
+     * The ticket that came with `existingKey` (lib/audio/keyTicket.ts). Needed
+     * only to re-sign an ABSENT key: without it, a crafted request could name
+     * any free key and skip nextTrackName.
+     */
+    keyTicket?: unknown;
     /**
      * « Remplacer » : the bucket key of the track this one file takes the place
      * of. Honoured on a single-file request only. The FIRST request moves the
@@ -302,7 +309,10 @@ export const POST = withAdmin(async (req, { params, me }) => {
         // either:
         //  - absent — the earlier PUT never landed: the key is signed again,
         //    and writing it overwrites nothing (the upload lease keeps any
-        //    other upload out of the folder meanwhile);
+        //    other upload out of the folder meanwhile). Only with the ticket
+        //    this route handed out with the key (lib/audio/keyTicket.ts): an
+        //    absent key skips nextTrackName, so without proof that WE assigned
+        //    it, a crafted one could land anywhere in the playing order;
         //  - or present with the SAME BYTES — the SHA-256 B2 stored for it
         //    (headTrackChecksum) equals this file's. It landed; nothing is
         //    signed (`landed`), the dialogue skips the PUT and hands it
@@ -335,7 +345,7 @@ export const POST = withAdmin(async (req, { params, me }) => {
                 isAllowedAudioExtension(requestedName) &&
                 !isAppleDoubleName(requestedName);
             const currentSize = sizeByExistingKey.get(requestedKey);
-            if (nameIsUsable && currentSize === undefined) {
+            if (nameIsUsable && currentSize === undefined && verifyKeyTicket(bookId, requestedKey, f.keyTicket)) {
                 reuseKey = requestedKey;
             } else if (
                 nameIsUsable &&
@@ -477,6 +487,8 @@ export const POST = withAdmin(async (req, { params, me }) => {
             contentType,
             reused,
             landed,
+            // Offered back with `existingKey` on a retry, and with the key to commit.
+            ticket: issueKeyTicket(bookId, key),
         })),
         skipped,
     });
@@ -592,7 +604,9 @@ async function replaceOne(opts: {
     return NextResponse.json({
         prefix,
         expiresIn: URL_TTL_SECONDS,
-        files: [{ originalName, filename, key, url, contentType, reused: false, landed: false }],
+        files: [
+            { originalName, filename, key, url, contentType, reused: false, landed: false, ticket: issueKeyTicket(bookId, key) },
+        ],
         skipped: [],
         replaced,
     });
