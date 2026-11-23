@@ -24,7 +24,8 @@ import {
     WINDOWS_FORBIDDEN_CHARS,
     trackNameProblem,
 } from '../lib/audio/naming';
-import { downloadEntryNames, playlistM3u, windowsSafeName } from '../lib/audio/download-names';
+import { archiveLayout, downloadEntryNames, playlistM3u, PLAYLIST_NAME, windowsSafeName } from '../lib/audio/download-names';
+import { CD_BURN_CAPACITY_BYTES, cdFolderName, splitIntoCds } from '../lib/audio/cd-split';
 import { missingInMiddle } from '../lib/audio/folder-selection';
 
 let failures = 0;
@@ -514,6 +515,135 @@ check(
             { file: 'd', before: 'E' },
         ],
     );
+}
+
+// ------------------------------------------- téléchargement ZIP (un dossier par CD)
+
+{
+    const CAP = CD_BURN_CAPACITY_BYTES;
+    const MB = 1_000_000;
+    const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+    /** Concatenated groups are 0…n-1: contiguous, nothing reordered, nothing lost. */
+    const inOrder = (groups: number[][], n: number) =>
+        JSON.stringify(groups.flat()) === JSON.stringify(Array.from({ length: n }, (_, i) => i));
+
+    check('aucune piste : aucun CD', splitIntoCds([]), { groups: [], oversized: [] });
+    check('tient sur un CD : un seul groupe', splitIntoCds([100 * MB, 200 * MB, 300 * MB]).groups, [[0, 1, 2]]);
+    check('exactement la capacité : un CD', splitIntoCds([CAP / 2, CAP / 2]).groups, [[0, 1]]);
+    check('un octet de trop : deux CD', splitIntoCds([CAP / 2, CAP / 2 + 1]).groups, [[0], [1]]);
+
+    // 1,5 Go en 30 pistes de 50 Mo : trois CD de 500 Mo, pas 650 + 650 + 200.
+    const fifty = Array.from({ length: 30 }, () => 50 * MB);
+    const even = splitIntoCds(fifty);
+    check('1,5 Go : trois CD', even.groups.length, 3);
+    check(
+        '1,5 Go : CD équilibrés (500 Mo chacun)',
+        even.groups.map((g) => sum(g.map((i) => fifty[i]))),
+        [500 * MB, 500 * MB, 500 * MB],
+    );
+    check('1,5 Go : ordre conservé', inOrder(even.groups, fifty.length), true);
+
+    // Tailles irrégulières : nombre minimal, aucun CD au-delà de la capacité, ordre intact.
+    const uneven = [310, 45, 220, 98, 400, 12, 330, 77, 150, 260, 199, 61, 405, 33].map((x) => x * MB);
+    const cut = splitIntoCds(uneven);
+    const greedy = (() => {
+        let n = 1;
+        let f = 0;
+        for (const s of uneven) {
+            if (f + s > CAP) {
+                n++;
+                f = 0;
+            }
+            f += s;
+        }
+        return n;
+    })();
+    check('tailles irrégulières : nombre minimal de CD', cut.groups.length, greedy);
+    check(
+        'tailles irrégulières : aucun CD au-delà de la capacité',
+        cut.groups.every((g) => sum(g.map((i) => uneven[i])) <= CAP),
+        true,
+    );
+    check('tailles irrégulières : ordre conservé', inOrder(cut.groups, uneven.length), true);
+    // Le plus gros CD ne peut pas descendre plus bas sans un CD de plus : vérifié en force brute.
+    {
+        const n = uneven.length;
+        const k = cut.groups.length;
+        let best = Infinity;
+        const walk = (start: number, left: number, worst: number) => {
+            if (left === 1) {
+                best = Math.min(best, Math.max(worst, sum(uneven.slice(start))));
+                return;
+            }
+            for (let end = start + 1; end <= n - left + 1; end++) {
+                walk(end, left - 1, Math.max(worst, sum(uneven.slice(start, end))));
+            }
+        };
+        walk(0, k, 0);
+        check(
+            'tailles irrégulières : le plus gros CD est le plus petit possible',
+            Math.max(...cut.groups.map((g) => sum(g.map((i) => uneven[i])))),
+            best,
+        );
+    }
+
+    // Une piste plus grosse qu'un CD : seule dans son groupe, et signalée.
+    const big = [200 * MB, 300 * MB, 900 * MB, 100 * MB, 150 * MB];
+    const withBig = splitIntoCds(big);
+    check('piste trop grosse : seule dans son groupe', withBig.groups, [[0, 1], [2], [3, 4]]);
+    check('piste trop grosse : signalée', withBig.oversized, [2]);
+    check('piste trop grosse, seule piste : un groupe, signalée', splitIntoCds([900 * MB]), {
+        groups: [[0]],
+        oversized: [0],
+    });
+
+    check('nom de dossier, moins de 10 CD', cdFolderName(0, 3), 'CD 1 sur 3');
+    check('nom de dossier, 10 CD et plus : zéro en tête', cdFolderName(0, 12), 'CD 01 sur 12');
+    check('nom de dossier, 10 CD et plus : dernier', cdFolderName(11, 12), 'CD 12 sur 12');
+
+    // Disposition complète : un seul dossier, ou un par CD.
+    const tracks = fifty.map((sizeBytes, i) => ({ name: `1000 ${i + 1} Chapitre.mp3`, sizeBytes }));
+    const flat = archiveLayout(tracks, false);
+    check('un seul dossier : pas de sous-dossier', flat.paths.every((p) => !p.includes('/')), true);
+    check('un seul dossier : une liste de lecture à la racine', flat.playlists.map((p) => p.name), [PLAYLIST_NAME]);
+    check('un seul dossier : aucun dossier CD', flat.folders, 0);
+
+    const split = archiveLayout(tracks, true);
+    check('un dossier par CD : trois dossiers', split.folders, 3);
+    check('un dossier par CD : numérotation continue (nom calculé sur tout le dossier)', split.numbered, true);
+    check('un dossier par CD : première piste', split.paths[0], 'CD 1 sur 3/001 1000 1 Chapitre.mp3');
+    check('un dossier par CD : le CD 2 reprend à la piste suivante', split.paths[10], 'CD 2 sur 3/011 1000 11 Chapitre.mp3');
+    check('un dossier par CD : dernière piste', split.paths[29], 'CD 3 sur 3/030 1000 30 Chapitre.mp3');
+    check(
+        'un dossier par CD : mêmes noms qu’en un seul dossier',
+        split.paths.map((p) => p.split('/')[1]),
+        flat.paths,
+    );
+    check(
+        'un dossier par CD : une liste de lecture par dossier, pas à la racine',
+        split.playlists.map((p) => p.name),
+        ['CD 1 sur 3/', 'CD 2 sur 3/', 'CD 3 sur 3/'].map((f) => f + PLAYLIST_NAME),
+    );
+    check(
+        'un dossier par CD : la liste du CD 2 ne nomme que ses pistes, sans dossier',
+        split.playlists[1].content,
+        playlistM3u(flat.paths.slice(10, 20)),
+    );
+    check(
+        'un dossier par CD, dossier qui tient sur un CD : un seul dossier',
+        archiveLayout([{ name: 'a.mp3', sizeBytes: MB }], true).folders,
+        0,
+    );
+
+    // Le même listing, deux fois : mêmes chemins — c'est ce que le re-signement retrouve.
+    check('disposition déterministe (re-signement)', archiveLayout(tracks, true).paths, split.paths);
+
+    const many = archiveLayout(
+        Array.from({ length: 24 }, (_, i) => ({ name: `${String(i + 1).padStart(2, '0')} Partie.mp3`, sizeBytes: 300 * MB })),
+        true,
+    );
+    check('12 CD : dossiers numérotés sur deux chiffres', many.paths[0], 'CD 01 sur 12/01 Partie.mp3');
+    check('12 CD : les dossiers se classent dans l’ordre', [...many.playlists.map((p) => p.name)].sort(bytes), many.playlists.map((p) => p.name));
 }
 
 // ------------------------------------------------------------------- dossiers

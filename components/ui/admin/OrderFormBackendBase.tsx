@@ -797,6 +797,11 @@ export function OrderFormBackendBase({
                                 bookId={selectedBook.id}
                                 bookTitle={selectedBook.title}
                                 size="sm"
+                                // A demande on CD opens the ZIP on one folder per CD.
+                                // Matched on the format's name, never its id.
+                                defaultSplitByCd={
+                                    mediaFormats.find((m) => m.id === formData.mediaFormatId)?.name === 'CDR'
+                                }
                             />
                         )}
                         {/* Sur une demande existante seulement : les autres demandes et

@@ -206,9 +206,11 @@ export function useAudioFolderZip() {
      * that expired while the earlier ones were downloading.
      */
     /**
-     * `extras` are small text files written after the tracks — the playlist
-     * (lib/audio/download-names.ts). Built in memory, never fetched, and not
-     * counted in the progress figures, which are about the recordings.
+     * `extras` are small text files written after the tracks — the playlists
+     * (lib/audio/download-names.ts). A name may carry a folder, like a track's
+     * path (`CD 1 sur 3/Liste de lecture.m3u8`): client-zip writes it as given.
+     * Built in memory, never fetched, and not counted in the progress figures,
+     * which are about the recordings.
      */
     const start = useCallback(async (
         entries: ZipEntry[],

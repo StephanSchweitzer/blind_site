@@ -50,7 +50,8 @@ import {
 } from '@/lib/audio/naming';
 import { isCloudFinalising } from '@/lib/audio/upload-plan';
 import { bytesToKb, cdCount } from '@/lib/pricing';
-import { downloadEntryNames, playlistM3u, PLAYLIST_NAME } from '@/lib/audio/download-names';
+import { archiveLayout, type ArchiveLayout } from '@/lib/audio/download-names';
+import { CD_BURN_CAPACITY_BYTES, splitIntoCds } from '@/lib/audio/cd-split';
 import {
     getAudioLinkStatusColor,
     getAudioLinkStatusHint,
@@ -118,6 +119,13 @@ interface BookAudioModalProps {
     bookId: number;
     /** Fires after any change, so a parent list can refresh its cached counters. */
     onChanged?: () => void;
+    /**
+     * Start « Tout télécharger (ZIP) » on « Un dossier par CD ». Set by the
+     * demande form when the demande is on CD; the book alone cannot decide, since
+     * one book can have a demande on CD and another sent by internet. The admin
+     * can always switch, and nothing is remembered.
+     */
+    defaultSplitByCd?: boolean;
 }
 
 const formatSize = (bytes: number) =>
@@ -343,20 +351,31 @@ function BatchProgressPanel({ phase, progress }: { phase: UploadPhase; progress:
 }
 
 /**
- * Archive entries for a folder, in playback order. The names are the bucket
- * names unless a CD burned from them would play out of order, or Windows could
- * not create them — see downloadEntryNames. The listing never holds a track in
- * a sub-folder (toOrderedTracks leaves them out), so a name is a path.
+ * Archive entries for a folder, in playback order, and the layout they follow.
+ * The names are the bucket names unless a CD burned from them would play out of
+ * order, or Windows could not create them — see downloadEntryNames. The listing
+ * never holds a track in a sub-folder (toOrderedTracks leaves them out), so a
+ * path's only folder is the CD one, when the archive is split.
  *
- * Deterministic from the listing, which is what lets a re-signing (`resign`
- * below) find each entry again by its path.
+ * The one function for both the first build and the re-signing (`resign` below):
+ * the archive finds each refreshed link by its path, CD folder included, so the
+ * two must never compute it apart.
  */
-const toZipEntries = (d: ManageResponse): ZipEntry[] => {
-    const { names } = downloadEntryNames(d.tracks.map((t) => t.name));
-    return d.tracks.map((t, i) => ({ path: names[i], url: t.url, sizeBytes: t.sizeBytes }));
+const toZipEntries = (d: ManageResponse, splitByCd: boolean): { entries: ZipEntry[]; layout: ArchiveLayout } => {
+    const layout = archiveLayout(d.tracks, splitByCd);
+    return {
+        entries: d.tracks.map((t, i) => ({ path: layout.paths[i], url: t.url, sizeBytes: t.sizeBytes })),
+        layout,
+    };
 };
 
-export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: BookAudioModalProps) {
+export function BookAudioModal({
+    isOpen,
+    onOpenChange,
+    bookId,
+    onChanged,
+    defaultSplitByCd,
+}: BookAudioModalProps) {
     const { toast } = useToast();
     const [tab, setTab] = useState<'pistes' | 'corbeille'>('pistes');
     const [data, setData] = useState<ManageResponse | null>(null);
@@ -408,6 +427,12 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
         forgetLandedKey,
     } = useAudioUpload(bookId);
     const zip = useAudioFolderZip();
+    /** « Un seul dossier » / « Un dossier par CD » — a choice made at download time, never stored. */
+    const [splitByCd, setSplitByCd] = useState(defaultSplitByCd ?? false);
+    /** What the archive in progress (or just finished) looks like — said once it is done. */
+    const [zipLayout, setZipLayout] = useState<{ numbered: boolean; folders: number; oversized: string[] } | null>(
+        null,
+    );
     const confirm = useConfirm();
 
     const notifyError = useCallback(
@@ -859,6 +884,17 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
     );
 
     /**
+     * How the folder would cut into CDs — null when it fits on one, and then the
+     * choice is not offered at all. Computed ahead so the option can say how
+     * many CDs it means.
+     */
+    const cdSplit = useMemo(() => {
+        if (!data || data.totalBytes <= CD_BURN_CAPACITY_BYTES) return null;
+        const split = splitIntoCds(data.tracks.map((t) => t.sizeBytes));
+        return split.groups.length > 1 ? split : null;
+    }, [data]);
+
+    /**
      * Zip the whole folder. Nobody wants to click Download forty times.
      *
      * The archive is built in the browser from the same presigned URLs the
@@ -880,23 +916,24 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
             if (!proceed) return;
         }
 
+        // Taken now, not read again later: a re-signing an hour into the archive
+        // must lay the folder out exactly as the first build did.
+        const split = cdSplit !== null && splitByCd;
         const resign = async (): Promise<ZipEntry[]> => {
             const res = await fetch(`/api/books/${bookId}/audio/manage`);
             if (!res.ok) return [];
-            return toZipEntries((await res.json()) as ManageResponse);
+            return toZipEntries((await res.json()) as ManageResponse, split).entries;
         };
 
-        const entries = toZipEntries(data);
-        void zip.start(entries, safeZipName(`${data.title} - ${data.author}`), resign, [
-            { name: PLAYLIST_NAME, content: playlistM3u(entries.map((e) => e.path)) },
-        ]);
+        const { entries, layout } = toZipEntries(data, split);
+        setZipLayout({
+            numbered: layout.numbered,
+            folders: layout.folders,
+            oversized: layout.oversized.map((i) => layout.paths[i].split('/').pop() ?? ''),
+        });
+        void zip.start(entries, safeZipName(`${data.title} - ${data.author}`), resign, layout.playlists);
     };
 
-    /** Whether the archive numbers its files — said once it is done, see downloadEntryNames. */
-    const zipNumbered = useMemo(
-        () => (data ? downloadEntryNames(data.tracks.map((t) => t.name)).numbered : false),
-        [data],
-    );
 
     /**
      * Closing mid-archive would leave the download running with nothing left to
@@ -1154,6 +1191,41 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                         )}
                     </div>
 
+                    {/* --- Zip layout ---------------------------------------------------- */}
+                    {/* Only for a folder that does not fit one CD. A demande on CD opens
+                        on « Un dossier par CD » (defaultSplitByCd); the admin decides. */}
+                    {tab === 'pistes' && cdSplit && (
+                        <div
+                            role="radiogroup"
+                            aria-labelledby="zip-layout-label"
+                            className="flex flex-shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm"
+                        >
+                            <span id="zip-layout-label" className="text-muted-foreground">
+                                Archive ZIP :
+                            </span>
+                            <label className="flex cursor-pointer items-center gap-2 text-foreground">
+                                <input
+                                    type="radio"
+                                    name="zip-layout"
+                                    checked={!splitByCd}
+                                    disabled={zipping}
+                                    onChange={() => setSplitByCd(false)}
+                                />
+                                Un seul dossier
+                            </label>
+                            <label className="flex cursor-pointer items-center gap-2 text-foreground">
+                                <input
+                                    type="radio"
+                                    name="zip-layout"
+                                    checked={splitByCd}
+                                    disabled={zipping}
+                                    onChange={() => setSplitByCd(true)}
+                                />
+                                Un dossier par CD ({cdSplit.groups.length} CD)
+                            </label>
+                        </div>
+                    )}
+
                     {/* --- Zip progress ------------------------------------------------ */}
                     {/* Mounted at all times: a live region that appears together with its
                         text is not announced. Says the start and the end, not every file. */}
@@ -1218,8 +1290,17 @@ export function BookAudioModal({ isOpen, onOpenChange, bookId, onChanged }: Book
                                 <div className="flex items-center justify-between gap-2 text-xs">
                                     <span className="text-foreground">
                                         Archive téléchargée.
-                                        {zipNumbered &&
+                                        {zipLayout && zipLayout.folders > 0 &&
+                                            ` ${zipLayout.folders} dossiers, un par CD.`}
+                                        {zipLayout?.numbered &&
                                             ' Les pistes sont numérotées pour garder l’ordre d’Arbre Rose.'}
+                                        {zipLayout && zipLayout.oversized.length > 0 && (
+                                            <span className="block">
+                                                {zipLayout.oversized.length === 1
+                                                    ? `La piste « ${zipLayout.oversized[0]} » dépasse la capacité d’un CD : elle est seule dans son dossier.`
+                                                    : `${zipLayout.oversized.length} pistes dépassent la capacité d’un CD (${zipLayout.oversized.map((n) => `« ${n} »`).join(', ')}) : chacune est seule dans son dossier.`}
+                                            </span>
+                                        )}
                                     </span>
                                     <button
                                         type="button"

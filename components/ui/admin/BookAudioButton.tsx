@@ -29,6 +29,8 @@ interface BookAudioButtonProps {
     className?: string;
     /** Grey out and refuse to open — a soft-deleted book's fiche is read-only until restored. */
     disabled?: boolean;
+    /** Passed to the dialogue: « Tout télécharger (ZIP) » opens on one folder per CD. See BookAudioModal. */
+    defaultSplitByCd?: boolean;
 }
 
 interface AudioState {
@@ -62,6 +64,7 @@ export function BookAudioButton({
     size = 'default',
     className,
     disabled = false,
+    defaultSplitByCd,
 }: BookAudioButtonProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [state, setState] = useState<AudioState | null>(
@@ -156,6 +159,7 @@ export function BookAudioButton({
                     isOpen={isOpen}
                     onOpenChange={setIsOpen}
                     bookId={bookId}
+                    defaultSplitByCd={defaultSplitByCd}
                     onChanged={() => {
                         void loadState();
                         onChanged?.();
