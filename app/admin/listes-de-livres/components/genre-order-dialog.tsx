@@ -147,7 +147,7 @@ function GenreRow({
             </button>
             <span aria-hidden="true" className={`block h-4 w-1.5 shrink-0 rounded-[1px] ${sectionSpine(index)}`} />
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{name}</span>
-            <span className="shrink-0 text-xs text-muted-foreground">
+            <span className="shrink-0 text-sm text-muted-foreground">
                 {count} {count === 1 ? 'livre' : 'livres'}
             </span>
         </Reorder.Item>

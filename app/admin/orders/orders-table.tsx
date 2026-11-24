@@ -87,6 +87,18 @@ type OrdersTableProps = {
 const NOUN = { one: 'demande', many: 'demandes', feminine: true };
 
 /**
+ * What each duplication choice of the « Type » filter holds, shown under the
+ * select while it is picked — the terms are the dashboard's own, so the line
+ * that sent someone here and the filter read the same way.
+ */
+const TYPE_AIDE: Record<string, string> = {
+    true: 'Toutes les duplications, qu’elles soient faisables maintenant ou non.',
+    ready: 'Les duplications à faire maintenant : le livre a déjà son audio.',
+    blocked: 'Les duplications qui attendent la fin d’un enregistrement en cours.',
+    unplanned: 'Les duplications d’un livre que personne n’enregistre encore : il faut une demande d’enregistrement.',
+};
+
+/**
  * En-tête de colonne triable. Le tri est une action sur la liste, pas un
  * lien : un bouton, et `aria-sort` sur la cellule pour le lecteur d'écran. Le
  * texte du bouton reste le seul nom de la colonne — la mise en page téléphone
@@ -405,7 +417,11 @@ export default function OrdersTable({
                             value={currentIsDuplication}
                             onValueChange={(value) => handleFilterChange('isDuplication', value)}
                         >
-                            <SelectTrigger id="orders-type" className="bg-field border-border text-foreground">
+                            <SelectTrigger
+                                id="orders-type"
+                                className="bg-field border-border text-foreground"
+                                aria-describedby={TYPE_AIDE[currentIsDuplication] ? 'orders-type-aide' : undefined}
+                            >
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
@@ -422,6 +438,11 @@ export default function OrdersTable({
                                 <SelectItem value="false" className="text-foreground">Enregistrement</SelectItem>
                             </SelectContent>
                         </Select>
+                        {TYPE_AIDE[currentIsDuplication] && (
+                            <p id="orders-type-aide" className="mt-1.5 text-sm text-muted-foreground">
+                                {TYPE_AIDE[currentIsDuplication]}
+                            </p>
+                        )}
                     </div>
 
                     <div>
@@ -623,7 +644,7 @@ export default function OrdersTable({
                                                             <div
                                                                 title={blockedRecordingLabel(blockedBy)}
                                                                 className={cn(
-                                                                    'mt-1 whitespace-nowrap text-xs font-medium',
+                                                                    'mt-1 whitespace-nowrap text-sm font-medium',
                                                                     blockedBy.kind === 'aucun'
                                                                         ? 'text-amber-700 dark:text-amber-400'
                                                                         : 'text-muted-foreground',
@@ -647,7 +668,7 @@ export default function OrdersTable({
                                                         {delai && (
                                                             <div
                                                                 title={delai.phrase}
-                                                                className={`mt-1 whitespace-nowrap text-xs font-medium ${
+                                                                className={`mt-1 whitespace-nowrap text-sm font-medium ${
                                                                     delai.niveau === 'en_retard'
                                                                         ? 'text-amber-800 dark:text-amber-300'
                                                                         : 'text-muted-foreground'
@@ -676,13 +697,13 @@ export default function OrdersTable({
                                                                     forcément : « Terminé » sous le n° répétait le
                                                                     statut d'à côté. Utile seulement en cours. */}
                                                                 {order.statusId !== STATUS.TERMINE && order.statusId !== STATUS.SOLDE && (
-                                                                    <span className="text-xs text-muted-foreground">
+                                                                    <span className="text-sm text-muted-foreground">
                                                                         {order.assignments[0].status.name}
                                                                     </span>
                                                                 )}
                                                             </IntentLink>
                                                         ) : order.isDuplication ? (
-                                                            <span className="text-xs text-muted-foreground">Duplication</span>
+                                                            <span className="text-sm text-muted-foreground">Duplication</span>
                                                         ) : (
                                                             <span className="text-muted-foreground">
                                                                 <span aria-hidden>—</span>
@@ -705,7 +726,7 @@ export default function OrdersTable({
                                                                 À facturer
                                                             </Badge>
                                                         ) : order.billingStatus === 'UNBILLABLE' ? (
-                                                            <span className="text-xs text-muted-foreground">
+                                                            <span className="text-sm text-muted-foreground">
                                                                 {getOrderBillingStatusLabel(order.billingStatus)}
                                                             </span>
                                                         ) : (

@@ -285,7 +285,7 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                             </span>
                         </CardTitle>
                         {!isEmpty && (
-                            <p className="mt-1 text-xs text-muted-foreground">
+                            <p className="mt-1 text-sm text-muted-foreground">
                                 {customOrder ? (
                                     <>
                                         Ordre choisi ·{' '}
@@ -443,7 +443,7 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                                                 <div className="flex items-center gap-2">
                                                     <span aria-hidden="true" className={`block h-4 w-1.5 shrink-0 rounded-[1px] ${sectionSpine(genreIndex)}`} />
                                                     <span className="text-sm font-semibold text-foreground">{genre}</span>
-                                                    <span className="text-xs text-muted-foreground">
+                                                    <span className="text-sm text-muted-foreground">
                                                         {group.length} {group.length === 1 ? 'livre' : 'livres'}
                                                     </span>
                                                     {groups.length > 1 && (
@@ -485,7 +485,7 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
                                                     <div className="font-medium">{book.title}</div>
-                                                    <div className="text-xs text-muted-foreground md:hidden">{book.author}</div>
+                                                    <div className="text-sm text-muted-foreground md:hidden">{book.author}</div>
                                                     <BookBadges book={book} membership={membership.get(book.id)} />
                                                     {/* La note et son action sous le titre, en mots : une icône
                                                         de plus à côté du crayon de la fiche se confondait avec
@@ -503,7 +503,7 @@ export default function BooksSection({ books, setBooks, notes, customOrder, setC
                                                     )}
                                                     <button
                                                         type="button"
-                                                        className="mt-1 inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                                        className="mt-1 inline-flex items-center gap-1 rounded-sm text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                                                         onClick={() => setNoteBook(book)}
                                                         aria-label={`${notes[book.id] ? 'Modifier la note' : 'Ajouter une note'} pour « ${book.title} »`}
                                                     >
@@ -788,11 +788,11 @@ function SearchBooksDialog({ onClose, inListIds, membership, onAdd }: SearchBook
                                                 <BookBadges book={{ ...book, subtitle: null }} membership={membership.get(book.id)} />
                                             </div>
                                             {alreadyHere ? (
-                                                <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                                                <span className="inline-flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
                                                     <Check className="h-3.5 w-3.5" /> Dans la liste
                                                 </span>
                                             ) : (
-                                                <span className="shrink-0 text-xs font-medium text-primary">Ajouter</span>
+                                                <span className="shrink-0 text-sm font-medium text-primary">Ajouter</span>
                                             )}
                                         </button>
                                     </li>

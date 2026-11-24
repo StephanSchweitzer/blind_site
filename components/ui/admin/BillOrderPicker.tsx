@@ -44,7 +44,7 @@ export interface UnavailableOrder {
 export function OrderNotFinishedNote({ statusId }: { statusId: number }) {
     if (statusId === TERMINE_STATUS_ID) return null;
     return (
-        <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
+        <div className="text-amber-700 dark:text-amber-500 text-sm mt-0.5">
             Prestation pas encore terminée
         </div>
     );
@@ -123,7 +123,7 @@ export function UnavailableOrderList({
     const hidden = total - orders.length;
     return (
         <div className="space-y-1">
-            <div className="text-xs font-medium text-muted-foreground px-1 pt-1">
+            <div className="text-sm font-medium text-muted-foreground px-1 pt-1">
                 Autres demandes de cet auditeur — pas à rattacher ici
             </div>
             <ul className="border border-border rounded-md divide-y divide-border bg-muted/40">
@@ -133,11 +133,11 @@ export function UnavailableOrderList({
                             <div className="text-muted-foreground text-sm break-words">
                                 #{o.id} — {o.catalogue.title}
                             </div>
-                            <div className="text-muted-foreground text-xs break-words">
+                            <div className="text-muted-foreground text-sm break-words">
                                 {o.catalogue.author} · {parisDate(o.requestReceivedDate)}
                                 {o.statusName ? ` · ${o.statusName}` : ''}
                             </div>
-                            <div className="text-muted-foreground text-xs mt-0.5">
+                            <div className="text-muted-foreground text-sm mt-0.5">
                                 <UnavailableReason order={o} />
                             </div>
                             {onForce && o.forceable && (
@@ -164,7 +164,7 @@ export function UnavailableOrderList({
                 ))}
             </ul>
             {hidden > 0 && (
-                <p className="text-xs text-muted-foreground px-1">
+                <p className="text-sm text-muted-foreground px-1">
                     {hidden === 1
                         ? '1 autre demande n’est pas affichée : cherchez-la'
                         : `${hidden} autres demandes ne sont pas affichées : cherchez-en une`}{' '}
@@ -210,14 +210,14 @@ function ForceControl({
 
     if (order.cost == null) {
         return (
-            <div className="text-muted-foreground text-xs mt-1">
+            <div className="text-muted-foreground text-sm mt-1">
                 Aucun tarif renseigné : on ne la facture pas avant sa clôture, elle serait facturée 0,00 €. Renseignez son tarif d&apos;abord.
             </div>
         );
     }
     if (!open) {
         return (
-            <button type="button" onClick={onOpen} className={`${linkClass} text-xs mt-1`}>
+            <button type="button" onClick={onOpen} className={`${linkClass} text-sm mt-1`}>
                 Facturer avant clôture…
             </button>
         );
@@ -236,16 +236,16 @@ function ForceControl({
 
     return (
         <div className="mt-2 rounded-md border border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3 space-y-2">
-            <p className="text-xs text-amber-900 dark:text-amber-200 font-medium">
+            <p className="text-sm text-amber-900 dark:text-amber-200 font-medium">
                 Ce n&apos;est pas la procédure normale.
             </p>
-            <p className="text-xs text-amber-900 dark:text-amber-200">
+            <p className="text-sm text-amber-900 dark:text-amber-200">
                 Une demande se facture à sa clôture, quand son tarif est établi. Facturer #{order.id} maintenant la
                 fait payer {order.cost.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })} avant que la
                 prestation soit terminée, et une facture émise ne se retarife plus. Dites pourquoi vous ne la clôturez
                 pas d&apos;abord : la raison reste avec la demande et au journal de la facture.
             </p>
-            <label className="block text-xs font-medium text-amber-900 dark:text-amber-200" htmlFor={`force-reason-${order.id}`}>
+            <label className="block text-sm font-medium text-amber-900 dark:text-amber-200" htmlFor={`force-reason-${order.id}`}>
                 Raison de la facturation avant clôture
             </label>
             <textarea
@@ -256,11 +256,11 @@ function ForceControl({
                 rows={2}
                 className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
             />
-            <div className="text-xs text-muted-foreground">
+            <div className="text-sm text-muted-foreground">
                 {missing > 0 ? `Encore ${missing} caractère${missing > 1 ? 's' : ''} au moins.` : ' '}
             </div>
             {error && (
-                <div className="text-xs text-red-700 dark:text-red-400" role="alert">
+                <div className="text-sm text-red-700 dark:text-red-400" role="alert">
                     {error}
                 </div>
             )}
@@ -269,11 +269,11 @@ function ForceControl({
                     type="button"
                     disabled={missing > 0 || busy}
                     onClick={submit}
-                    className="rounded-md bg-amber-700 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+                    className="rounded-md bg-amber-700 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
                 >
                     Facturer avant clôture
                 </button>
-                <button type="button" disabled={busy} onClick={onClose} className="rounded-md border border-input px-3 py-1 text-xs">
+                <button type="button" disabled={busy} onClick={onClose} className="rounded-md border border-input px-3 py-1 text-sm">
                     Annuler
                 </button>
             </div>

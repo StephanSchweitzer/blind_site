@@ -161,7 +161,7 @@ function deletionSummary(rows: TrashRow[]): string {
  */
 function OrphanRestoreHint({ plural = false }: { plural?: boolean }) {
     return (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
             {plural ? 'seront restaurés' : 'sera restauré'} dans{' '}
             <IntentLink
                 href="/admin/audio-orphelins"
@@ -182,7 +182,7 @@ function OrphanRestoreHint({ plural = false }: { plural?: boolean }) {
  */
 function DeletedBookRestoreHint({ book, plural = false }: { book: TrashBook; plural?: boolean }) {
     return (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
             {plural ? 'reviendront' : 'reviendra'} dans le dossier de cette fiche supprimée, qui reste invisible
             tant qu’elle l’est. Pour retrouver le livre avec ses fichiers,{' '}
             <IntentLink
@@ -719,16 +719,16 @@ function FileRowBody({
                 <p className="font-mono text-sm text-foreground break-all">{item.filename}</p>
                 <p className="text-sm text-foreground">
                     Supprimé le {formatDate(item.deletedAt)} par {personLabel(item.deletedBy)}
-                    <span className="text-xs text-muted-foreground"> · {formatBytes(item.sizeBytes)}</span>
+                    <span className="text-sm text-muted-foreground"> · {formatBytes(item.sizeBytes)}</span>
                 </p>
-                <p className="font-mono text-xs text-muted-foreground break-all">{item.originalKey}</p>
+                <p className="font-mono text-sm text-muted-foreground break-all">{item.originalKey}</p>
 
                 {item.restoredAt ? (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                         restauré le {formatDate(item.restoredAt)} par {personLabel(item.restoredBy)}
                     </p>
                 ) : item.purgedAt ? (
-                    <p className="text-xs text-red-600 dark:text-red-400">
+                    <p className="text-sm text-red-600 dark:text-red-400">
                         supprimé définitivement du stockage le {formatDate(item.purgedAt)}
                         {item.purgedBy ? ` par ${personLabel(item.purgedBy)}` : ' par la purge automatique'}
                     </p>
@@ -737,15 +737,15 @@ function FileRowBody({
                         <p
                             className={
                                 item.urgent
-                                    ? 'flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300'
-                                    : 'text-xs text-muted-foreground'
+                                    ? 'flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-300'
+                                    : 'text-sm text-muted-foreground'
                             }
                         >
                             {item.urgent && <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
                             {retentionLabel(item)}
                         </p>
                         {storage ? (
-                            <p id={noteId} className="text-xs text-amber-700 dark:text-amber-300">
+                            <p id={noteId} className="text-sm text-amber-700 dark:text-amber-300">
                                 {STORAGE_NOTE[storage]}
                             </p>
                         ) : (
@@ -757,9 +757,9 @@ function FileRowBody({
 
             <div className="flex flex-shrink-0 flex-col items-end gap-2">
                 {item.restoredAt ? (
-                    <span className="text-xs text-muted-foreground">Restauré</span>
+                    <span className="text-sm text-muted-foreground">Restauré</span>
                 ) : item.purgedAt ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+                    <span className="inline-flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
                         <Trash2 className="h-3.5 w-3.5" aria-hidden /> Purgé
                     </span>
                 ) : (
@@ -946,7 +946,7 @@ function GroupCard({
                     </p>
                     <p className="text-sm text-foreground">
                         {deletionSummary(rows)}
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-sm text-muted-foreground">
                             {' '}
                             · {rows.length} fichiers · {formatBytes(totalSize)}
                         </span>
@@ -954,8 +954,8 @@ function GroupCard({
                     <p
                         className={
                             anyUrgent
-                                ? 'flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300'
-                                : 'text-xs text-muted-foreground'
+                                ? 'flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-300'
+                                : 'text-sm text-muted-foreground'
                         }
                     >
                         {anyUrgent && <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
@@ -963,7 +963,7 @@ function GroupCard({
                     </p>
                     {restorableIds.length > 0 && <RestoreDestinationHint book={group.book} plural />}
                     {(occupiedCount > 0 || missingCount > 0) && (
-                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                        <p className="text-sm text-amber-700 dark:text-amber-300">
                             {occupiedCount > 0 &&
                                 `${occupiedCount} fichier${occupiedCount > 1 ? 's' : ''} ne ${occupiedCount > 1 ? 'peuvent' : 'peut'} pas revenir : ` +
                                     `un fichier du dossier porte de nouveau ${occupiedCount > 1 ? 'leur' : 'son'} nom. `}
@@ -1008,7 +1008,7 @@ function GroupCard({
                         size="sm"
                         disabled={busy}
                         onClick={onToggle}
-                        className="text-xs text-muted-foreground"
+                        className="text-sm text-muted-foreground"
                     >
                         {isOpen ? (
                             <>

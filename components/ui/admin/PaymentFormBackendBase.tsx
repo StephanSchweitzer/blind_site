@@ -394,7 +394,7 @@ export function PaymentFormBackendBase({
                             {isClientRequiredForPaymentType(type) ? (
                                 <> <RequiredMark /></>
                             ) : (
-                                <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
+                                <span className="text-muted-foreground text-sm font-normal"> (facultatif)</span>
                             )}
                         </label>
                         <div className="flex gap-2">
@@ -535,7 +535,7 @@ export function PaymentFormBackendBase({
                                 <label htmlFor="payment-request-date" className="text-sm font-medium text-foreground">
                                     Date de la demande
                                     {!isReceived && (
-                                        <span className="text-muted-foreground text-xs font-normal"> (vide tant qu&apos;elle n&apos;est pas partie)</span>
+                                        <span className="text-muted-foreground text-sm font-normal"> (vide tant qu&apos;elle n&apos;est pas partie)</span>
                                     )}
                                 </label>
                                 <DatePickerField

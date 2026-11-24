@@ -90,7 +90,7 @@ function TrackGroup({
                     <span className="block text-muted-foreground">{hint}</span>
                 </label>
             </div>
-            <ul className="mt-2 ml-7 max-h-32 overflow-y-auto space-y-0.5 text-xs text-muted-foreground">
+            <ul className="mt-2 ml-7 max-h-32 overflow-y-auto space-y-0.5 text-sm text-muted-foreground">
                 {tracks.map((t) => (
                     <li key={t.id} className="flex justify-between gap-3">
                         <span className="truncate" title={t.filename}>{t.filename}</span>
@@ -405,7 +405,7 @@ export default function BookDeletedNotice({
                                     showDates
                                 />
                             )}
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                                 Les pistes non cochées restent dans la corbeille audio, restaurables
                                 plus tard jusqu’à leur purge.
                             </p>

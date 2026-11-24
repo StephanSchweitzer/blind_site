@@ -67,7 +67,7 @@ export function ListNoteDialog({ bookTitle, note, savesNow, onClose, onSave }: L
                         placeholder="Par exemple : Prix Goncourt 2026"
                         className="min-h-[110px] bg-field border-border text-foreground placeholder:text-muted-foreground"
                     />
-                    <p className="text-right text-xs text-muted-foreground">
+                    <p className="text-right text-sm text-muted-foreground">
                         {draft.length} / {LIST_NOTE_MAX_LENGTH}
                     </p>
                 </div>

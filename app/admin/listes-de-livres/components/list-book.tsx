@@ -62,7 +62,7 @@ export function BookBadges({
 
     return (
         <div className="mt-0.5 space-y-1">
-            {book.subtitle && <div className="text-xs text-muted-foreground">{book.subtitle}</div>}
+            {book.subtitle && <div className="text-sm text-muted-foreground">{book.subtitle}</div>}
             <div className="flex flex-wrap gap-1 empty:hidden">
                 {book.deletedAt && (
                     <span

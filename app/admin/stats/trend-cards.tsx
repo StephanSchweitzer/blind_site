@@ -35,7 +35,7 @@ function Sparkline({ points, loaded }: { points: TrendPoint[]; loaded: boolean }
         );
     }
     if (points.length === 0) {
-        return <div className="h-10 flex items-center text-xs text-muted-foreground">Aucune donnée</div>;
+        return <div className="h-10 flex items-center text-sm text-muted-foreground">Aucune donnée</div>;
     }
     const max = Math.max(...points.map((p) => p.count), 1);
     const stepX = points.length > 1 ? width / (points.length - 1) : 0;
@@ -74,7 +74,7 @@ function TrendCard({ metric, points, loaded }: {
     return (
         <AdminCard className="p-3">
             <div className="flex items-baseline justify-between gap-2">
-                <h3 className="text-xs font-medium text-muted-foreground leading-tight">
+                <h3 className="text-sm font-medium text-muted-foreground leading-tight">
                     {METRIC_LABELS[metric]}
                 </h3>
                 <span className="text-xl font-bold text-foreground tabular-nums">

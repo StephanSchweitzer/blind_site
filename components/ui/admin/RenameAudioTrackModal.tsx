@@ -176,7 +176,7 @@ export function RenameAudioTrackModal({
                 {track && (
                     <div className="space-y-4">
                         <div className="rounded-md border border-border bg-field p-3">
-                            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                            <div className="text-sm uppercase tracking-wide text-muted-foreground">
                                 Piste n° {track.order} — nom actuel
                             </div>
                             <div className="mt-1 font-mono text-sm text-foreground break-all whitespace-pre-wrap">
@@ -208,34 +208,34 @@ export function RenameAudioTrackModal({
                                     </span>
                                 )}
                             </div>
-                            <p className="mt-1 text-xs text-muted-foreground">
+                            <p className="mt-1 text-sm text-muted-foreground">
                                 L’extension est fixe et ne peut pas être modifiée ici.
                             </p>
                             {appleDouble && (
-                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                     Un nom commençant par « ._ » (ou contenant « ._ » après un espace) est celui
                                     d’un fichier de métadonnées Mac : la piste disparaîtrait des listings.
                                 </p>
                             )}
                             {taken && (
-                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                     Une autre piste de ce dossier porte déjà ce nom.
                                 </p>
                             )}
                             {extTyped && !otherExt && (
-                                <p className="mt-1 text-xs text-muted-foreground">
+                                <p className="mt-1 text-sm text-muted-foreground">
                                     L’extension « .{ext} » tapée à la fin est ignorée : elle est ajoutée d’office.
                                 </p>
                             )}
                             {otherExt && (
-                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                     Ce nom se termine déjà par une extension audio : la piste s’appellerait «{' '}
                                     <span className="font-mono break-all">{newName}</span> ». Retirez-la — l’extension
                                     reste « .{ext} ».
                                 </p>
                             )}
                             {problem && (
-                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{problem}</p>
+                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{problem}</p>
                             )}
                             {preview && (
                                 <p className="mt-2 text-sm text-foreground">
@@ -245,7 +245,7 @@ export function RenameAudioTrackModal({
                                 </p>
                             )}
                             {preview?.cdSwap && (
-                                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                                <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
                                     Sur un CD, ce nom passerait {preview.cdSwap.cdFirst ? 'avant' : 'après'} «{' '}
                                     <span className="font-mono break-all">{preview.cdSwap.other}</span> », alors
                                     que le portail le joue {preview.cdSwap.cdFirst ? 'après' : 'avant'} : un graveur

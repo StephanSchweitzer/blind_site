@@ -398,7 +398,7 @@ export function DeleteBookModal({
                                 <p className="text-foreground">
                                     Dossier audio : {folderSummary(trackCount, audio!.sizeBytes)}
                                 </p>
-                                <p className="mt-1 font-mono text-xs text-muted-foreground break-all">
+                                <p className="mt-1 font-mono text-sm text-muted-foreground break-all">
                                     {audio!.prefix}
                                 </p>
                             </div>

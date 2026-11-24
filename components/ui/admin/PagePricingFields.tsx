@@ -54,7 +54,7 @@ export function PagePricingFields({
     const cost = livePageCost(value);
     const detail = describePageCost(value);
     const inputClass = `bg-card border-border text-foreground ${compact ? 'h-9' : ''} ${fieldsDisabledReason ? 'opacity-50 cursor-not-allowed' : ''}`;
-    const labelClass = compact ? 'text-xs text-muted-foreground' : 'text-sm font-medium text-foreground';
+    const labelClass = compact ? 'text-sm text-muted-foreground' : 'text-sm font-medium text-foreground';
 
     return (
         <div className="space-y-3">
@@ -70,7 +70,7 @@ export function PagePricingFields({
                     <label htmlFor={toggleId} className="text-sm font-medium text-foreground cursor-pointer">
                         Tarifer à la page (pour les revues)
                     </label>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                         {toggleDisabledReason
                             ? toggleDisabledReason
                             : 'Cette demande aura sa propre facture, ouverte en pro-forma quand elle passe « Terminé ».'}
@@ -140,11 +140,11 @@ export function PagePricingFields({
                     </div>
 
                     {fieldsDisabledReason && (
-                        <p className="text-xs text-amber-700 dark:text-amber-400">{fieldsDisabledReason}</p>
+                        <p className="text-sm text-amber-700 dark:text-amber-400">{fieldsDisabledReason}</p>
                     )}
 
                     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-border pt-2">
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-sm text-muted-foreground">
                             {detail ?? 'Le total apparaît dès que le nombre de pages est renseigné.'}
                         </span>
                         <span className="text-sm font-medium text-foreground">

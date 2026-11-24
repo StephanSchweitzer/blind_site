@@ -103,14 +103,14 @@ function ActivityRow({ event }: { event: MyActivityItem }) {
                         {href && (
                             <IntentLink
                                 href={href}
-                                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
                             >
                                 Ouvrir
                                 <ExternalLink className="h-3 w-3" aria-hidden="true" />
                             </IntentLink>
                         )}
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
+                    <div className="mt-1 text-sm text-muted-foreground">
                         {formatDateTime(event.at)}
                     </div>
 

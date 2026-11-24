@@ -541,7 +541,7 @@ export function BookFormBackendBase({
                                     Masqué du catalogue public
                                 </label>
                             </div>
-                            <p className="text-xs text-muted-foreground pl-6">
+                            <p className="text-sm text-muted-foreground pl-6">
                                 N&apos;apparaît ni dans le catalogue ni dans les listes de livres envoyées aux adhérents (ex. sujet sensible : religion, politique, mœurs…). Reste visible ici.
                             </p>
                         </div>

@@ -439,24 +439,24 @@ export function BillFormBackendBase({
                                                         <div className={`${locked ? 'text-muted-foreground' : 'text-foreground'} text-sm font-medium truncate`}>
                                                             #{o.id} — {o.catalogue.title}
                                                         </div>
-                                                        <div className="text-muted-foreground text-xs truncate">
+                                                        <div className="text-muted-foreground text-sm truncate">
                                                             {o.catalogue.author} · {parisDate(o.requestReceivedDate)}
                                                             {o.statusName ? ` · ${o.statusName}` : ''}
                                                             {o.pagePriced ? ' · Revue, tarifée à la page' : ''}
                                                         </div>
                                                         {locked ? (
-                                                            <div className="text-muted-foreground text-xs mt-0.5">{locked}</div>
+                                                            <div className="text-muted-foreground text-sm mt-0.5">{locked}</div>
                                                         ) : (
                                                             <>
                                                                 {/* Ce qui empêche de cocher les yeux fermés — voir isReadyToBill. */}
                                                                 <OrderNotFinishedNote statusId={o.statusId} />
                                                                 {forcedReasons.has(o.id) && (
-                                                                    <div className="text-amber-800 dark:text-amber-400 text-xs mt-0.5 break-words">
+                                                                    <div className="text-amber-800 dark:text-amber-400 text-sm mt-0.5 break-words">
                                                                         Facturée avant clôture — {forcedReasons.get(o.id)}
                                                                     </div>
                                                                 )}
                                                                 {o.cost == null && (
-                                                                    <div className="text-amber-700 dark:text-amber-500 text-xs mt-0.5">
+                                                                    <div className="text-amber-700 dark:text-amber-500 text-sm mt-0.5">
                                                                         Aucun tarif renseigné — serait facturée 0,00 €
                                                                     </div>
                                                                 )}
@@ -482,7 +482,7 @@ export function BillFormBackendBase({
                                         </div>
                                     )}
                                     {hiddenSelectedCount > 0 && (
-                                        <p className="text-xs text-muted-foreground px-1">
+                                        <p className="text-sm text-muted-foreground px-1">
                                             {hiddenSelectedCount === 1
                                                 ? '1 demande cochée est masquée par la recherche ; elle compte dans le total.'
                                                 : `${hiddenSelectedCount} demandes cochées sont masquées par la recherche ; elles comptent dans le total.`}
@@ -508,7 +508,7 @@ export function BillFormBackendBase({
                         <span className="text-xl font-bold text-foreground">{formatCurrency(totalAmount)}</span>
                     </div>
                     {revueSelected && (
-                        <p className="-mt-2 text-xs text-muted-foreground">
+                        <p className="-mt-2 text-sm text-muted-foreground">
                             Une revue est cochée : la facture créée sera la sienne, au stade pro-forma tant qu’elle reste en brouillon.
                         </p>
                     )}
@@ -577,7 +577,7 @@ export function BillFormBackendBase({
                         qu'on rattrape. */}
                     {markAsPaid && (
                         <div className="space-y-3 rounded-md border border-border p-3">
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                                 La facture sera créée émise, son paiement enregistré, puis elle sera
                                 marquée payée — en une seule opération. Le règlement devient un
                                 paiement à part entière, visible dans « Paiements » et modifiable
@@ -613,7 +613,7 @@ export function BillFormBackendBase({
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-foreground">
                                         Référence de paiement
-                                        <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
+                                        <span className="text-muted-foreground text-sm font-normal"> (facultatif)</span>
                                     </label>
                                     <Input
                                         value={paymentReference}

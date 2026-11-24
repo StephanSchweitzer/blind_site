@@ -168,7 +168,7 @@ export function RecentBooksControl({ win, onOpen, listId, size = 'toolbar' }: Re
                 </Button>
             </div>
             {namesItself && !sinceTouched ? null : namesItself ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                     <button
                         type="button"
                         className="underline underline-offset-2 hover:text-foreground"
@@ -178,7 +178,7 @@ export function RecentBooksControl({ win, onOpen, listId, size = 'toolbar' }: Re
                     </button>
                 </p>
             ) : (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
                 {defaultWindow === null ? (
                     <span className="invisible">…</span>
                 ) : defaultWindow.since ? (
@@ -337,7 +337,7 @@ export function RecentBooksDialog({ win, onClose, inListIds, membership, onAdd }
                         public sont grisés : ils n&apos;apparaîtraient pas sur le site.
                     </DialogDescription>
                     {books.length > 0 && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">
                             {books.length} livre{books.length > 1 ? 's' : ''} chargé{books.length > 1 ? 's' : ''}
                             {total > books.length ? ` sur ${total}` : ''}
                             {' · '}

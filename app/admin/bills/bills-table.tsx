@@ -369,7 +369,7 @@ export default function BillsTable({
                                                     <TableCell className="font-medium text-foreground whitespace-nowrap">
                                                         <CopyIdButton id={bill.id} label="de la facture" />
                                                         {bill.kind === 'PROFORMA' && (
-                                                            <div className="text-xs font-normal text-amber-700 dark:text-amber-300">
+                                                            <div className="text-sm font-normal text-amber-700 dark:text-amber-300">
                                                                 {BILL_KIND_LABELS.PROFORMA}
                                                             </div>
                                                         )}

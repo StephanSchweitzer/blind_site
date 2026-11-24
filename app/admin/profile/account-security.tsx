@@ -114,7 +114,7 @@ export default function AccountSecurity({ email }: AccountSecurityProps) {
                         aria-describedby={emailChanged ? 'account-email-warning' : undefined}
                     />
                     {emailChanged && (
-                        <p id="account-email-warning" className="text-xs text-amber-700 dark:text-amber-400">
+                        <p id="account-email-warning" className="text-sm text-amber-700 dark:text-amber-400">
                             Changer d’adresse vous déconnectera : il faudra vous reconnecter avec la
                             nouvelle.
                         </p>

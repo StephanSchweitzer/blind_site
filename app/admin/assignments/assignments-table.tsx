@@ -451,7 +451,7 @@ export default function AssignmentsTable({
                                                         stopPropagation, sinon le clic ouvrirait aussi
                                                         l'attribution sous le lien. */}
                                                     {assignment.orderId && (
-                                                        <div className="text-xs font-normal">
+                                                        <div className="text-sm font-normal">
                                                             <IntentLink
                                                                 href={`/admin/orders?order=${assignment.orderId}`}
                                                                 onClick={(e) => e.stopPropagation()}
@@ -539,7 +539,7 @@ export default function AssignmentsTable({
                                                     {delai && (
                                                         <div
                                                             title={delai.phrase}
-                                                            className={`mt-1 whitespace-nowrap text-xs font-medium ${
+                                                            className={`mt-1 whitespace-nowrap text-sm font-medium ${
                                                                 delai.niveau === 'en_retard'
                                                                     ? 'text-amber-800 dark:text-amber-300'
                                                                     : 'text-muted-foreground'

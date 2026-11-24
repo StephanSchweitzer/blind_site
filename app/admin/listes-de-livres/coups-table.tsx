@@ -165,7 +165,7 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                                             {item.title}
                                         </IntentLink>
                                         {item.description && (
-                                            <div className="mt-0.5 max-w-md truncate text-xs text-muted-foreground">
+                                            <div className="mt-0.5 max-w-md truncate text-sm text-muted-foreground">
                                                 {item.description}
                                             </div>
                                         )}

@@ -318,8 +318,8 @@ function StatTile({
             <span className="min-w-0 flex-1">
                 <span className={`block text-2xl font-semibold leading-none ${toneClass}`}>{value}</span>
                 <span className="block text-sm text-foreground mt-1">{label}</span>
-                {hint && <span className="block text-xs text-muted-foreground mt-0.5">{hint}</span>}
-                <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                {hint && <span className="block text-sm text-muted-foreground mt-0.5">{hint}</span>}
+                <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground group-hover:text-foreground">
                     {action}
                     <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
                 </span>
@@ -433,11 +433,11 @@ function AlertGroup({
                     {icon}
                 </span>
                 <span className="min-w-0">{title}</span>
-                <span className="text-xs font-normal text-muted-foreground tabular-nums">
+                <span className="text-sm font-normal text-muted-foreground tabular-nums">
                     {rows.length}
                 </span>
             </h3>
-            {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+            {description && <p className="text-sm text-muted-foreground mt-0.5">{description}</p>}
             <ul className="mt-3 flex flex-wrap gap-1.5">
                 {visible.map((row) => (
                     <li key={row.key} className="min-w-0 max-w-full">
@@ -454,7 +454,7 @@ function AlertGroup({
                                 presque tout le monde ici est lecteur. */}
                             {!isLecteur(row.person) && <TypeBadge person={row.person} />}
                             {row.meta && (
-                                <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                                <span className="whitespace-nowrap text-sm text-muted-foreground tabular-nums">
                                     {row.meta}
                                 </span>
                             )}
@@ -789,7 +789,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="mt-1 h-7 w-full text-xs text-muted-foreground"
+                                    className="mt-1 h-7 w-full text-sm text-muted-foreground"
                                     onClick={() => setLanguageFilter([])}
                                 >
                                     Effacer
@@ -886,10 +886,10 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         >
                             <CalendarClock size={18} className="shrink-0 text-muted-foreground" />
                             <span>Points à surveiller</span>
-                            <span className="hidden text-xs font-normal text-muted-foreground sm:inline">
+                            <span className="hidden text-sm font-normal text-muted-foreground sm:inline">
                                 les {warningDays} prochains jours
                             </span>
-                            <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground transition-colors group-hover:bg-muted group-hover:text-foreground">
+                            <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-sm font-medium text-muted-foreground transition-colors group-hover:bg-muted group-hover:text-foreground">
                                 {alertsOpen ? 'Masquer' : 'Afficher'}
                                 {alertsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                             </span>
@@ -1030,7 +1030,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                             </div>
                         </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                         Du {formatDayKey(start)} au {formatDayKey(end)}.
                     </p>
                     {/* Saving somebody the current filters exclude used to read
@@ -1038,7 +1038,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         this view. Say so rather than let the calendar look
                         broken. */}
                     {hiddenHighlight && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 animate-in fade-in duration-200">
+                        <p className="text-sm text-amber-600 dark:text-amber-400 animate-in fade-in duration-200">
                             {hiddenHighlight.person.name} vient d&apos;être modifié(e) mais
                             n&apos;apparaît pas ici : son indisponibilité est hors de la période
                             affichée ou exclue par les filtres.
@@ -1100,7 +1100,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                         </div>
                         <div className="flex flex-wrap items-center gap-4">
                             <label
-                                className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer"
+                                className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer"
                                 title="Actifs, preneurs et sous leur plafond"
                             >
                                 <input
@@ -1111,7 +1111,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                 />
                                 Attribuables seulement
                             </label>
-                            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={onlyDormant}
@@ -1176,7 +1176,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                             <TableCell>
                                                 <PersonButton person={row.person} onOpen={openPerson} />
                                                 {!row.person.isAvailable && (
-                                                    <span className="block text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                                                    <span className="block text-sm text-amber-600 dark:text-amber-400 mt-0.5">
                                                         ne prend pas d&apos;attribution
                                                     </span>
                                                 )}
@@ -1189,7 +1189,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                                 </span>
                                                 {row.person.effectiveStatus === 'UNAVAILABLE' &&
                                                     row.person.unavailableUntil && (
-                                                        <span className="block text-xs text-muted-foreground mt-0.5">
+                                                        <span className="block text-sm text-muted-foreground mt-0.5">
                                                             jusqu&apos;au{' '}
                                                             {formatDayKey(row.person.unavailableUntil)}
                                                         </span>
@@ -1205,7 +1205,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                                             }}
                                                         />
                                                     </div>
-                                                    <span className="text-xs text-muted-foreground tabular-nums">
+                                                    <span className="text-sm text-muted-foreground tabular-nums">
                                                         {row.person.activeAssignments} / {row.max}
                                                     </span>
                                                 </div>
@@ -1224,7 +1224,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
                                                     {row.person.lastAssignedAt ? (
                                                         <>
                                                             {formatDayKey(row.person.lastAssignedAt)}
-                                                            <span className="text-xs">
+                                                            <span className="text-sm">
                                                                 ({row.idleDays} j)
                                                             </span>
                                                         </>

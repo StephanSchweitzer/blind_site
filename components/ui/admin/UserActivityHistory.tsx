@@ -196,7 +196,7 @@ export function UserActivityHistory({
                             {getUserActivityStatusLabel(effectiveStatus)}
                         </span>
                         {effectiveDetail && (
-                            <span className="text-xs text-muted-foreground">{effectiveDetail}</span>
+                            <span className="text-sm text-muted-foreground">{effectiveDetail}</span>
                         )}
                     </>
                 )}
@@ -206,7 +206,7 @@ export function UserActivityHistory({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="ml-auto h-7 px-2.5 text-xs"
+                        className="ml-auto h-7 px-2.5 text-sm"
                         aria-expanded={changing}
                         onClick={() => {
                             if (changing) {
@@ -263,7 +263,7 @@ export function UserActivityHistory({
             {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
 
             {!loading && !error && latest && (
-                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                     <button
                         type="button"
                         onClick={() => setHistoryOpen(!historyOpen)}
@@ -301,7 +301,7 @@ export function UserActivityHistory({
                             )}
                             {e.reason && <p className="mt-1 text-foreground">Motif : {e.reason}</p>}
                             {e.comment && <p className="mt-1 text-muted-foreground">{e.comment}</p>}
-                            <p className="mt-1 text-xs text-muted-foreground">Par {who(e)}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Par {who(e)}</p>
                         </li>
                     ))}
                 </ol>

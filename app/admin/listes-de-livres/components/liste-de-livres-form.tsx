@@ -418,7 +418,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                                     {audioPath && isReplacingAudio && (
                                         <button
                                             type="button"
-                                            className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                                            className="self-start text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
                                             onClick={() => {
                                                 setTempAudioBlob(null);
                                                 setIsReplacingAudio(false);
@@ -430,7 +430,7 @@ export default function ListeDeLivresForm({ listId, createdAt, initialValues, on
                                     {!audioPath && saved.audioPath && (
                                         <button
                                             type="button"
-                                            className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                                            className="self-start text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
                                             onClick={() => setAudioPath(saved.audioPath)}
                                         >
                                             Remettre l&apos;audio retiré

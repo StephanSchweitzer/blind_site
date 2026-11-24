@@ -223,10 +223,10 @@ export default function DetailDrawer({
                                     )}
                                 </div>
                                 {merged === 1 && item.subtitle && (
-                                    <p className="text-xs text-muted-foreground mt-0.5">{item.subtitle}</p>
+                                    <p className="text-sm text-muted-foreground mt-0.5">{item.subtitle}</p>
                                 )}
                                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-sm text-muted-foreground">
                                         {formatDateTime(item.at)}
                                     </span>
                                     {typeBadge}
@@ -253,7 +253,7 @@ export default function DetailDrawer({
                                                 className="flex items-center justify-between gap-2 text-foreground/80"
                                             >
                                                 <span className="truncate">{sub.subtitle ?? '—'}</span>
-                                                <span className="text-xs text-muted-foreground shrink-0">
+                                                <span className="text-sm text-muted-foreground shrink-0">
                                                     {formatDateTime(sub.at)}
                                                 </span>
                                             </li>

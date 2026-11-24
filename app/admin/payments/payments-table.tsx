@@ -452,7 +452,7 @@ export default function PaymentsTable({
                             type="button"
                             onClick={handleResetFilters}
                             disabled={isPending}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                         >
                             <RotateCcw className="h-3.5 w-3.5" />
                             Tout réinitialiser
@@ -473,7 +473,7 @@ export default function PaymentsTable({
                     >
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div className="space-y-1.5">
-                                <label className="block text-xs text-muted-foreground uppercase tracking-wide">Type</label>
+                                <label className="block text-sm text-muted-foreground uppercase tracking-wide">Type</label>
                                 <Select value={currentType ?? 'all'} onValueChange={handleTypeFilter}>
                                     <SelectTrigger className="w-full bg-field border-border text-foreground">
                                         <SelectValue placeholder="Filtrer par type" />
@@ -490,7 +490,7 @@ export default function PaymentsTable({
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="block text-xs text-muted-foreground uppercase tracking-wide">Méthode</label>
+                                <label className="block text-sm text-muted-foreground uppercase tracking-wide">Méthode</label>
                                 <Select value={currentMethod ?? 'all'} onValueChange={handleMethodFilter}>
                                     <SelectTrigger className="w-full bg-field border-border text-foreground">
                                         <SelectValue placeholder="Filtrer par méthode" />
@@ -507,7 +507,7 @@ export default function PaymentsTable({
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="block text-xs text-muted-foreground uppercase tracking-wide">Statut</label>
+                                <label className="block text-sm text-muted-foreground uppercase tracking-wide">Statut</label>
                                 <Select value={currentStatus ?? 'all'} onValueChange={handleStatusFilter}>
                                     <SelectTrigger className="w-full bg-field border-border text-foreground">
                                         <SelectValue placeholder="Filtrer par statut" />
@@ -524,7 +524,7 @@ export default function PaymentsTable({
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="block text-xs text-muted-foreground uppercase tracking-wide">Période sur</label>
+                                <label className="block text-sm text-muted-foreground uppercase tracking-wide">Période sur</label>
                                 <Select value={initialParams.dateField} onValueChange={handleDateFieldChange}>
                                     <SelectTrigger className="w-full bg-field border-border text-foreground">
                                         <SelectValue />
@@ -538,7 +538,7 @@ export default function PaymentsTable({
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                    <label className="block text-xs text-muted-foreground uppercase tracking-wide">Du</label>
+                                    <label className="block text-sm text-muted-foreground uppercase tracking-wide">Du</label>
                                     <Input
                                         type="date"
                                         value={initialParams.from ?? ''}
@@ -547,7 +547,7 @@ export default function PaymentsTable({
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="block text-xs text-muted-foreground uppercase tracking-wide">Au</label>
+                                    <label className="block text-sm text-muted-foreground uppercase tracking-wide">Au</label>
                                     <Input
                                         type="date"
                                         value={initialParams.to ?? ''}
@@ -559,7 +559,7 @@ export default function PaymentsTable({
                         </div>
 
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border pt-3">
-                            <span className="text-xs text-muted-foreground uppercase tracking-wide">Rapprochement</span>
+                            <span className="text-sm text-muted-foreground uppercase tracking-wide">Rapprochement</span>
                             <label className="flex items-center gap-2 text-foreground text-sm cursor-pointer whitespace-nowrap">
                                 <Checkbox
                                     checked={initialParams.unlinked}
@@ -647,7 +647,7 @@ export default function PaymentsTable({
                                                 <TableCell className="font-medium text-foreground whitespace-nowrap">
                                                     <CopyIdButton id={payment.id} label="du paiement" />
                                                     {matchedBillId !== null && matchedBillId !== payment.id && matchedBillId === payment.bill?.id && (
-                                                        <div className="text-xs font-normal text-muted-foreground">
+                                                        <div className="text-sm font-normal text-muted-foreground">
                                                             ↳ facture #{payment.bill?.id}
                                                         </div>
                                                     )}

@@ -336,7 +336,7 @@ function AudioBurstList({ group }: { group: EventGroup }) {
     return (
         <div>
             {label && (
-                <p className="text-xs text-muted-foreground mb-1.5">
+                <p className="text-sm text-muted-foreground mb-1.5">
                     {group.events.length} fichiers — {label}
                 </p>
             )}
@@ -378,7 +378,7 @@ function BulkAudioSummary({ event }: { event: AuditEventItem }) {
                 {count === null ? 'Plusieurs pistes' : plural(count, 'piste')}
                 {label ? ` — ${label.toLowerCase()}` : ''}, en une seule opération groupée.
             </p>
-            <p className="text-xs">
+            <p className="text-sm">
                 Le journal conserve l’opération et le livre concerné, pas la liste des
                 fichiers : les noms restent dans l’historique audio du livre.
             </p>
@@ -412,7 +412,7 @@ function DiffTable({ group }: { group: EventGroup }) {
             )}
             <table className="w-full text-sm">
                 <thead>
-                    <tr className="text-xs text-muted-foreground text-left">
+                    <tr className="text-sm text-muted-foreground text-left">
                         <th className="font-normal py-1 pr-4">Champ</th>
                         <th className="font-normal py-1 pr-4">Avant</th>
                         <th className="font-normal py-1">Après</th>
@@ -500,7 +500,7 @@ function EventRow({
                     <span className="sr-only">Voir le détail</span>
                 </button>
 
-                <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                <span className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
                     {formatDateTime(event.at)}
                 </span>
 
@@ -563,9 +563,9 @@ function EventRow({
                     </IntentLink>
                 )}
 
-                <span className="text-xs text-muted-foreground">par {event.actorName}</span>
+                <span className="text-sm text-muted-foreground">par {event.actorName}</span>
 
-                <span className="text-xs text-muted-foreground ml-auto">{summarize(group)}</span>
+                <span className="text-sm text-muted-foreground ml-auto">{summarize(group)}</span>
 
                 {/* A fused record was not lost, so the useful action is the fiche
                     that absorbed it — never a restore, which would recreate an
@@ -610,14 +610,14 @@ function EventRow({
                     >
                         <div className="px-3 pb-3 pt-1 border-t border-border/60">
                             {merged > 1 && !isAudioBurst(group) && (
-                                <p className="text-xs text-muted-foreground mb-2">
+                                <p className="text-sm text-muted-foreground mb-2">
                                     {merged} enregistrements successifs entre {formatDateTime(startedAt)} et{' '}
                                     {formatDateTime(event.at)}. Le détail ci-dessous montre l’effet net :
                                     la valeur de départ et la valeur d’arrivée.
                                 </p>
                             )}
                             {merged > 1 && isAudioBurst(group) && (
-                                <p className="text-xs text-muted-foreground mb-2">
+                                <p className="text-sm text-muted-foreground mb-2">
                                     {merged} pistes traitées entre {formatDateTime(startedAt)} et{' '}
                                     {formatDateTime(event.at)}, dans la même action groupée.
                                 </p>
@@ -630,7 +630,7 @@ function EventRow({
                                 <DiffTable group={group} />
                             )}
                             {isDeletion && event.restoreBlocker && (
-                                <p className="text-xs text-muted-foreground mt-2">{event.restoreBlocker}</p>
+                                <p className="text-sm text-muted-foreground mt-2">{event.restoreBlocker}</p>
                             )}
                         </div>
                     </motion.div>
@@ -800,7 +800,7 @@ export default function AuditTimeline() {
                 <h2 className="text-lg font-semibold text-foreground">
                     Journal des modifications
                 </h2>
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     {retention
                         ? `${retention.rows} événement(s) conservé(s) · ${retention.retentionDays} derniers jours · ${retention.megabytes} Mo`
                         : <><Loader2 size={12} className="animate-spin" />Chargement…</>}
@@ -820,7 +820,7 @@ export default function AuditTimeline() {
 
             {/* ── filters ────────────────────────────────────────────────── */}
             <div className="flex flex-wrap items-end gap-3 mt-4 mb-4">
-                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                <label className="flex flex-col gap-1 text-sm text-muted-foreground">
                     Enregistrement
                     <span className="relative">
                         <Search
@@ -847,7 +847,7 @@ export default function AuditTimeline() {
                     </span>
                 </label>
 
-                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                <label className="flex flex-col gap-1 text-sm text-muted-foreground">
                     Type d’enregistrement
                     <select
                         className={selectClass}
@@ -861,7 +861,7 @@ export default function AuditTimeline() {
                     </select>
                 </label>
 
-                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                <div className="flex flex-col gap-1 text-sm text-muted-foreground">
                     Auteur
                     <ActorFilter
                         actors={data?.actors ?? []}
@@ -870,7 +870,7 @@ export default function AuditTimeline() {
                     />
                 </div>
 
-                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                <div className="flex flex-col gap-1 text-sm text-muted-foreground">
                     Opération
                     <div className="flex flex-wrap gap-1">
                         <Button
@@ -893,7 +893,7 @@ export default function AuditTimeline() {
                     </div>
                 </div>
 
-                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                <label className="flex flex-col gap-1 text-sm text-muted-foreground">
                     Du
                     <Input
                         type="date"
@@ -902,7 +902,7 @@ export default function AuditTimeline() {
                         className="h-9 w-40 bg-field border-border text-foreground"
                     />
                 </label>
-                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                <label className="flex flex-col gap-1 text-sm text-muted-foreground">
                     Au
                     <Input
                         type="date"
@@ -933,7 +933,7 @@ export default function AuditTimeline() {
                 <div className="py-10 text-center">
                     <History size={22} className="mx-auto text-muted-foreground mb-2" />
                     <p className="text-sm text-foreground">Aucune modification à afficher.</p>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                    <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
                         Le journal ne conserve que les{' '}
                         <strong>{retention?.retentionDays ?? 14} derniers jours</strong> : au-delà,
                         les événements sont purgés automatiquement pour ne pas saturer la base.

@@ -122,7 +122,7 @@ function DayField({
 }) {
     return (
         <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">{label}</label>
+            <label className="text-sm font-medium text-foreground">{label}</label>
             <DatePickerField
                 value={fromDayString(value)}
                 onChange={(d) => onChange(toDayString(d))}
@@ -170,7 +170,7 @@ export function ActivityWindowFields({
                 />
             </div>
             {hint && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                     La personne redevient automatiquement active après cette date. Une date
                     de début future est possible : elle reste active jusque-là.
                 </p>

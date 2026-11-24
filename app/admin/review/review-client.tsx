@@ -673,7 +673,7 @@ function PairCard({
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs"
+                            className="h-7 px-2 text-sm"
                             disabled={busy}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -925,7 +925,7 @@ function PairCard({
                     fermé, qu'elle est déjà partie. Le double audio a déjà la
                     sienne dans l'encadré ci-dessus. */}
                 {!audioConflict && flagged.escalatedAt && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                         Signalé le {fmtDate(flagged.escalatedAt)} — traitement manuel en attente.
                     </p>
                 )}
@@ -968,7 +968,7 @@ function EscalateRow({
 
     return (
         <div className="flex flex-wrap items-center gap-2">
-            {hint && !escalated && <span className="mr-auto text-xs text-muted-foreground">{hint}</span>}
+            {hint && !escalated && <span className="mr-auto text-sm text-muted-foreground">{hint}</span>}
             <Button
                 variant="outline"
                 size="sm"
@@ -990,7 +990,7 @@ function EscalateRow({
                 <Send className="h-4 w-4" /> {label}
             </Button>
             {escalated && (
-                <span className={`text-xs ${stampClassName}`}>
+                <span className={`text-sm ${stampClassName}`}>
                     Signalé le {fmtDate(book.escalatedAt ?? null)} — traitement manuel en attente.
                 </span>
             )}
@@ -1040,7 +1040,7 @@ function PairActionsMenu({
                         <Replace className="h-4 w-4 mt-0.5 shrink-0" />
                         <span>
                             Pas le bon livre ?
-                            <span className="block text-xs text-muted-foreground">Chercher un autre livre à mettre en face</span>
+                            <span className="block text-sm text-muted-foreground">Chercher un autre livre à mettre en face</span>
                         </span>
                     </button>
                 )}
@@ -1049,7 +1049,7 @@ function PairActionsMenu({
                         <Check className="h-4 w-4 mt-0.5 shrink-0" />
                         <span>
                             Livres distincts
-                            <span className="block text-xs text-muted-foreground">Garder les deux fiches, ou en supprimer une</span>
+                            <span className="block text-sm text-muted-foreground">Garder les deux fiches, ou en supprimer une</span>
                         </span>
                     </button>
                 )}
@@ -1058,7 +1058,7 @@ function PairActionsMenu({
                         <Send className="h-4 w-4 mt-0.5 shrink-0" />
                         <span>
                             Signaler à Stéphan
-                            <span className="block text-xs text-muted-foreground">
+                            <span className="block text-sm text-muted-foreground">
                                 {escalated ? 'Déjà signalé' : 'Le bon livre n’existe pas dans le catalogue'}
                             </span>
                         </span>
@@ -1121,7 +1121,7 @@ function MatchPicker({
         <div className="space-y-3">
             {candidates.length > 0 && (
                 <div className="space-y-2">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                         Livres au titre proche
                     </p>
                     {candidates.map((b) => (
@@ -1136,7 +1136,7 @@ function MatchPicker({
                                         <span className="italic text-muted-foreground"> {b.subtitle}</span>
                                     )}
                                 </div>
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-sm text-muted-foreground">
                                     {b.author}
                                     {b.source_access_id != null && ` · n° ${b.source_access_id}`}
                                     {' · '}
@@ -1154,7 +1154,7 @@ function MatchPicker({
             )}
 
             <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                     {candidates.length > 0 ? 'Ou chercher un autre livre' : 'Chercher le bon livre'}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1183,7 +1183,7 @@ function MatchPicker({
                     )}
                 </div>
                 {manual && manual.id === flagged.id && (
-                    <p className="text-xs text-destructive">
+                    <p className="text-sm text-destructive">
                         C’est la fiche de gauche : choisissez l’autre version du livre.
                     </p>
                 )}
@@ -1222,7 +1222,7 @@ function ListenButton({ book, onListen }: { book: ReviewBook; onListen: (book: R
         <Button
             variant="outline"
             size="sm"
-            className="h-7 gap-1 px-2 text-xs"
+            className="h-7 gap-1 px-2 text-sm"
             // The card behind this button opens the comparison on click.
             onClick={(e) => {
                 e.stopPropagation();

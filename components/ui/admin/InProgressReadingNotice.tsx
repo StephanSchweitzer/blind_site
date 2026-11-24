@@ -49,7 +49,7 @@ export function InProgressReadingNotice({
                 className="flex-shrink-0 flex items-start gap-2 rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-blue-800 dark:text-blue-300"
             >
                 <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <div className="space-y-2 text-xs">
+                <div className="space-y-2 text-sm">
                     <p className="text-sm font-semibold">
                         Audio déposé : l&apos;attribution n°{toFinish.assignmentId} est toujours ouverte
                     </p>
@@ -80,7 +80,7 @@ export function InProgressReadingNotice({
             className="flex-shrink-0 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-amber-800 dark:text-amber-300"
         >
             <TriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <div className="space-y-1 text-xs">
+            <div className="space-y-1 text-sm">
                 <p className="text-sm font-semibold">Lecture en cours : l&apos;audio peut être incomplet</p>
                 <p>
                     Une attribution de ce livre est encore en cours, la lecture n&apos;est donc pas

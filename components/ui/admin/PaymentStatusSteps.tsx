@@ -70,7 +70,7 @@ export function PaymentStatusSteps({
                             <span className={`block text-sm ${isCurrent ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
                                 {getPaymentStatusLabel(status)}
                             </span>
-                            <span className="block text-xs text-muted-foreground break-words">{detail[status]}</span>
+                            <span className="block text-sm text-muted-foreground break-words">{detail[status]}</span>
                         </span>
                     </li>
                 );

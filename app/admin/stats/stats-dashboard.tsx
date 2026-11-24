@@ -137,7 +137,7 @@ export default function StatsDashboard() {
                         ))}
                     </div>
                 </div>
-                <p className="text-xs text-muted-foreground mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                     {metricHint ?? 'Cliquez une case pour voir les enregistrements correspondants.'}
                 </p>
                 <StaffHeatmap

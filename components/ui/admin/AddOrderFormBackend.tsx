@@ -575,14 +575,14 @@ export function AddOrderFormBackend({
                                             {line.closeNow && (
                                                 <>
                                                     <div className="space-y-1">
-                                                        <span className="text-xs text-muted-foreground">Date de clôture (envoi à l&apos;auditeur)</span>
+                                                        <span className="text-sm text-muted-foreground">Date de clôture (envoi à l&apos;auditeur)</span>
                                                         <DatePickerField
                                                             value={line.closureDate}
                                                             // Champ obligatoire : recliquer le jour choisi ne le vide pas.
                                                             onChange={(d) => d && updateLine(line.key, { closureDate: d })}
                                                         />
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground">
+                                                    <p className="text-sm text-muted-foreground">
                                                         {billingStatus === 'UNBILLABLE'
                                                             ? 'La demande sera créée « Terminé ».'
                                                             : 'La demande sera créée « Terminé » et ajoutée au brouillon de facture de l’auditeur.'}
@@ -608,7 +608,7 @@ export function AddOrderFormBackend({
                                 {/* Per-ouvrage format — required per line, seeded from the auditeur's préférence */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
-                                        <label id={`${uid}-media-${line.key}-label`} className="text-xs text-muted-foreground">Format média <RequiredMark /></label>
+                                        <label id={`${uid}-media-${line.key}-label`} className="text-sm text-muted-foreground">Format média <RequiredMark /></label>
                                         <Select value={line.mediaFormatId?.toString() || ''}
                                                 onValueChange={(v) => updateLine(line.key, { mediaFormatId: v ? parseInt(v) : null })}>
                                             <SelectTrigger ref={registerField(`mediaFormatId-${line.key}`)} id={`${uid}-media-${line.key}`} aria-labelledby={`${uid}-media-${line.key}-label ${uid}-media-${line.key}`} className="bg-card border-border text-foreground h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
@@ -621,7 +621,7 @@ export function AddOrderFormBackend({
                                     </div>
                                     {!(line.type === 'ENREGISTREMENT' && line.pagePricing.pageBased) && (
                                     <div className="space-y-1">
-                                        <label className="text-xs text-muted-foreground">Coût</label>
+                                        <label className="text-sm text-muted-foreground">Coût</label>
                                         <div className="relative">
                                             <Input type="text" inputMode="decimal" value={line.cost}
                                                    onChange={(e) => updateLine(line.key, { cost: sanitizeDecimal(e.target.value) })}
@@ -634,7 +634,7 @@ export function AddOrderFormBackend({
                                             if (!tarif) return null;
                                             const differs = formatEuro2(line.cost) !== tarif.value;
                                             return (
-                                                <p className="text-xs text-muted-foreground">
+                                                <p className="text-sm text-muted-foreground">
                                                     Conseillé : {tarif.value} € ({tarif.label})
                                                     {differs && (
                                                         <button

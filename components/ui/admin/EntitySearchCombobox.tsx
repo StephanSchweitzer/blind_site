@@ -443,7 +443,7 @@ export function EntitySearchCombobox<T>({
                     )}
                 </div>
                 {showFooter && (
-                    <div className="shrink-0 border-t border-border px-4 py-2 text-xs text-muted-foreground">
+                    <div className="shrink-0 border-t border-border px-4 py-2 text-sm text-muted-foreground">
                         {footerText}
                     </div>
                 )}

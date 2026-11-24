@@ -153,7 +153,6 @@ export function CloseOrderTodayButton({
                 size="sm"
                 onClick={handleClick}
                 disabled={isWorking}
-                title={label}
                 aria-label={label}
                 className="h-8 gap-1.5 px-2 text-green-700 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-950/30"
             >

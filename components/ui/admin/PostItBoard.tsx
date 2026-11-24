@@ -402,7 +402,7 @@ function PostItForm({
                     autoFocus
                     aria-describedby={`${ids.text}-count`}
                 />
-                <p id={`${ids.text}-count`} className="text-xs text-muted-foreground">
+                <p id={`${ids.text}-count`} className="text-sm text-muted-foreground">
                     {remaining} caractère{remaining > 1 ? 's' : ''} restant{remaining > 1 ? 's' : ''}
                 </p>
             </div>
@@ -412,7 +412,7 @@ function PostItForm({
                     Rappel le <span className="font-normal text-muted-foreground">(facultatif)</span>
                 </label>
                 <DatePickerField id={ids.date} value={remindOn} onChange={setRemindOn} clearable placeholder="Aucun rappel" />
-                <p className="text-xs text-muted-foreground">Ce jour-là, le post-it passe en tête du tableau.</p>
+                <p className="text-sm text-muted-foreground">Ce jour-là, le post-it passe en tête du tableau.</p>
             </div>
 
             <div className="space-y-2">
@@ -450,7 +450,7 @@ function PostItForm({
                         />
                     </div>
                 )}
-                <p className="text-xs text-muted-foreground">Un post-it lié s’ouvre sur la fiche, la demande, l’attribution ou la facture.</p>
+                <p className="text-sm text-muted-foreground">Un post-it lié s’ouvre sur la fiche, la demande, l’attribution ou la facture.</p>
             </div>
 
             {error && (
@@ -550,7 +550,7 @@ export function LinkedPostIts({
                     <li key={item.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-2">
                         <div className="min-w-0 flex-1 space-y-1">
                             <p className="whitespace-pre-wrap break-words text-sm text-foreground">{item.content}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                                 {item.author?.name ?? 'Auteur inconnu'} · {parisDate(new Date(item.createdAt), PERSON_DAY)}
                                 {item.remindOn && (
                                     item.due ? (

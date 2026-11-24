@@ -240,7 +240,7 @@ export const MailingLabelButton: React.FC<MailingLabelButtonProps> = ({
                                 <span className="flex flex-col items-start gap-0.5">
                                     <span className="text-sm">{address.oneLine}</span>
                                     {address.isDefault && (
-                                        <span className="text-xs text-muted-foreground">
+                                        <span className="text-sm text-muted-foreground">
                                             Adresse par défaut
                                         </span>
                                     )}

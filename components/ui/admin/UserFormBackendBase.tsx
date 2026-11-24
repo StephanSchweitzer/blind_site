@@ -437,7 +437,7 @@ export function UserFormBackendBase({
                                 disabled={isLoginAccountLocked}
                             />
                             {isLoginAccountLocked && (
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     C’est l’identifiant de connexion d’un compte permanent : seul un super
                                     administrateur peut le modifier. Chacun change le sien depuis « Mon compte ».
                                 </p>
@@ -529,7 +529,7 @@ export function UserFormBackendBase({
                             {showAccessLevel && (
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-foreground">
-                                        Niveau d&apos;accès {isAccessLevelLocked && <span className="text-xs text-muted-foreground">({getLockedReason()})</span>}
+                                        Niveau d&apos;accès {isAccessLevelLocked && <span className="text-sm text-muted-foreground">({getLockedReason()})</span>}
                                     </label>
                                     {isAccessLevelLocked ? (
                                         <div className="bg-card/50 border border-border rounded-md px-3 py-2 text-sm text-foreground">
@@ -572,7 +572,7 @@ export function UserFormBackendBase({
                                 <div className="bg-card/30 p-4 rounded-lg border border-border flex items-center justify-between gap-4">
                                     <div>
                                         <p className="text-sm font-medium text-foreground">Mot de passe</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                        <p className="text-sm text-muted-foreground mt-0.5">
                                             G&#233;n&#232;re un nouveau mot de passe temporaire et l&apos;envoie par email
                                             &#224; la personne. L&apos;ancien mot de passe cessera de fonctionner.
                                         </p>

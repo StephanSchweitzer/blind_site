@@ -783,7 +783,7 @@ export default function BooksTable({
                         />
 
                         <div className="flex flex-col gap-1 w-full sm:w-auto">
-                            <span className="text-xs font-medium text-muted-foreground">Filtres</span>
+                            <span className="text-sm font-medium text-muted-foreground">Filtres</span>
                             <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
@@ -798,7 +798,7 @@ export default function BooksTable({
                                 </PopoverTrigger>
                                 <PopoverContent align="start" collisionPadding={16} className="w-72 space-y-4 bg-card border-border">
                                     <div className="space-y-1.5">
-                                        <span className="text-xs font-medium text-muted-foreground">Disponibilité</span>
+                                        <span className="text-sm font-medium text-muted-foreground">Disponibilité</span>
                                         <div className="grid grid-cols-3 gap-1">
                                             {[
                                                 { value: 'all', label: 'Tous' },
@@ -810,7 +810,7 @@ export default function BooksTable({
                                                     type="button"
                                                     aria-pressed={selectedAvailable === opt.value}
                                                     onClick={() => handleAvailableChange(opt.value)}
-                                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                                                    className={`rounded-md border px-2 py-1.5 text-sm font-medium transition-colors ${
                                                         selectedAvailable === opt.value
                                                             ? 'bg-primary text-primary-foreground border-primary'
                                                             : 'bg-card text-foreground border-border hover:bg-muted'
@@ -822,7 +822,7 @@ export default function BooksTable({
                                         </div>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <span className="text-xs font-medium text-muted-foreground">Audio</span>
+                                        <span className="text-sm font-medium text-muted-foreground">Audio</span>
                                         <div className="grid grid-cols-3 gap-1">
                                             {[
                                                 { value: 'all', label: 'Tous' },
@@ -834,7 +834,7 @@ export default function BooksTable({
                                                     type="button"
                                                     aria-pressed={selectedAudio === opt.value}
                                                     onClick={() => handleAudioChange(opt.value)}
-                                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                                                    className={`rounded-md border px-2 py-1.5 text-sm font-medium transition-colors ${
                                                         selectedAudio === opt.value
                                                             ? 'bg-primary text-primary-foreground border-primary'
                                                             : 'bg-card text-foreground border-border hover:bg-muted'
@@ -846,7 +846,7 @@ export default function BooksTable({
                                         </div>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <span className="text-xs font-medium text-muted-foreground">Visibilité dans le catalogue</span>
+                                        <span className="text-sm font-medium text-muted-foreground">Visibilité dans le catalogue</span>
                                         <div className="grid grid-cols-3 gap-1">
                                             {[
                                                 { value: 'all', label: 'Toutes' },
@@ -858,7 +858,7 @@ export default function BooksTable({
                                                     type="button"
                                                     aria-pressed={selectedHidden === opt.value}
                                                     onClick={() => handleHiddenChange(opt.value)}
-                                                    className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                                                    className={`rounded-md border px-2 py-1.5 text-sm font-medium transition-colors ${
                                                         selectedHidden === opt.value
                                                             ? 'bg-primary text-primary-foreground border-primary'
                                                             : 'bg-card text-foreground border-border hover:bg-muted'
@@ -875,7 +875,7 @@ export default function BooksTable({
 
                         {availableGenres && availableGenres.length > 0 && (
                             <div className="flex flex-col gap-1 w-full sm:w-64">
-                                <span className="text-xs font-medium text-muted-foreground">Genres</span>
+                                <span className="text-sm font-medium text-muted-foreground">Genres</span>
                                 <Popover open={open} onOpenChange={setOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -1058,7 +1058,7 @@ export default function BooksTable({
                                                             </span>
                                                         ))}
                                                         {book.genres?.length > 2 && (
-                                                            <span className="text-xs text-muted-foreground whitespace-nowrap">+{book.genres.length - 2}</span>
+                                                            <span className="text-sm text-muted-foreground whitespace-nowrap">+{book.genres.length - 2}</span>
                                                         )}
                                                     </div>
                                                 </TableCell>

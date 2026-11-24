@@ -716,7 +716,7 @@ export function OrderFormBackendBase({
                             l'auditeur est verrouillé : la note ne reste que pour un
                             brouillon, qu'aucun bandeau n'annonce. */}
                         {hasBill && !billIssued && initialBill && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
                                 Auditeur verrouillé : la demande figure sur la{' '}
                                 <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink>, qui
                                 appartient à cet auditeur. Retirez-la de la facture pour le modifier.{' '}
@@ -739,7 +739,7 @@ export function OrderFormBackendBase({
                                         <span className="font-medium">
                                             Facturer cette demande à {getUserDisplayName(selectedUser)}
                                         </span>
-                                        <span className="block text-xs text-muted-foreground mt-1">
+                                        <span className="block text-sm text-muted-foreground mt-1">
                                             {pagePricingActive
                                                 ? 'Elle est terminée et ne figure sur aucune facture : sa facture sera créée à l’enregistrement, au stade pro-forma.'
                                                 : 'Elle est terminée et ne figure sur aucune facture : elle sera ajoutée à son brouillon, ou un brouillon sera ouvert.'}{' '}
@@ -768,7 +768,7 @@ export function OrderFormBackendBase({
                                         }
                                         : null
                                 }
-                                className="h-8 px-2.5 text-xs"
+                                className="h-8 px-2.5 text-sm"
                             />
                         )}
                     </div>
@@ -946,12 +946,12 @@ export function OrderFormBackendBase({
                                             )}
                                         </div>
                                         {initialAssignment.sentToReaderDate && (
-                                            <div className="text-xs text-muted-foreground">
+                                            <div className="text-sm text-muted-foreground">
                                                 Envoyé au lecteur le {format(new Date(initialAssignment.sentToReaderDate), 'dd/MM/yyyy', { locale: fr })}
                                             </div>
                                         )}
                                         {initialAssignment.returnedToECADate && (
-                                            <div className="text-xs text-muted-foreground">
+                                            <div className="text-sm text-muted-foreground">
                                                 Revenu aux ECA le {format(new Date(initialAssignment.returnedToECADate), 'dd/MM/yyyy', { locale: fr })}
                                             </div>
                                         )}
@@ -995,14 +995,14 @@ export function OrderFormBackendBase({
                                 clearable={!savedStatusIsTermine}
                             />
                             {!closureDateEnabled && !assignmentUnknown && (
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     {assignmentStatusId === null
                                         ? 'Renseignable une fois l’attribution créée et terminée (date de retour aux ECA).'
                                         : 'Renseignable une fois l’enregistrement revenu aux ECA (date de retour sur l’attribution).'}
                                 </p>
                             )}
                             {closureBlocksSave && (
-                                <p className="text-xs text-amber-700 dark:text-amber-400">
+                                <p className="text-sm text-amber-700 dark:text-amber-400">
                                     {closureBlockedMessage}
                                 </p>
                             )}
@@ -1062,7 +1062,7 @@ export function OrderFormBackendBase({
                         >
                             {statusName(derivedStatusId)}
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">
                             {formData.isDuplication
                                 ? 'Déterminé automatiquement par la date de clôture.'
                                 : 'Déterminé automatiquement par l’attribution et la date de clôture.'}
@@ -1072,13 +1072,13 @@ export function OrderFormBackendBase({
                             )}
                         </p>
                         {derivedStatusId === STATUS.ATTENTE && assignmentStatusId === null && !assignmentUnknown && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                                 La demande passera « En cours » dès que son attribution aura un lecteur
                                 et une date d&apos;envoi.
                             </p>
                         )}
                         {derivedStatusId === STATUS.ATTENTE_AUDITEUR && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
                                 L&apos;enregistrement est revenu du lecteur mais n&apos;a pas encore été
                                 expédié à l&apos;auditeur. Renseignez la date de clôture le jour de
                                 l&apos;expédition : la demande passera « Terminé »
@@ -1099,7 +1099,7 @@ export function OrderFormBackendBase({
                                     variant="outline"
                                     disabled={isLoading || statusRollbackLocked}
                                     onClick={() => { setReopenReason(''); setReopenOpen(true); }}
-                                    className="h-8 px-2.5 text-xs"
+                                    className="h-8 px-2.5 text-sm"
                                 >
                                     Rouvrir la demande
                                 </Button>
@@ -1190,7 +1190,7 @@ export function OrderFormBackendBase({
                             tout en se déclarant hors du cycle. Sur une facture émise, le
                             bandeau du haut suffit. */}
                         {hasBill && !billIssued && initialBill && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
                                 « Non facturable » indisponible : la demande figure sur la{' '}
                                 <BillLink billId={initialBill.id}>facture #{initialBill.id}</BillLink> et son
                                 montant y est compté. Retirez-la de la facture d&apos;abord.
@@ -1240,12 +1240,12 @@ export function OrderFormBackendBase({
                             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">€</span>
                         </div>
                         {costLocked && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
                                 Coût verrouillé : la facture #{initialBill?.id} est {initialBill?.state === 'PAID' ? 'payée' : 'soldée'}. Rouvrez-la pour le modifier.
                             </p>
                         )}
                         {tarif && !costLocked && (
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                                 <span className="text-muted-foreground">
                                     Tarif conseillé : <span className="font-medium text-foreground">{tarif.value} €</span>
                                     {' '}({tarif.label})

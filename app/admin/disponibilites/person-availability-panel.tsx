@@ -286,7 +286,7 @@ function FoldSection({
                     <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold text-foreground">{title}</span>
                         {summary && !open && (
-                            <span className={`mt-0.5 block text-xs ${META}`}>{summary}</span>
+                            <span className={`mt-0.5 block text-sm ${META}`}>{summary}</span>
                         )}
                     </span>
                     <ChevronDown
@@ -370,7 +370,7 @@ function AssignmentRow({
                 </span>
                 <ExternalLink size={11} className="shrink-0 text-muted-foreground" />
             </IntentLink>
-            <p className={`mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs ${META}`}>
+            <p className={`mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm ${META}`}>
                 {[assignment.bookAuthor, assignment.statusName, longOut ? null : moved]
                     .filter(Boolean)
                     .join(' · ')}
@@ -863,7 +863,7 @@ export default function PersonAvailabilityPanel({
                                         Statut de disponibilité
                                     </h3>
                                     {changingStatus ? (
-                                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground animate-in fade-in duration-200">
+                                        <p className="flex items-center gap-1.5 text-sm text-muted-foreground animate-in fade-in duration-200">
                                             {getUserActivityStatusLabel(person.activityStatus)}
                                             <ArrowRight size={12} />
                                             <span className="font-medium text-foreground">
@@ -872,7 +872,7 @@ export default function PersonAvailabilityPanel({
                                         </p>
                                     ) : (
                                         statusDirty && (
-                                            <p className="text-xs font-medium text-foreground animate-in fade-in duration-200">
+                                            <p className="text-sm font-medium text-foreground animate-in fade-in duration-200">
                                                 Nouvelles dates
                                             </p>
                                         )
@@ -926,7 +926,7 @@ export default function PersonAvailabilityPanel({
                                             type="button"
                                             onClick={() => setEditingWindow(true)}
                                             disabled={saving}
-                                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                                            className="inline-flex items-center gap-1 text-sm text-primary hover:underline disabled:opacity-50"
                                         >
                                             <Pencil size={11} />
                                             Modifier les dates
@@ -939,7 +939,7 @@ export default function PersonAvailabilityPanel({
                                         <div className="flex flex-wrap items-center gap-1.5">
                                             {changingStatus || !storedUntil ? (
                                                 <>
-                                                    <span className={`text-xs ${META} mr-1`}>
+                                                    <span className={`text-sm ${META} mr-1`}>
                                                         Durée depuis aujourd&apos;hui :
                                                     </span>
                                                     {ABSENCE_PRESETS.map((preset) => (
@@ -952,7 +952,7 @@ export default function PersonAvailabilityPanel({
                                                                     : 'outline'
                                                             }
                                                             size="sm"
-                                                            className="h-7 px-2 text-xs"
+                                                            className="h-7 px-2 text-sm"
                                                             onClick={() => applyPreset(preset.span)}
                                                         >
                                                             {preset.label}
@@ -961,7 +961,7 @@ export default function PersonAvailabilityPanel({
                                                 </>
                                             ) : (
                                                 <>
-                                                    <span className={`text-xs ${META} mr-1`}>
+                                                    <span className={`text-sm ${META} mr-1`}>
                                                         Prolonger :
                                                     </span>
                                                     {EXTEND_PRESETS.map((preset) => (
@@ -974,7 +974,7 @@ export default function PersonAvailabilityPanel({
                                                                     : 'outline'
                                                             }
                                                             size="sm"
-                                                            className="h-7 px-2 text-xs"
+                                                            className="h-7 px-2 text-sm"
                                                             onClick={() => {
                                                                 draft.setFrom(person.unavailableFrom ?? draft.from);
                                                                 draft.setUntil(shift(storedUntil, preset.span));
@@ -987,7 +987,7 @@ export default function PersonAvailabilityPanel({
                                                         type="button"
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="ml-auto h-7 px-2 text-xs"
+                                                        className="ml-auto h-7 px-2 text-sm"
                                                         onClick={cancelWindowEdit}
                                                     >
                                                         Annuler
@@ -1002,7 +1002,7 @@ export default function PersonAvailabilityPanel({
                                             <p className="text-sm text-red-500">{windowError}</p>
                                         ) : (
                                             windowSummary && (
-                                                <p className="text-xs text-foreground">
+                                                <p className="text-sm text-foreground">
                                                     <strong>{windowSummary.days} jours</strong>{' '}
                                                     d&apos;indisponibilité.
                                                     {windowSummary.startsLater &&
@@ -1030,7 +1030,7 @@ export default function PersonAvailabilityPanel({
                                         <button
                                             type="button"
                                             onClick={() => setShowComment(true)}
-                                            className="text-xs text-primary hover:underline"
+                                            className="text-sm text-primary hover:underline"
                                         >
                                             + Ajouter un commentaire (optionnel)
                                         </button>
@@ -1055,7 +1055,7 @@ export default function PersonAvailabilityPanel({
                                                 or the lecteur silently stays out
                                                 of the pickers. */}
                                             <span
-                                                className={`block text-xs ${
+                                                className={`block text-sm ${
                                                     isAvailable ? META : amber
                                                 }`}
                                             >
@@ -1096,7 +1096,7 @@ export default function PersonAvailabilityPanel({
                                     long-out dates, a red line made the panel
                                     shout twice about the same books. */}
                                 {awayWithBooks && (
-                                    <p className={`mb-1 flex items-start gap-1.5 text-xs ${META}`}>
+                                    <p className={`mb-1 flex items-start gap-1.5 text-sm ${META}`}>
                                         <AlertTriangle size={13} className={`mt-px shrink-0 ${amber}`} />
                                         {/* Constat, pas consigne : la page signale la
                                             situation, elle ne dit pas au permanent quoi
@@ -1130,7 +1130,7 @@ export default function PersonAvailabilityPanel({
                                             type="button"
                                             aria-expanded={showClosed}
                                             onClick={() => setShowClosed((v) => !v)}
-                                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                                            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
                                         >
                                             <ChevronRight
                                                 size={13}
@@ -1173,7 +1173,7 @@ export default function PersonAvailabilityPanel({
                                         <div className="space-y-1 max-w-[14rem]">
                                             <label
                                                 htmlFor="dispo-max"
-                                                className="text-xs font-medium text-foreground"
+                                                className="text-sm font-medium text-foreground"
                                             >
                                                 Attributions simultanées max
                                             </label>
@@ -1188,7 +1188,7 @@ export default function PersonAvailabilityPanel({
                                             />
                                         </div>
                                         <fieldset className="space-y-1">
-                                            <legend className="text-xs font-medium text-foreground">
+                                            <legend className="text-sm font-medium text-foreground">
                                                 Langues
                                             </legend>
                                             <ReaderLanguagesField
@@ -1202,7 +1202,7 @@ export default function PersonAvailabilityPanel({
                                         <div className="space-y-1">
                                             <label
                                                 htmlFor="dispo-notes"
-                                                className="text-xs font-medium text-foreground"
+                                                className="text-sm font-medium text-foreground"
                                             >
                                                 Notes de disponibilité
                                             </label>
@@ -1237,7 +1237,7 @@ export default function PersonAvailabilityPanel({
                                 ) : (
                                     <ol className="divide-y divide-border">
                                         {detail.events.map((event) => (
-                                            <li key={event.id} className="py-2 text-xs">
+                                            <li key={event.id} className="py-2 text-sm">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-sm font-medium text-foreground">
                                                         {event.fromStatus
@@ -1298,12 +1298,12 @@ export default function PersonAvailabilityPanel({
                                 href={`/admin/users/dossier/${person.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-xs text-muted-foreground hover:text-foreground hover:underline inline-flex items-center gap-1"
+                                className="text-sm text-muted-foreground hover:text-foreground hover:underline inline-flex items-center gap-1"
                             >
                                 Ouvrir le dossier complet <ExternalLink size={11} />
                             </IntentLink>
                             {dirty && (
-                                <span className={`text-xs ${AMBER} animate-in fade-in duration-200`}>
+                                <span className={`text-sm ${AMBER} animate-in fade-in duration-200`}>
                                     Modifications non enregistrées
                                 </span>
                             )}

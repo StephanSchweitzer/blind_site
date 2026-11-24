@@ -96,7 +96,7 @@ export function MissingDemandeNotice({
                     <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                         Aucune demande ni attribution n’est associée à ce livre.
                     </p>
-                    <p className="mt-1 text-xs text-amber-800/90 dark:text-amber-300/90">
+                    <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-300/90">
                         Rien ne rattache cet enregistrement à un auditeur : une fois gravé et
                         envoyé, il ne pourra plus être facturé, et aucun lecteur n’en sera
                         crédité. Créez la demande maintenant si l’ouvrage a bien été demandé.
@@ -119,7 +119,7 @@ export function MissingDemandeNotice({
                         </span>
                     </Button>
                     {error && (
-                        <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
+                        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
                     )}
                 </div>
             </div>

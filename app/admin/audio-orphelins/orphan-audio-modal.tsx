@@ -117,7 +117,7 @@ export function OrphanAudioModal({ orphanId, onOpenChange }: Props) {
                     <DialogTitle className="text-foreground">
                         Écouter le dossier {data ? `— ${data.title}` : ''}
                     </DialogTitle>
-                    <DialogDescription className="text-muted-foreground break-all font-mono text-xs">
+                    <DialogDescription className="text-muted-foreground break-all font-mono text-sm">
                         {data?.prefix}
                     </DialogDescription>
                 </DialogHeader>
@@ -129,7 +129,7 @@ export function OrphanAudioModal({ orphanId, onOpenChange }: Props) {
                             {formatBytes(data.totalBytes)}
                         </p>
                         {sidecars > 0 && (
-                            <p className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
+                            <p className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm text-amber-700 dark:text-amber-300">
                                 <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                 <span>
                                     {sidecars} fichier{sidecars > 1 ? 's' : ''} de 0 octet (résidus
@@ -170,7 +170,7 @@ export function OrphanAudioModal({ orphanId, onOpenChange }: Props) {
                                     isSidecar(t) ? 'bg-muted/40 opacity-60' : 'bg-field'
                                 }`}
                             >
-                                <span className="w-8 flex-shrink-0 text-right text-xs text-muted-foreground">
+                                <span className="w-8 flex-shrink-0 text-right text-sm text-muted-foreground">
                                     {t.order}
                                 </span>
                                 <Button
@@ -194,7 +194,7 @@ export function OrphanAudioModal({ orphanId, onOpenChange }: Props) {
                                     <div className="font-mono text-sm text-foreground break-all whitespace-pre-wrap">
                                         {t.name}
                                     </div>
-                                    <div className="text-xs text-muted-foreground">
+                                    <div className="text-sm text-muted-foreground">
                                         {formatBytes(t.sizeBytes)}
                                     </div>
                                 </div>

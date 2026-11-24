@@ -177,7 +177,7 @@ function DatePicker({
                 triggerRef={triggerRef}
             />
             {warning && (
-                <p className="text-xs text-amber-700 dark:text-amber-400">{warning}</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400">{warning}</p>
             )}
         </div>
     );
@@ -992,7 +992,7 @@ export function AssignmentFormBackendBase({
                                 const blockReason = orderBlockReason(order);
                                 if (blockReason === 'duplication') {
                                     return (
-                                        <span className="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-400">
+                                        <span className="mt-1 block text-sm font-medium text-amber-700 dark:text-amber-400">
                                             Duplication — aucune attribution nécessaire
                                         </span>
                                     );
@@ -1002,7 +1002,7 @@ export function AssignmentFormBackendBase({
                                 // Nouvel onglet : ce formulaire en cours de saisie reste
                                 // ouvert, comme « Voir la demande » plus bas.
                                 return (
-                                    <span className="mt-1 flex flex-wrap items-center gap-x-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                    <span className="mt-1 flex flex-wrap items-center gap-x-1 text-sm font-medium text-amber-700 dark:text-amber-400">
                                         Déjà attribuée :
                                         <IntentLink
                                             href={`/admin/assignments?assignment=${blocking.id}`}
@@ -1039,7 +1039,7 @@ export function AssignmentFormBackendBase({
                                                 </span>
                                             )}
                                         </span>
-                                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Demande&nbsp;#{order.id}</span>
+                                        <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">Demande&nbsp;#{order.id}</span>
                                     </span>
                                 );
                             }}
@@ -1081,7 +1081,7 @@ export function AssignmentFormBackendBase({
                                 </IntentLink>
                             )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">
                             Le livre est repris de la demande. Pour le modifier, changez la demande ci-dessus.
                         </p>
                         {/* The book is read-only here, but its recordings are the whole
@@ -1176,7 +1176,7 @@ export function AssignmentFormBackendBase({
                         >
                             {statuses.find((s) => s.id === derivedStatusId)?.name ?? '—'}
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">
                             Déterminé automatiquement par les dates ci-dessus.
                         </p>
                         {/* Only the audio reason gets spelled out — it depends on a bucket
@@ -1185,21 +1185,21 @@ export function AssignmentFormBackendBase({
                             status can read « Terminé » before this is satisfied — this warns
                             that the submit will still refuse it. */}
                         {audioBlocksTermine && isRevue && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
                                 Aucun enregistrement n&apos;est associé à ce livre. Cette demande
                                 étant tarifée à la page (revue), vous pourrez confirmer le passage
                                 à « Terminé » sans audio lors de l&apos;enregistrement.
                             </p>
                         )}
                         {audioBlocksTermine && !isRevue && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
                                 « Terminé » nécessite un enregistrement pour ce livre, et aucun
                                 n&apos;est associé pour l&apos;instant. Ouvrez « l&apos;éditeur audio »
                                 ci-dessus pour le déposer avant de renseigner la date de retour aux ECA.
                             </p>
                         )}
                         {termineWithoutAudio && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
                                 Aucun enregistrement n&apos;est plus associé à ce livre. Si la lecture
                                 n&apos;est pas finie, rouvrez l&apos;attribution : elle repassera « En cours ».
                             </p>
@@ -1213,7 +1213,7 @@ export function AssignmentFormBackendBase({
                                     disabled={isLoading || !hasReader}
                                     title={!hasReader ? 'Assignez un lecteur avant de rouvrir l’attribution : « En cours » en nécessite un.' : undefined}
                                     onClick={() => void handleReopenClick()}
-                                    className="h-8 px-2.5 text-xs"
+                                    className="h-8 px-2.5 text-sm"
                                 >
                                     Rouvrir l&apos;attribution
                                 </Button>
@@ -1224,7 +1224,7 @@ export function AssignmentFormBackendBase({
                             be saved yet. Moot on creation (submit is already disabled without
                             a reader); relevant for an existing readerless attribution. */}
                         {readerBlocksAdvance && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
                                 « {statuses.find((s) => s.id === derivedStatusId)?.name ?? 'Ce statut'} »
                                 nécessite un lecteur assigné. Sélectionnez un lecteur ci-dessus pour valider ce statut.
                             </p>
@@ -1252,7 +1252,7 @@ export function AssignmentFormBackendBase({
                                         // packer corrects it if the audio went by Internet.
                                         mediaFormat: null,
                                     }}
-                                    className="h-8 px-2.5 text-xs"
+                                    className="h-8 px-2.5 text-sm"
                                 />
                             </div>
                         )}

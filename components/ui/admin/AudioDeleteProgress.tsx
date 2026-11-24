@@ -32,7 +32,7 @@ export function AudioDeleteProgress({ done, total }: { done: number; total: numb
                     style={{ width: `${ratio * 100}%` }}
                 />
             </div>
-            <p className="text-xs text-muted-foreground">Ne fermez pas cette fenêtre avant la fin.</p>
+            <p className="text-sm text-muted-foreground">Ne fermez pas cette fenêtre avant la fin.</p>
         </div>
     );
 }

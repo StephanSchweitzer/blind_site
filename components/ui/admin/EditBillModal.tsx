@@ -512,7 +512,7 @@ export function EditBillModal({
                             {/* Summary */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="min-w-0">
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Auditeur</div>
+                                    <div className="text-sm text-muted-foreground uppercase tracking-wide">Auditeur</div>
                                     <a
                                         href={`/admin/users/auditeurs?user=${bill.client.id}`}
                                         target="_blank"
@@ -533,7 +533,7 @@ export function EditBillModal({
                                     )}
                                 </div>
                                 <div className="min-w-0 text-right">
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">État actuel</div>
+                                    <div className="text-sm text-muted-foreground uppercase tracking-wide">État actuel</div>
                                     <Badge variant="status" className={getBillingStatusColor(bill.state)}>
                                         {getBillingStatusLabel(bill.state)}
                                     </Badge>
@@ -542,15 +542,15 @@ export function EditBillModal({
 
                             <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Création</div>
+                                    <div className="text-sm text-muted-foreground uppercase tracking-wide">Création</div>
                                     <div className="text-foreground">{formatDate(bill.creationDate)}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Émission</div>
+                                    <div className="text-sm text-muted-foreground uppercase tracking-wide">Émission</div>
                                     <div className="text-foreground">{formatDate(bill.issueDate)}</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Paiement</div>
+                                    <div className="text-sm text-muted-foreground uppercase tracking-wide">Paiement</div>
                                     <div className="text-foreground">{formatDate(bill.paymentDate)}</div>
                                 </div>
                             </div>
@@ -571,7 +571,7 @@ export function EditBillModal({
                         {!isDraft && (
                         <div className="space-y-2">
                             <div className="flex items-center justify-between gap-3">
-                                <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                                <div className="text-sm text-muted-foreground uppercase tracking-wide">
                                     Paiements ({bill.payments.length})
                                 </div>
                                 {/* UNE action, et elle est ici.
@@ -590,7 +590,7 @@ export function EditBillModal({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setIsAddingPayment(true)}
-                                    className="h-7 px-2.5 gap-1.5 text-xs [&_svg]:size-3.5"
+                                    className="h-7 px-2.5 gap-1.5 text-sm [&_svg]:size-3.5"
                                 >
                                     <Plus />
                                     Enregistrer un paiement
@@ -641,7 +641,7 @@ export function EditBillModal({
                                                 Réglée avant la reprise — pas de paiement en face.
                                             </span>
                                             {(bill.paymentReference || bill.paymentDate) && (
-                                                <span className="text-xs text-muted-foreground">
+                                                <span className="text-sm text-muted-foreground">
                                                     {bill.paymentReference && (
                                                         <span className="font-mono">{bill.paymentReference}</span>
                                                     )}
@@ -716,7 +716,7 @@ export function EditBillModal({
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="text-muted-foreground text-xs break-words">
+                                                    <div className="text-muted-foreground text-sm break-words">
                                                         {formatDate(p.paymentDate ?? p.creationDate)}
                                                         {p.paymentReference && (
                                                             <>
@@ -750,7 +750,7 @@ export function EditBillModal({
                             comme les dates au-dessus. */}
                         {nextStates.length > 0 && (
                             <div className="space-y-3">
-                                <div className="text-xs text-muted-foreground uppercase tracking-wide">Changer le statut</div>
+                                <div className="text-sm text-muted-foreground uppercase tracking-wide">Changer le statut</div>
                                 <div className="flex flex-wrap gap-2">
                                     {nextStates.map((s) => (
                                         <button
@@ -878,7 +878,7 @@ export function EditBillModal({
 
                         {/* Orders */}
                         <div className="space-y-2">
-                            <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                            <div className="text-sm text-muted-foreground uppercase tracking-wide">
                                 Demandes facturées ({bill.orders.length})
                             </div>
                             <div className="border border-border rounded-md divide-y divide-border max-h-[240px] overflow-y-auto">
@@ -899,7 +899,7 @@ export function EditBillModal({
                                                     l'auditeur. Le sélecteur ci-dessous garde la date de
                                                     réception : une demande non facturée n'a pas
                                                     forcément de date de clôture. */}
-                                                <div className="text-muted-foreground text-xs break-words">
+                                                <div className="text-muted-foreground text-sm break-words">
                                                     {o.catalogue.author} · {formatDate(o.closureDate)}
                                                 </div>
                                             </div>
@@ -999,7 +999,7 @@ export function EditBillModal({
                                                                 <div className="text-foreground text-sm break-words">
                                                                     #{o.id} — {o.catalogue.title}
                                                                 </div>
-                                                                <div className="text-muted-foreground text-xs break-words">
+                                                                <div className="text-muted-foreground text-sm break-words">
                                                                     {o.catalogue.author} · {formatDate(o.requestReceivedDate)}
                                                                     {o.statusName && ` · ${o.statusName}`}
                                                                     {o.cost != null && ` · ${formatCurrency(o.cost)}`}
@@ -1018,7 +1018,7 @@ export function EditBillModal({
                                                             <button
                                                                 onClick={() => handleAddOrder(o.id)}
                                                                 disabled={addingOrderId === o.id}
-                                                                className="shrink-0 px-2 py-1 rounded text-xs bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 flex items-center gap-1"
+                                                                className="shrink-0 px-2 py-1 rounded text-sm bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 flex items-center gap-1"
                                                             >
                                                                 {addingOrderId === o.id
                                                                     ? <Loader2 className="h-3 w-3 animate-spin" />

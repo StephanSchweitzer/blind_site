@@ -172,10 +172,10 @@ export function BillHistory({ events }: { events: BillEventDTO[] }) {
                                 <span className={`text-xs font-semibold rounded px-2 py-0.5 ${billEventTint(e.type, e.payload)}`}>
                                     {billEventLabel(e.type, e.payload)}
                                 </span>
-                                {transition && <span className="text-xs text-muted-foreground">{transition}</span>}
+                                {transition && <span className="text-sm text-muted-foreground">{transition}</span>}
                             </div>
                             {summary && <p className="text-sm text-foreground mt-1 break-words">{summary}</p>}
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <p className="text-sm text-muted-foreground mt-1">
                                 {fmtDateTime(e.createdAt)}
                                 {getUserNameOnly(e.performedBy) ? ` · ${getUserNameOnly(e.performedBy)}` : ''}
                             </p>

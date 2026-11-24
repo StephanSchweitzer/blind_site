@@ -105,7 +105,7 @@ function StatusCell({
             <Badge variant="status" className={`w-fit ${getUserActivityStatusColor(status)}`}>
                 {getUserActivityStatusLabel(status)}
             </Badge>
-            {detail && <span className="text-xs text-muted-foreground">{detail}</span>}
+            {detail && <span className="text-sm text-muted-foreground">{detail}</span>}
         </div>
     );
 }

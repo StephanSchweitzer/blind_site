@@ -72,7 +72,7 @@ export function UserSearchCombobox<T extends UserSearchResult>({
                     {/* The id staff paste back into this same box, and read off
                         « Modifier la personne #42 » — showing it here is what
                         closes that loop. */}
-                    <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">
                         #{user.id}
                     </span>
                 </span>

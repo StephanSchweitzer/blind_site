@@ -141,7 +141,7 @@ export function DeleteAudioTrackModal({
                     {track && (
                         <div className="space-y-4">
                             <div className="rounded-md border border-border bg-field p-3">
-                                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                                <div className="text-sm uppercase tracking-wide text-muted-foreground">
                                     Piste n° {track.order} · {formatSize(track.sizeBytes)}
                                 </div>
                                 {/* Verbatim: double spaces and substituted characters included, so

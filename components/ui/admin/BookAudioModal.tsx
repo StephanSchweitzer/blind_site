@@ -238,14 +238,14 @@ function CloudFinalisingPanel({ phase, progress }: { phase: UploadPhase; progres
                     <p className="text-sm font-medium text-foreground">
                         Préparation de l’audio dans le cloud…
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-sm text-muted-foreground">
                         Vos fichiers ont quitté votre ordinateur. Le stockage termine maintenant de
                         les enregistrer : cette étape est silencieuse et peut durer plusieurs
                         minutes pour un fichier volumineux. Merci de patienter sans fermer cette
                         fenêtre ni quitter la page.
                     </p>
 
-                    <div className="mt-2 flex justify-between gap-2 text-xs">
+                    <div className="mt-2 flex justify-between gap-2 text-sm">
                         <span className="text-foreground">
                             {verifying
                                 ? 'Vérification des fichiers enregistrés…'
@@ -309,7 +309,7 @@ function BatchProgressPanel({ phase, progress }: { phase: UploadPhase; progress:
                           ? 'Vérification des fichiers enregistrés…'
                           : `Envoi en cours — ${done} / ${total} fichier${total > 1 ? 's' : ''}`}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                     {formatSize(bytesSent)} / {formatSize(bytesTotal)} · {percent} %
                 </span>
             </div>
@@ -331,7 +331,7 @@ function BatchProgressPanel({ phase, progress }: { phase: UploadPhase; progress:
             {/* Retries are normal here, so they are reported as routine rather
                 than as alarm — but never hidden. */}
             {(retrying > 0 || failed > 0) && (
-                <p className="mt-2 text-xs">
+                <p className="mt-2 text-sm">
                     {retrying > 0 && (
                         <span className="text-amber-700 dark:text-amber-300">
                             {retrying} fichier{retrying > 1 ? 's' : ''} en nouvelle tentative
@@ -950,27 +950,24 @@ export function BookAudioModal({
             );
             return;
         }
-        if (!open && zipping) {
-            const stop = await confirm({
-                title: 'Annuler le téléchargement ?',
-                description: 'Une archive est en cours de préparation. La fermeture annulera le téléchargement.',
-                confirmLabel: 'Fermer quand même',
-                cancelLabel: 'Continuer le téléchargement',
-                destructive: true,
-            });
-            if (!stop) return;
-            zip.cancel();
-        }
-        // The editor is unmounted on close, and the « Renvoyer » list with it:
-        // closing used to drop the files that did not make it without a word,
-        // leaving a folder with holes that nobody had been told about.
-        if (!open && failedFiles.length > 0) {
-            const n = failedFiles.length;
-            const leave = await confirm({
-                title: `${n} fichier${n > 1 ? 's' : ''} non envoyé${n > 1 ? 's' : ''}`,
-                description:
-                    `${n > 1 ? 'Ces fichiers ne sont' : 'Ce fichier n’est'} pas dans le dossier. En fermant, la liste ` +
-                    'des fichiers à renvoyer est perdue.\n\n' +
+        // One question for everything closing would lose, not one dialogue per
+        // reason: a running archive and unsent files used to stack two confirmations
+        // in a row, the second arriving after the first was answered.
+        //
+        // The « Renvoyer » list goes with the editor: closing used to drop the files
+        // that did not make it without a word, leaving a folder with holes that
+        // nobody had been told about.
+        const failedCount = failedFiles.length;
+        if (!open && (zipping || failedCount > 0)) {
+            const parts: string[] = [];
+            if (zipping) {
+                parts.push('Une archive est en cours de préparation. La fermeture annulera le téléchargement.');
+            }
+            if (failedCount > 0) {
+                const n = failedCount;
+                parts.push(
+                    `${n > 1 ? `${n} fichiers ne sont` : 'Un fichier n’est'} pas dans le dossier. En fermant, la liste ` +
+                    'des fichiers à renvoyer est perdue.\n' +
                     // « Remplacer » has moved the old take out before sending
                     // the new one: its slot may be empty now.
                     (replaceKeyRef.current
@@ -978,10 +975,19 @@ export function BookAudioModal({
                           'corbeille du livre : restaurez-la, puis cliquez de nouveau sur « Remplacer » sur sa ligne.'
                         : 'Pour les envoyer plus tard, choisissez de nouveau le même dossier : les fichiers déjà ' +
                           'en ligne seront écartés d’office.'),
+                );
+            }
+            const stop = await confirm({
+                title: zipping
+                    ? (failedCount > 0 ? 'Fermer la fenêtre ?' : 'Annuler le téléchargement ?')
+                    : `${failedCount} fichier${failedCount > 1 ? 's' : ''} non envoyé${failedCount > 1 ? 's' : ''}`,
+                description: parts.join('\n\n'),
                 confirmLabel: 'Fermer quand même',
-                cancelLabel: 'Rester',
+                cancelLabel: zipping && failedCount === 0 ? 'Continuer le téléchargement' : 'Rester',
+                destructive: zipping,
             });
-            if (!leave) return;
+            if (!stop) return;
+            if (zipping) zip.cancel();
         }
         // An unconfirmed folder selection is scoped to the session that picked
         // it — reopening on another book must not inherit it.
@@ -1018,7 +1024,7 @@ export function BookAudioModal({
                     </DialogHeader>
 
                     {busy && (
-                        <div className="flex-shrink-0 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300">
+                        <div className="flex-shrink-0 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm text-amber-800 dark:text-amber-300">
                             <Lock className="h-4 w-4 flex-shrink-0" />
                             <span>
                                 Envoi en cours — cette fenêtre reste verrouillée jusqu’à la fin.
@@ -1072,12 +1078,12 @@ export function BookAudioModal({
                             {/* « Audio disponible » se suffit ; les autres états gardent
                                 leur explication (dossier vide, introuvable…). */}
                             {data.status !== AudioLinkStatus.OK && (
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     {getAudioLinkStatusHint(data.status)}
                                 </p>
                             )}
                             {data.prefix && (
-                                <p className="font-mono text-xs text-muted-foreground break-all">
+                                <p className="font-mono text-sm text-muted-foreground break-all">
                                     {data.prefix}
                                 </p>
                             )}
@@ -1242,7 +1248,7 @@ export function BookAudioModal({
                         <div className="flex-shrink-0 rounded-md border border-border bg-field p-3">
                             {zipping && (
                                 <>
-                                    <div className="flex justify-between gap-2 text-xs">
+                                    <div className="flex justify-between gap-2 text-sm">
                                         <span className="truncate text-foreground">
                                             Archivage… {zip.currentName ?? ''}
                                         </span>
@@ -1287,7 +1293,7 @@ export function BookAudioModal({
                                 </>
                             )}
                             {zip.phase === 'done' && (
-                                <div className="flex items-center justify-between gap-2 text-xs">
+                                <div className="flex items-center justify-between gap-2 text-sm">
                                     <span className="text-foreground">
                                         Archive téléchargée.
                                         {zipLayout && zipLayout.folders > 0 &&
@@ -1312,7 +1318,7 @@ export function BookAudioModal({
                                 </div>
                             )}
                             {zip.phase === 'error' && (
-                                <div className="flex items-center justify-between gap-2 text-xs">
+                                <div className="flex items-center justify-between gap-2 text-sm">
                                     <span className="text-red-600 dark:text-red-400">
                                         {zip.error?.replace(/\.\s*$/, '')}. L’archive n’est pas
                                         utilisable : recommencez le téléchargement.
@@ -1447,7 +1453,7 @@ export function BookAudioModal({
                                                 <FolderOpen className="h-4 w-4" /> Ajouter un dossier
                                             </span>
                                         </Button>
-                                        <span className="text-xs text-muted-foreground">
+                                        <span className="text-sm text-muted-foreground">
                                             500 Mo maximum par fichier. Les sous-dossiers ne sont pas envoyés.
                                         </span>
                                     </div>
@@ -1490,7 +1496,7 @@ export function BookAudioModal({
                                                 from, and the number is the place in the book. */}
                                             {selectionToSend.length > 0 && (
                                                 <details className="mt-1">
-                                                    <summary className="cursor-pointer text-xs text-muted-foreground">
+                                                    <summary className="cursor-pointer text-sm text-muted-foreground">
                                                         Voir l’ordre d’envoi
                                                         {predictedNames ? ' et les noms dans le dossier' : ''}
                                                     </summary>
@@ -1498,7 +1504,7 @@ export function BookAudioModal({
                                                         {selectionToSend.map((f, i) => (
                                                             <li
                                                                 key={f.name}
-                                                                className="font-mono text-xs break-all text-muted-foreground"
+                                                                className="font-mono text-sm break-all text-muted-foreground"
                                                             >
                                                                 <span className="text-foreground">
                                                                     {existingTrackCount + i + 1}.
@@ -1551,14 +1557,14 @@ export function BookAudioModal({
                                                             </p>
                                                             {selectionMisplaced.length > 1 && (
                                                                 <details className="mt-1">
-                                                                    <summary className="cursor-pointer text-xs text-muted-foreground">
+                                                                    <summary className="cursor-pointer text-sm text-muted-foreground">
                                                                         Voir où ils manquent
                                                                     </summary>
                                                                     <ul className="mt-1 space-y-0.5">
                                                                         {selectionMisplaced.map((m) => (
                                                                             <li
                                                                                 key={m.file.name}
-                                                                                className="font-mono text-xs break-all text-muted-foreground"
+                                                                                className="font-mono text-sm break-all text-muted-foreground"
                                                                             >
                                                                                 {m.file.name} — avant « {m.before} »
                                                                             </li>
@@ -1586,14 +1592,14 @@ export function BookAudioModal({
                                                     )}
                                                     {selectionPresent.length > 0 && (
                                                         <details className="mt-1">
-                                                            <summary className="cursor-pointer text-xs text-muted-foreground">
+                                                            <summary className="cursor-pointer text-sm text-muted-foreground">
                                                                 Voir les fichiers déjà présents
                                                             </summary>
                                                             <ul className="mt-1 space-y-0.5">
                                                                 {selectionPresent.map((p) => (
                                                                     <li
                                                                         key={p.file.name}
-                                                                        className="font-mono text-xs break-all text-muted-foreground"
+                                                                        className="font-mono text-sm break-all text-muted-foreground"
                                                                     >
                                                                         {p.file.name} — déjà en ligne sous « {p.existingName} »
                                                                     </li>
@@ -1625,14 +1631,14 @@ export function BookAudioModal({
                                                             .join(', ')}
                                                     </p>
                                                     <details className="mt-1">
-                                                        <summary className="cursor-pointer text-xs text-muted-foreground">
+                                                        <summary className="cursor-pointer text-sm text-muted-foreground">
                                                             Voir le détail
                                                         </summary>
                                                         <ul className="mt-1 space-y-0.5">
                                                             {selection.rejected.map((r) => (
                                                                 <li
                                                                     key={r.path}
-                                                                    className="font-mono text-xs break-all text-muted-foreground"
+                                                                    className="font-mono text-sm break-all text-muted-foreground"
                                                                 >
                                                                     {r.path} — {REJECT_LABELS[r.reason]}
                                                                 </li>
@@ -1675,7 +1681,7 @@ export function BookAudioModal({
                                     {folderConflict && (
                                         <div className="mt-3 rounded-md border border-red-500/50 bg-red-500/10 p-3 text-sm">
                                             <p className="text-foreground">{folderConflict.message}</p>
-                                            <p className="mt-1 font-mono text-xs break-all text-muted-foreground">
+                                            <p className="mt-1 font-mono text-sm break-all text-muted-foreground">
                                                 {folderConflict.proposedPrefix}
                                             </p>
                                             <IntentLink
@@ -1703,13 +1709,13 @@ export function BookAudioModal({
 
                                     <div role="status" aria-live="polite">
                                         {durationCheck === 'running' && (
-                                            <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                                            <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                                                 <Loader2 className="h-3 w-3 animate-spin" />
                                                 Calcul de la durée de lecture…
                                             </p>
                                         )}
                                         {durationCheck && durationCheck !== 'running' && (
-                                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+                                            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
                                                 <span>
                                                     Les fichiers sont bien en ligne, mais la durée de lecture n’a pas
                                                     pu être calculée. {durationCheck.failed}
@@ -1738,7 +1744,7 @@ export function BookAudioModal({
                                                 {failedFiles.length} fichier
                                                 {failedFiles.length > 1 ? 's' : ''} à renvoyer
                                             </p>
-                                            <p className="mt-1 text-xs text-muted-foreground">
+                                            <p className="mt-1 text-sm text-muted-foreground">
                                                 {/* Only true when some of them did land: said after a
                                                     batch that failed whole, it claimed files online
                                                     that were not. */}
@@ -1750,7 +1756,7 @@ export function BookAudioModal({
                                                 {progress
                                                     .filter((p) => p.status === 'échec')
                                                     .map((p) => (
-                                                        <li key={p.name} className="text-xs">
+                                                        <li key={p.name} className="text-sm">
                                                             {/* The name on their disk — that is what
                                                                 they have to go and find. */}
                                                             <span className="font-mono break-all text-foreground">
@@ -1798,7 +1804,7 @@ export function BookAudioModal({
                                                 « à renvoyer » panel above with what to do about it;
                                                 its row here only repeated it. */}
                                             {(busy ? progress : progress.filter((p) => p.status !== 'échec')).map((p) => (
-                                                <div key={p.name} className="text-xs">
+                                                <div key={p.name} className="text-sm">
                                                     <div className="flex justify-between gap-2">
                                                         <span className="truncate text-foreground">
                                                             {p.assignedName ?? p.name}
@@ -1906,7 +1912,7 @@ export function BookAudioModal({
                                                 : 'border-border bg-field'
                                         }`}
                                     >
-                                        <span className="w-8 flex-shrink-0 text-right text-xs text-muted-foreground">
+                                        <span className="w-8 flex-shrink-0 text-right text-sm text-muted-foreground">
                                             {t.order}
                                         </span>
                                         <Button
@@ -1930,7 +1936,7 @@ export function BookAudioModal({
                                             <div className="font-mono text-sm text-foreground break-all whitespace-pre-wrap">
                                                 {t.name}
                                             </div>
-                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                                 <span>{formatSize(t.sizeBytes)}</span>
                                                 <span aria-hidden="true">·</span>
                                                 {/* Text for screen readers rather than an aria-label:
@@ -2044,7 +2050,7 @@ export function BookAudioModal({
                                             <div className="font-mono text-sm text-foreground break-all whitespace-pre-wrap">
                                                 {item.filename}
                                             </div>
-                                            <div className="text-xs text-muted-foreground">
+                                            <div className="text-sm text-muted-foreground">
                                                 {formatSize(item.sizeBytes)} · supprimé le{' '}
                                                 {formatDate(item.deletedAt)} par {personLabel(item.deletedBy)}
                                                 {item.restoredAt && (
@@ -2061,7 +2067,7 @@ export function BookAudioModal({
                                             {slotTaken && (
                                                 <div
                                                     id={`trash-slot-${item.id}`}
-                                                    className="mt-1 text-xs text-amber-700 dark:text-amber-300"
+                                                    className="mt-1 text-sm text-amber-700 dark:text-amber-300"
                                                 >
                                                     Une piste du dossier porte aujourd’hui ce nom — souvent la nouvelle
                                                     version qui l’a remplacée. Pour restaurer celle-ci, renommez ou
@@ -2070,7 +2076,7 @@ export function BookAudioModal({
                                             )}
                                         </div>
                                         {item.restoredAt ? (
-                                            <span className="text-xs text-muted-foreground">Restauré</span>
+                                            <span className="text-sm text-muted-foreground">Restauré</span>
                                         ) : (
                                             <Button
                                                 type="button"

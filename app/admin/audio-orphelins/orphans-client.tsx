@@ -152,9 +152,9 @@ function SuggestionLine({ book, busy, onLink }: SuggestionLineProps) {
                     #{book.id} — {book.title}
                 </div>
                 {book.subtitle?.trim() && (
-                    <div className="text-xs italic text-foreground/80">{book.subtitle}</div>
+                    <div className="text-sm italic text-foreground/80">{book.subtitle}</div>
                 )}
-                <div className="text-xs text-muted-foreground">
+                <div className="text-sm text-muted-foreground">
                     {book.author}
                     {book.year != null && ` · ${book.year}`}
                     {book.sourceAccessId != null && ` · n° ${book.sourceAccessId}`}
@@ -179,7 +179,7 @@ function SuggestionLine({ book, busy, onLink }: SuggestionLineProps) {
                 </span>
             </Button>
             {blocked && (
-                <p className="w-full text-xs text-amber-700 dark:text-amber-300">
+                <p className="w-full text-sm text-amber-700 dark:text-amber-300">
                     Ce livre a déjà un dossier audio qui fonctionne — ce dossier orphelin en est
                     probablement une copie. Vérifiez en écoutant, puis écartez-le.
                 </p>
@@ -256,7 +256,7 @@ function OrphanCard({
                         <CardTitle as="h2" className="text-base">{orphan.title}</CardTitle>
                         {/* Le n° de dossier et l'année se lisent dans le chemin juste
                             dessous ; la date du dernier passage du scan ne regarde que lui. */}
-                        <CardDescription className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                        <CardDescription className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                             <span>
                                 {orphan.trackCount} fichier{orphan.trackCount > 1 ? 's' : ''}
                             </span>
@@ -276,10 +276,10 @@ function OrphanCard({
                     </Button>
                 </div>
 
-                <p className="font-mono text-xs text-muted-foreground break-all">{orphan.prefix}</p>
+                <p className="font-mono text-sm text-muted-foreground break-all">{orphan.prefix}</p>
 
                 {artefact && (
-                    <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300">
+                    <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm text-amber-800 dark:text-amber-300">
                         <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                         <span>
                             Dossier système du NAS (corbeille <code>#recycle</code> ou copie de
@@ -339,7 +339,7 @@ function OrphanCard({
                             exists — without this the note below ("rattaché au livre #…")
                             reads as a contradiction. */}
                         {orphan.resolvedAt && !orphan.linkedBook && (
-                            <div className="flex items-start gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 p-2 text-xs text-orange-800 dark:text-orange-300">
+                            <div className="flex items-start gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 p-2 text-sm text-orange-800 dark:text-orange-300">
                                 <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                 <span>
                                     Ce dossier avait été rattaché à un livre qui a depuis été
@@ -351,7 +351,7 @@ function OrphanCard({
 
                         {orphan.suggestions.length > 0 && (
                             <div className="space-y-2">
-                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                                     Livres possibles
                                 </p>
                                 {orphan.suggestions.map((b) => (
@@ -366,7 +366,7 @@ function OrphanCard({
                         )}
 
                         <div className="space-y-2">
-                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
                                 {orphan.suggestions.length > 0 ? 'Ou choisir un autre livre' : 'Choisir un livre'}
                             </p>
                             <div className="flex flex-wrap items-center gap-2">
@@ -411,7 +411,7 @@ function OrphanCard({
                 )}
 
                 {orphan.note && (
-                    <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+                    <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-sm text-muted-foreground">
                         {orphan.note}
                     </p>
                 )}
@@ -637,7 +637,7 @@ export default function OrphansClient({
                 <DialogContent className="max-w-lg bg-card border-border">
                     <DialogHeader>
                         <DialogTitle>Créer un livre pour ce dossier</DialogTitle>
-                        <DialogDescription className="break-all font-mono text-xs">
+                        <DialogDescription className="break-all font-mono text-sm">
                             {pending?.kind === 'create' ? pending.orphan.prefix : ''}
                         </DialogDescription>
                     </DialogHeader>
@@ -677,7 +677,7 @@ export default function OrphansClient({
                             </div>
                         </div>
                         {pending?.kind === 'create' && pending.orphan.folderNum != null && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                                 Le n° {pending.orphan.folderNum} sera enregistré comme identifiant
                                 source (Access) s’il est encore libre. Les genres et la description
                                 se complètent ensuite depuis la fiche du livre.
@@ -775,7 +775,7 @@ export default function OrphansClient({
                                     Ce livre pointe déjà vers un dossier, mais celui-ci ne contient
                                     aucun fichier audio :
                                 </p>
-                                <p className="break-all font-mono text-xs">
+                                <p className="break-all font-mono text-sm">
                                     {pending?.kind === 'replace' ? pending.oldPath : ''}
                                 </p>
                                 <p>

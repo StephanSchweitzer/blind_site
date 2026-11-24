@@ -93,7 +93,7 @@ export default function StaffHeatmap({
                         <tr key={actor.id}>
                             <th
                                 scope="row"
-                                className="sticky left-0 bg-card z-10 text-xs font-medium text-foreground text-left pr-3 whitespace-nowrap max-w-44 truncate"
+                                className="sticky left-0 bg-card z-10 text-sm font-medium text-foreground text-left pr-3 whitespace-nowrap max-w-44 truncate"
                                 title={actor.name}
                             >
                                 {actor.name}
@@ -127,7 +127,7 @@ export default function StaffHeatmap({
                     ))}
                 </tbody>
             </table>
-            <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
                 <span>Moins</span>
                 {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
                     <span

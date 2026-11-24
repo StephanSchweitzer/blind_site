@@ -97,7 +97,7 @@ export function BookSearchCombobox<T extends BookSearchResult>({
                         {/* Shown for the same reason as in the other pickers:
                             the corpus holds near-identical entries that only an
                             id tells apart. */}
-                        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                        <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">
                             #{book.id}
                         </span>
                     </span>

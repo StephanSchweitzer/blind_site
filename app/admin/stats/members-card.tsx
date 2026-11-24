@@ -95,7 +95,7 @@ function StatTile({ value, label, hint }: { value: string; label: string; hint?:
                 {value}
             </div>
             <div className="text-sm text-foreground mt-1">{label}</div>
-            {hint && <div className="text-xs text-muted-foreground mt-0.5">{hint}</div>}
+            {hint && <div className="text-sm text-muted-foreground mt-0.5">{hint}</div>}
         </div>
     );
 }
@@ -116,7 +116,7 @@ function MemberChart({ buckets }: { buckets: Bucket[] }) {
 
     return (
         <figure className="mt-1">
-            <figcaption className="text-xs text-muted-foreground mb-2">
+            <figcaption className="text-sm text-muted-foreground mb-2">
                 7 derniers jours ({period}). Chaque colonne est un jour ; les deux
                 barres sont comptées séparément.
             </figcaption>
@@ -350,7 +350,7 @@ export default function MembersCard({ data }: { data: MemberStatsResponse | null
                                 Effectif par type de membre et mouvements sur la période
                             </caption>
                             <thead>
-                                <tr className="text-xs text-muted-foreground">
+                                <tr className="text-sm text-muted-foreground">
                                     <th scope="col" className="py-1 px-2 text-left font-normal" />
                                     <th scope="colgroup" colSpan={4} className="py-1 px-2 text-right font-normal border-b border-border">
                                         Effectif aujourd’hui
@@ -359,7 +359,7 @@ export default function MembersCard({ data }: { data: MemberStatsResponse | null
                                         Sur la période
                                     </th>
                                 </tr>
-                                <tr className="text-xs text-muted-foreground border-b border-border">
+                                <tr className="text-sm text-muted-foreground border-b border-border">
                                     <th scope="col" className="py-1 px-2 text-left font-normal">Type</th>
                                     <th scope="col" className="py-1 px-2 text-right font-normal">Total</th>
                                     <th scope="col" className="py-1 px-2 text-right font-normal">Actifs</th>
@@ -404,7 +404,7 @@ export default function MembersCard({ data }: { data: MemberStatsResponse | null
                         </table>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-6 mb-2">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-6 mb-2">
                         {SERIES.map((series) => (
                             <span key={series.key} className="flex items-center gap-1.5">
                                 <span className={`w-3 h-3 rounded-sm ${series.swatch}`} />
