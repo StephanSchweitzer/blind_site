@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import type { SiteContact } from '@prisma/client';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
 
 interface ContactFormProps {
     initial: SiteContact | null;
@@ -68,13 +69,12 @@ export function ContactForm({ initial }: ContactFormProps) {
             <div className="py-8">
                 <Card className="bg-card border-border">
                     <CardHeader className="border-b border-border">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle as="h1" className="text-foreground">Coordonnées du site</CardTitle>
-                            <AideLink section="pages-publiques" />
-                        </div>
-                        <CardDescription className="text-muted-foreground">
-                            Contenu affiché sur la page Contact.
-                        </CardDescription>
+                        <AdminPageHeader
+                            title="Coordonnées du site"
+                            section="Contact"
+                            aide={<AideLink section="pages-publiques" />}
+                            description="Contenu affiché sur la page Contact."
+                        />
                     </CardHeader>
                     <CardContent className="pt-6">
                         <form onSubmit={handleSubmit} className="space-y-4">

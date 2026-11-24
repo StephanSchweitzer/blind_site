@@ -1,4 +1,5 @@
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
+import { TEXT_LINK } from '@/components/ui/admin/text-link';
 import React, { useState, useRef, useId } from 'react';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
@@ -416,7 +417,7 @@ export function AddOrderFormBackend({
             toast({
                 title: ids.length > 1 ? `${ids.length} demandes créées` : 'Demande créée',
                 description: ids.length ? `#${ids.join(', #')}` : undefined,
-                className: "bg-green-100 border-green-500 text-green-900"
+                variant: "success"
             });
             // Une facture vient de partir en émission : le dire dans un toast, qui
             // s'efface tout seul, c'est risquer que personne n'imprime jamais le
@@ -639,7 +640,7 @@ export function AddOrderFormBackend({
                                                         <button
                                                             type="button"
                                                             onClick={() => updateLine(line.key, { cost: tarif.value })}
-                                                            className="ml-2 font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                                            className={`ml-2 font-medium ${TEXT_LINK}`}
                                                         >
                                                             Appliquer
                                                         </button>

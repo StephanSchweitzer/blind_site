@@ -288,7 +288,7 @@ export function DeleteBookModal({
             toast({
                 title: 'Fiche supprimée',
                 description: describeOutcome(outcome),
-                className: 'bg-green-100 border-green-500 text-green-900',
+                variant: 'success',
             });
             onOpenChange(false);
             reset();

@@ -51,7 +51,7 @@ export function DeletePaymentModal({
 
             toast({
                 title: "Paiement supprimé",
-                className: 'bg-green-100 border-green-500 text-green-900',
+                variant: 'success',
             });
             onPaymentDeleted?.();
         } catch (err) {

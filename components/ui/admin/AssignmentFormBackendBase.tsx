@@ -1,4 +1,5 @@
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
+import { TEXT_LINK } from '@/components/ui/admin/text-link';
 import React, { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { RequiredMark } from "@/components/ui/admin/RequiredMark";
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
@@ -481,7 +482,7 @@ export function AssignmentFormBackendBase({
 
             toast({
                 title: currentReader ? "Lecteur réattribué" : "Lecteur attribué",
-                className: "bg-green-100 border-green-500 text-green-900",
+                variant: "success",
             });
 
             // Refresh reader history
@@ -1007,7 +1008,7 @@ export function AssignmentFormBackendBase({
                                             href={`/admin/assignments?assignment=${blocking.id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 cursor-pointer text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                            className={`inline-flex items-center gap-1 cursor-pointer ${TEXT_LINK}`}
                                         >
                                             Attribution #{blocking.id} ({blocking.status.name})
                                             <ExternalLink className="h-3 w-3" />

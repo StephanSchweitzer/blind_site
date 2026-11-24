@@ -18,6 +18,7 @@ import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
 import { formatBytes, formatDate } from '../audio-orphelins/format';
 import {
     purgeTrashedTracks,
@@ -529,17 +530,16 @@ export default function TrashClient({
     return (
         <div className="space-y-4">
             <Card>
-                <CardHeader className="space-y-4">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle as="h1">Corbeille audio</CardTitle>
-                            <AideLink section="corbeille-audio" />
-                        </div>
-                        <CardDescription>
+                <CardHeader className="space-y-4 border-b border-border">
+                    <AdminPageHeader
+                        title="Corbeille audio"
+                        section="Corbeille audio"
+                        aide={<AideLink section="corbeille-audio" />}
+                        description={<>
                             Les fichiers audio supprimés restent restaurables {retentionDays} jours, puis
                             sont effacés définitivement.
-                        </CardDescription>
-                    </div>
+                        </>}
+                    />
 
                     <div className="flex flex-wrap gap-2">
                         {(Object.keys(TAB_LABELS) as TrashTab[]).map((t) => (

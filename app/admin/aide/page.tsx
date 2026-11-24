@@ -41,7 +41,7 @@ export default function AidePage() {
                                 priority
                             />
                             <div>
-                                <CardTitle as="h1" className="text-2xl font-bold text-foreground">
+                                <CardTitle as="h1" className="text-foreground">
                                     Mode d&apos;emploi
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground mt-1">

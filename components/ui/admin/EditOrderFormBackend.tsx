@@ -198,7 +198,7 @@ export function EditOrderFormBackend({
 
         toast({
             title: "Demande supprimée",
-            className: "bg-green-100 border-green-500 text-green-900"
+            variant: "success"
         });
         if (onSuccess) onSuccess(parseInt(orderId), true);
     };
@@ -241,7 +241,7 @@ export function EditOrderFormBackend({
 
         toast({
             title: "Demande enregistrée",
-            className: "bg-green-100 border-green-500 text-green-900"
+            variant: "success"
         });
 
         // Hold the modal open behind the reprint dialogue; resolve on acknowledge.

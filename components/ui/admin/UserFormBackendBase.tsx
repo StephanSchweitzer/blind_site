@@ -348,7 +348,7 @@ export function UserFormBackendBase({
                     title: "Mot de passe réinitialisé — email non envoyé",
                     description: data?.message ||
                         "Le mot de passe a été réinitialisé mais l'email n'a pas pu être envoyé. Contactez la personne directement.",
-                    className: "bg-amber-100 border-amber-500 text-amber-900",
+                    variant: "warning",
                 });
                 setIsPasswordResetDialogOpen(false);
                 return;
@@ -357,7 +357,7 @@ export function UserFormBackendBase({
             toast({
                 title: "Mot de passe réinitialisé",
                 description: "Un email a été envoyé à la personne.",
-                className: "bg-green-100 border-green-500 text-green-900"
+                variant: "success"
             });
 
             setIsPasswordResetDialogOpen(false);

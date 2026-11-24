@@ -1,4 +1,5 @@
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
+import { TEXT_LINK } from '@/components/ui/admin/text-link';
 import React, { useState, useId } from 'react';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
@@ -1149,7 +1150,7 @@ export function OrderFormBackendBase({
                                     href={`/admin/bills?bill=${initialBill.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2 whitespace-nowrap"
+                                    className={`font-medium whitespace-nowrap ${TEXT_LINK}`}
                                 >
                                     Voir la facture
                                 </IntentLink>
@@ -1253,7 +1254,7 @@ export function OrderFormBackendBase({
                                     <button
                                         type="button"
                                         onClick={() => setFormData({ ...formData, cost: tarif.value })}
-                                        className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                        className={`font-medium ${TEXT_LINK}`}
                                     >
                                         Appliquer
                                     </button>

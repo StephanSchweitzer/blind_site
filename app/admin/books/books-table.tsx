@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, X, ChevronsUpDown, Check, Plus, Loader2, FileAudio, FileX2, SlidersHorizontal } from 'lucide-react';
+import { Search, X, ChevronsUpDown, Check, Plus, FileAudio, FileX2, SlidersHorizontal, FilterX } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { AdminSearchField } from "@/components/ui/admin/AdminSearchField";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,8 @@ import {
 import { calendarYear } from '@/lib/calendar-date';
 import { toast } from "@/hooks/use-toast";
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/ui/admin/AdminEmptyState";
 import { BookSearchSuggestions } from '@/components/ui/book-search-suggestions';
 import type { BookSearchSuggestion, CatalogueFilterKey } from '@/lib/books/book-suggestion-types';
 import { ADMIN_PAGE_SIZE, pageInfo, parsePageParam, parsePageSizeParam, type PageInfo } from '@/lib/pagination';
@@ -447,6 +449,22 @@ export default function BooksTable({
         }
     }, [currentPage]);
 
+    // « Effacer les filtres », comme les autres listes : genres, disponibilité,
+    // visibilité et audio d'un coup. La recherche garde sa propre croix.
+    const activeFilterCount = [
+        selectedGenres.length > 0,
+        selectedAvailable !== 'all',
+        selectedHidden !== 'all',
+        selectedAudio !== 'all',
+    ].filter(Boolean).length;
+    const clearBookFilters = useCallback(() => {
+        setSelectedGenres([]);
+        setSelectedAvailable('all');
+        setSelectedHidden('all');
+        setSelectedAudio('all');
+        setCurrentPage(1);
+    }, []);
+
     const handleGenreChange = useCallback((genres: number[]) => {
         setSelectedGenres(genres);
         setCurrentPage(1);
@@ -735,20 +753,21 @@ export default function BooksTable({
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
-                <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle as="h1" className="text-foreground">Catalogue</CardTitle>
-                        <AideLink section="catalogue" />
-                    </div>
-                </div>
-                <Button
-                    className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-                    onClick={openAddModal}
-                >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Ajouter un livre
-                </Button>
+            <CardHeader className="border-b border-border">
+                <AdminPageHeader
+                    title="Catalogue"
+                    section="Catalogue"
+                    aide={<AideLink section="catalogue" />}
+                    actions={
+                        <Button
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                            onClick={openAddModal}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Ajouter un livre
+                        </Button>
+                    }
+                />
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="mb-6 space-y-4">
@@ -956,21 +975,34 @@ export default function BooksTable({
                     label="Pages du catalogue"
                     onNavigate={navigate}
                     pending={isSearching}
+                    aside={activeFilterCount > 0 && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearBookFilters}
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                        >
+                            <FilterX className="h-4 w-4" aria-hidden="true" />
+                            Effacer les filtres
+                        </Button>
+                    )}
                 >
                 <div className="relative">
-                    {isSearching && searchResults.books.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 bg-card rounded-lg">
-                            <Loader2 className="animate-spin h-12 w-12 text-blue-400" />
-                            <p className="mt-4 text-foreground">Recherche en cours...</p>
-                        </div>
-                    ) : searchResults.books.length === 0 ? (
-                        <div className="text-center py-12 bg-card rounded-lg">
-                            <p className="text-foreground">
-                                {searchTerm || selectedGenres.length > 0
+                    {/* La liste reste en place, grisée, pendant une recherche
+                        (AdminPaginatedList). Partie d'une recherche vide, elle n'a
+                        rien à griser : la boîte vide le dit, sans grand cercle qui
+                        remplaçait le tableau. */}
+                    {searchResults.books.length === 0 ? (
+                        <AdminEmptyState
+                            message={isSearching
+                                ? 'Recherche en cours…'
+                                : searchTerm || selectedGenres.length > 0
                                     ? 'Aucun résultat trouvé pour votre recherche'
                                     : 'Aucun livre disponible'}
-                            </p>
-                            {searchTerm && (
+                            onClearFilters={!isSearching && activeFilterCount > 0 && !searchResults.searchSuggestions?.length ? clearBookFilters : undefined}
+                        >
+                            {searchTerm && !isSearching && (
                                 <BookSearchSuggestions
                                     suggestions={searchResults.searchSuggestions}
                                     filterLabel={suggestionFilterLabel}
@@ -979,7 +1011,7 @@ export default function BooksTable({
                                     onOpenBook={(book) => openBookById(book.id)}
                                 />
                             )}
-                        </div>
+                        </AdminEmptyState>
                     ) : (
                         <div>
                             <div className="rounded-md border border-border bg-card">

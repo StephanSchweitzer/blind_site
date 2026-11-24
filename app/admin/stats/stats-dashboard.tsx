@@ -96,7 +96,7 @@ export default function StatsDashboard() {
             <AdminCard className="p-4 md:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="text-xl font-bold text-foreground">Statistiques d’activité</h1>
+                        <h1 className="text-2xl font-semibold leading-none tracking-tight text-foreground">Statistiques d’activité</h1>
                         <AideLink section="statistiques" />
                     </div>
                     <div className="flex flex-wrap gap-1">

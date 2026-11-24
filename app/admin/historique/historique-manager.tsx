@@ -11,6 +11,7 @@ import { IconPicker } from '@/components/admin/IconPicker';
 import { resolveIcon } from '@/lib/icons';
 import type { HistoryEvent } from '@prisma/client';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
 
 type Draft = { year: string; title: string; description: string; iconKey: string };
 
@@ -81,14 +82,17 @@ export function HistoriqueManager({ initial }: { initial: HistoryEvent[] }) {
         <div className="min-h-screen bg-background">
             <div className="py-8 space-y-6">
                 <Card className="bg-card border-border">
-                    <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle as="h1" className="text-foreground">Historique ({events.length})</CardTitle>
-                            <AideLink section="pages-publiques" />
-                        </div>
-                        <Button onClick={() => { setAdding(true); setDraft({ year: '', title: '', description: '', iconKey: 'Calendar' }); }} className="bg-muted text-foreground border-border hover:bg-accent">
-                            <Plus className="h-4 w-4 mr-1" /> Ajouter
-                        </Button>
+                    <CardHeader className="border-b border-border">
+                        <AdminPageHeader
+                            title={`Historique (${events.length})`}
+                            section="Historique"
+                            aide={<AideLink section="pages-publiques" />}
+                            actions={
+                                <Button onClick={() => { setAdding(true); setDraft({ year: '', title: '', description: '', iconKey: 'Calendar' }); }} className="bg-muted text-foreground border-border hover:bg-accent">
+                                    <Plus className="h-4 w-4 mr-1" /> Ajouter
+                                </Button>
+                            }
+                        />
                     </CardHeader>
                     <CardContent className="pt-6 space-y-3">
                         {error?.at === 'top' && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error.message}</p>}

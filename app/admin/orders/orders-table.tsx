@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
+import { TEXT_LINK } from '@/components/ui/admin/text-link';
+import { Badge } from '@/components/ui/badge';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from '@/components/ui/button';
@@ -43,6 +45,8 @@ import type { SerializedDuplicationWait } from '@/lib/orders/duplicationBlocked'
 import type { SerializedDelai } from '@/lib/orders/delais';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/ui/admin/AdminEmptyState";
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import { MobileFilters } from '@/admin/MobileFilters';
@@ -59,7 +63,6 @@ import {
 } from '@/lib/orders/orderSort';
 import { orderStatusStyle } from '@/lib/orders/statusDisplay';
 import { ForcedBillBadge } from '@/components/ui/admin/BillOrderPicker';
-import { SECTION_ICONS, sectionAccent } from '@/components/admin/section-icons';
 import { cn } from '@/lib/utils';
 
 type OrdersTableProps = {
@@ -82,8 +85,6 @@ type OrdersTableProps = {
 };
 
 const NOUN = { one: 'demande', many: 'demandes', feminine: true };
-const SectionIcon = SECTION_ICONS['Demandes'];
-const accent = sectionAccent('Demandes');
 
 /**
  * En-tête de colonne triable. Le tri est une action sur la liste, pas un
@@ -295,35 +296,24 @@ export default function OrdersTable({
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                        {/* La couleur de la section, celle de sa carte sur le tableau de bord. */}
-                        {/* Dans un dossier, l'onglet « Demandes » porte déjà le titre :
-                            ni pastille ni titre visible (il reste au lecteur d'écran). */}
-                        {!presetClient && (
-                            <span
-                                aria-hidden="true"
-                                className={cn('hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg border sm:flex', accent.bg, accent.border, accent.text)}
-                            >
-                                <SectionIcon className="h-5 w-5" />
-                            </span>
-                        )}
-                        <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <CardTitle as={presetClient ? 'h2' : 'h1'} className={presetClient ? 'sr-only' : 'text-2xl text-foreground'}>Demandes</CardTitle>
-                                <AideLink section="demandes" />
-                            </div>
-                        </div>
-                    </div>
-                    <Button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Ajouter une demande
-                    </Button>
-                </div>
+            <CardHeader className="border-b border-border">
+                {/* Dans un dossier, l'onglet « Demandes » porte déjà le titre :
+                    ni pastille ni titre visible (il reste au lecteur d'écran). */}
+                <AdminPageHeader
+                    title="Demandes"
+                    section="Demandes"
+                    inDossier={!!presetClient}
+                    aide={<AideLink section="demandes" />}
+                    actions={
+                        <Button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Ajouter une demande
+                        </Button>
+                    }
+                />
             </CardHeader>
 
             <CardContent className="space-y-5">
@@ -488,19 +478,10 @@ export default function OrdersTable({
                         )}
 
                         {initialOrders.length === 0 ? (
-                            <div className="rounded-lg border border-dashed border-border py-12 text-center">
-                                <p className="text-muted-foreground text-lg">Aucune demande trouvée</p>
-                                {activeFilterCount > 0 && !searchSuggestions?.length && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleClearFilters}
-                                        className="mt-4 border-border bg-card text-foreground hover:bg-muted"
-                                    >
-                                        <FilterX className="h-4 w-4" aria-hidden="true" />
-                                        Effacer les filtres
-                                    </Button>
-                                )}
+                            <AdminEmptyState
+                                message="Aucune demande trouvée"
+                                onClearFilters={activeFilterCount > 0 && !searchSuggestions?.length ? handleClearFilters : undefined}
+                            >
                                 <SearchRescue
                                     suggestions={searchSuggestions}
                                     unit={{ one: 'demande', many: 'demandes', feminine: true }}
@@ -512,7 +493,7 @@ export default function OrdersTable({
                                     }}
                                     onOpenRow={(row) => openOrderById(row.id)}
                                 />
-                            </div>
+                            </AdminEmptyState>
                         ) : (
                             <div className="border border-border rounded-lg overflow-clip">
                                 <Table stickyHeader mobileCards>
@@ -584,7 +565,7 @@ export default function OrdersTable({
                                                                     <IntentLink
                                                                         href={`/admin/users/dossier/${order.aveugleId}/demandes`}
                                                                         onClick={(e) => e.stopPropagation()}
-                                                                        className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                                                        className={TEXT_LINK}
                                                                     >
                                                                         {aveugleName || order.aveugle.email}
                                                                     </IntentLink>
@@ -625,12 +606,12 @@ export default function OrdersTable({
                                                         {formatDate(order.requestReceivedDate)}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <span
+                                                        <Badge variant="status"
                                                             title={order.status.name}
-                                                            className={cn('inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium', statusStyle.badge)}
+                                                            className={statusStyle.badge}
                                                         >
                                                             {statusStyle.short}
-                                                        </span>
+                                                        </Badge>
                                                         {/* A duplication waiting on an in-flight enregistrement
                                                             stays « À faire » — never « en attente », which on this
                                                             list reads as a recording status — and says, under its
@@ -688,7 +669,7 @@ export default function OrdersTable({
                                                                 onClick={(e) => e.stopPropagation()}
                                                                 className="inline-flex flex-col text-sm"
                                                             >
-                                                                <span className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">
+                                                                <span className={`font-medium ${TEXT_LINK}`}>
                                                                     #{order.assignments[0].id}
                                                                 </span>
                                                                 {/* Sur une demande terminée, l'attribution l'est
@@ -720,9 +701,9 @@ export default function OrdersTable({
                                                         d'écran entend l'état dans tous les cas. */}
                                                     <TableCell>
                                                         {order.billingStatus === 'UNBILLED' && order.statusId === STATUS.TERMINE ? (
-                                                            <span className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                                            <Badge variant="status" className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                                                                 À facturer
-                                                            </span>
+                                                            </Badge>
                                                         ) : order.billingStatus === 'UNBILLABLE' ? (
                                                             <span className="text-xs text-muted-foreground">
                                                                 {getOrderBillingStatusLabel(order.billingStatus)}

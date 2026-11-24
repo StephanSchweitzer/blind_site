@@ -104,10 +104,9 @@ export function apiErrorToast(
               ? 'Connexion interrompue'
               : (opts.title ?? 'Action impossible');
     return {
-        variant: 'destructive',
         duration: error.kind === 'known' ? 15_000 : Infinity,
         title,
         description: <ApiErrorMessage error={error} action={opts.action} className="block" />,
-        className: 'bg-red-100 border-red-500 text-red-900',
+        variant: 'error',
     };
 }

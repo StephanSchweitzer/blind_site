@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
@@ -533,9 +534,9 @@ export function EditBillModal({
                                 </div>
                                 <div className="min-w-0 text-right">
                                     <div className="text-xs text-muted-foreground uppercase tracking-wide">État actuel</div>
-                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
+                                    <Badge variant="status" className={getBillingStatusColor(bill.state)}>
                                         {getBillingStatusLabel(bill.state)}
-                                    </span>
+                                    </Badge>
                                 </div>
                             </div>
 

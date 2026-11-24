@@ -2,6 +2,8 @@
 'use client';
 
 import { useState, useTransition, useEffect, useRef } from 'react';
+import { TEXT_LINK } from '@/components/ui/admin/text-link';
+import { Badge } from '@/components/ui/badge';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
@@ -39,6 +41,8 @@ import { getUserNameOnly } from '@/lib/users/displayName';
 import { CopyIdButton } from '@/admin/CopyableId';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/ui/admin/AdminEmptyState";
 import { BookFilterBadge } from '@/admin/BookFilterBadge';
 import { BookFilterPicker } from '@/admin/BookFilterPicker';
 import { MobileFilters } from '@/admin/MobileFilters';
@@ -235,24 +239,22 @@ export default function AssignmentsTable({
     return (
         <Card className="w-full bg-card border-border">
             <CardHeader className="border-b border-border">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            {/* Dans un dossier, l'onglet porte déjà le titre. */}
-                            <CardTitle as={inDossier ? 'h2' : 'h1'} className={inDossier ? 'sr-only' : 'text-3xl font-bold text-foreground'}>
-                                Attributions
-                            </CardTitle>
-                            <AideLink section="attributions" />
-                        </div>
-                    </div>
-                    <Button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Ajouter une attribution
-                    </Button>
-                </div>
+                {/* Dans un dossier, l'onglet porte déjà le titre. */}
+                <AdminPageHeader
+                    title="Attributions"
+                    section="Attributions"
+                    inDossier={inDossier}
+                    aide={<AideLink section="attributions" />}
+                    actions={
+                        <Button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Ajouter une attribution
+                        </Button>
+                    }
+                />
             </CardHeader>
             <CardContent className="p-6">
                 {/* Search and Filters */}
@@ -385,12 +387,12 @@ export default function AssignmentsTable({
                 {/* Table — grisée par AdminPaginatedList pendant un chargement. */}
                 <div className={isPending ? 'pointer-events-none' : ''}>
                     {initialAssignments.length === 0 ? (
-                        <div className="text-center py-12">
-                            <p className="text-muted-foreground text-lg">
-                                {searchTerm || currentStatusId !== 'all' || currentRetard !== 'all' || filterBook
-                                    ? "Aucune attribution trouvée avec ces critères"
-                                    : "Aucune attribution"}
-                            </p>
+                        <AdminEmptyState
+                            message={searchTerm || currentStatusId !== 'all' || currentRetard !== 'all' || filterBook
+                                ? "Aucune attribution trouvée avec ces critères"
+                                : "Aucune attribution"}
+                            onClearFilters={activeFilterCount > 0 && !searchSuggestions?.length ? handleClearFilters : undefined}
+                        >
                             <SearchRescue
                                 suggestions={searchSuggestions}
                                 unit={{ one: 'attribution', many: 'attributions', feminine: true }}
@@ -402,7 +404,7 @@ export default function AssignmentsTable({
                                 }}
                                 onOpenRow={(row) => openAssignmentById(row.id)}
                             />
-                        </div>
+                        </AdminEmptyState>
                     ) : (
                         <div>
                             <div className="rounded-lg border border-border overflow-clip bg-card">
@@ -453,7 +455,7 @@ export default function AssignmentsTable({
                                                             <IntentLink
                                                                 href={`/admin/orders?order=${assignment.orderId}`}
                                                                 onClick={(e) => e.stopPropagation()}
-                                                                className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                                                className={TEXT_LINK}
                                                             >
                                                                 ↳ demande #{assignment.orderId}
                                                             </IntentLink>
@@ -482,7 +484,7 @@ export default function AssignmentsTable({
                                                                     <IntentLink
                                                                         href={`/admin/users/dossier/${assignment.currentReader.id}/affectations`}
                                                                         onClick={(e) => e.stopPropagation()}
-                                                                        className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                                                        className={TEXT_LINK}
                                                                     >
                                                                         {getUserNameOnly(assignment.currentReader) || 'Sans nom'}
                                                                     </IntentLink>
@@ -529,9 +531,9 @@ export default function AssignmentsTable({
                                                     {formatDate(assignment.returnedToECADate)}
                                                 </TableCell>
                                                 <TableCell className="w-[1%]">
-                                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(assignment.status)}`}>
+                                                    <Badge variant="status" className={getStatusColor(assignment.status)}>
                                                         {getStatusDisplayName(assignment.status)}
-                                                    </span>
+                                                    </Badge>
                                                     {/* Same wording as on the demandes list: the reason in
                                                         words, only past a line. */}
                                                     {delai && (

@@ -19,6 +19,8 @@ import { AddGenreFormBackend, EditGenreFormBackend } from '@/admin/GenreFormBack
 import { CopyableId } from '@/admin/CopyableId';
 import type { Genre } from '@/types';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/ui/admin/AdminEmptyState";
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueRow, RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { PageInfo } from '@/lib/pagination';
@@ -77,20 +79,21 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
-                <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle as="h1" className="text-foreground">Genres</CardTitle>
-                        <AideLink section="genres" />
-                    </div>
-                </div>
-                <Button
-                    className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-                    onClick={() => setIsAddOpen(true)}
-                >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Ajouter un genre
-                </Button>
+            <CardHeader className="border-b border-border">
+                <AdminPageHeader
+                    title="Genres"
+                    section="Genres"
+                    aide={<AideLink section="genres" />}
+                    actions={
+                        <Button
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                            onClick={() => setIsAddOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Ajouter un genre
+                        </Button>
+                    }
+                />
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="flex items-center gap-2 mb-4">
@@ -111,6 +114,16 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                     onNavigate={navigate}
                     pending={isPending}
                 >
+                {initialGenres.length === 0 ? (
+                    <AdminEmptyState message="Aucun genre trouvé">
+                        <SearchRescue
+                            suggestions={searchSuggestions}
+                            unit={{ one: 'genre', many: 'genres' }}
+                            onApply={(s) => handleSearch(s.query)}
+                            onOpenRow={(row) => setEditing(row.genre)}
+                        />
+                    </AdminEmptyState>
+                ) : (
                 <div className="rounded-md border border-border bg-card">
                     <Table stickyHeader mobileCards>
                         <TableHeader className="bg-card">
@@ -121,13 +134,6 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {initialGenres.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="py-10 text-center text-muted-foreground">
-                                        Aucun genre trouvé
-                                    </TableCell>
-                                </TableRow>
-                            )}
                             {initialGenres.map((genre) => (
                                 <TableRow
                                     key={genre.id}
@@ -156,13 +162,6 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                         </TableBody>
                     </Table>
                 </div>
-                {initialGenres.length === 0 && (
-                    <SearchRescue
-                        suggestions={searchSuggestions}
-                        unit={{ one: 'genre', many: 'genres' }}
-                        onApply={(s) => handleSearch(s.query)}
-                        onOpenRow={(row) => setEditing(row.genre)}
-                    />
                 )}
 
                 </AdminPaginatedList>

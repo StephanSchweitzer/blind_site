@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { TEXT_LINK } from '@/components/ui/admin/text-link';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -73,7 +74,7 @@ export function BookUsageLinks({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                className={`inline-flex items-center gap-1 font-medium ${TEXT_LINK}`}
             >
                 {count} {count > 1 ? plural : singular}
                 <ExternalLink className="h-3 w-3" aria-hidden />

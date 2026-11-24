@@ -84,7 +84,7 @@ export function DeleteAudioTrackModal({
             toast({
                 title: 'Déplacé dans la corbeille',
                 description: `« ${track.name} » est récupérable depuis l’onglet Corbeille.`,
-                className: 'bg-green-100 border-green-500 text-green-900',
+                variant: 'success',
             });
 
             onDeleted?.();

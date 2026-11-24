@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,8 @@ import type { SerializedBillTableRow as Bill } from '@/types/models/bill.model';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/ui/admin/AdminEmptyState";
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { PageInfo } from '@/lib/pagination';
@@ -191,25 +194,23 @@ export default function BillsTable({
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader className="border-b border-border pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            {/* Dans un dossier, l'onglet porte déjà le titre. */}
-                            <CardTitle as={presetClient ? 'h2' : 'h1'} className={presetClient ? 'sr-only' : 'text-2xl font-bold text-foreground'}>
-                                Factures
-                            </CardTitle>
-                            <AideLink section="factures" />
-                        </div>
-                    </div>
-                    <Button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Ajouter une facture
-                    </Button>
-                </div>
+            <CardHeader className="border-b border-border">
+                {/* Dans un dossier, l'onglet porte déjà le titre. */}
+                <AdminPageHeader
+                    title="Factures"
+                    section="Factures"
+                    inDossier={!!presetClient}
+                    aide={<AideLink section="factures" />}
+                    actions={
+                        <Button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Ajouter une facture
+                        </Button>
+                    }
+                />
             </CardHeader>
 
             <CardContent className="pt-6">
@@ -311,8 +312,10 @@ export default function BillsTable({
                 {/* Bills Table */}
                 <div className="relative">
                     {initialBills.length === 0 ? (
-                        <div className="text-center py-12">
-                            <p className="text-muted-foreground text-lg">Aucune facture trouvée</p>
+                        <AdminEmptyState
+                            message="Aucune facture trouvée"
+                            onClearFilters={activeFilterCount > 0 && !searchSuggestions?.length ? handleClearFilters : undefined}
+                        >
                             <SearchRescue
                                 suggestions={searchSuggestions}
                                 unit={{ one: 'facture', many: 'factures', feminine: true }}
@@ -324,7 +327,7 @@ export default function BillsTable({
                                 }}
                                 onOpenRow={(row) => setViewBillId(Number(row.id))}
                             />
-                        </div>
+                        </AdminEmptyState>
                     ) : (
                         <div className="border border-border rounded-lg overflow-clip">
                             <div>
@@ -399,9 +402,9 @@ export default function BillsTable({
                                                                     <span className="sr-only">Émise depuis plus de 30 jours, à relancer</span>
                                                                 </span>
                                                             )}
-                                                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getBillingStatusColor(bill.state)}`}>
+                                                            <Badge variant="status" className={getBillingStatusColor(bill.state)}>
                                                                 {getBillingStatusLabel(bill.state)}
-                                                            </span>
+                                                            </Badge>
                                                         </div>
                                                     </TableCell>
                                                     {/* Impression directe, sans ouvrir la facture.

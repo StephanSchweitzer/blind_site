@@ -15,6 +15,10 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
+        // The admin lists' status pills (Statut, Facturation, Activité…). Their
+        // colour comes from each enum's style map, passed as className; this is
+        // the shape every list used to paste by hand.
+        status: "border-0 px-2 py-1 font-medium",
       },
     },
     defaultVariants: {
@@ -24,12 +28,13 @@ const badgeVariants = cva(
 )
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {}
 
+// A <span>: a badge sits inside text and table cells, where a <div> is invalid.
 function Badge({ className, variant, ...props }: BadgeProps) {
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <span className={cn(badgeVariants({ variant }), className)} {...props} />
   )
 }
 

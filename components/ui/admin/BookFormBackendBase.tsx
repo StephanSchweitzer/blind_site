@@ -624,7 +624,7 @@ export function AddBookFormBackend({ onSuccess, dirtyRef }: {
 
             toast({
                 title: "Livre créé",
-                className: "bg-green-100 border-green-500 text-green-900"
+                variant: "success"
             });
 
             return data.book.id;
@@ -713,7 +713,7 @@ export function EditBookFormBackend({ bookId, initialData, deletedAt, onSuccess,
 
             toast({
                 title: "Livre enregistré",
-                className: "bg-green-100 border-green-500 text-green-900"
+                variant: "success"
             });
 
             return parseInt(bookId);

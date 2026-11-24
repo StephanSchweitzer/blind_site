@@ -35,14 +35,14 @@ export function EditUserFormBackend({
                 toast({
                     title: "Suppression impossible",
                     description: msg,
-                    className: "bg-red-100 border-red-500 text-red-900",
+                    variant: "error",
                 });
                 throw markToasted(new Error(msg));
             }
 
             toast({
                 title: "Personne supprimée",
-                className: "bg-green-100 border-green-500 text-green-900"
+                variant: "success"
             });
 
             if (onSuccess) {
@@ -81,14 +81,14 @@ export function EditUserFormBackend({
                     title: "Personne mise à jour — email non envoyé",
                     description: data?.message ||
                         "Les modifications ont été enregistrées mais l'email d'identifiants n'a pas pu être envoyé. Utilisez « réinitialiser le mot de passe » pour le renvoyer.",
-                    className: "bg-amber-100 border-amber-500 text-amber-900",
+                    variant: "warning",
                 });
                 return parseInt(userId);
             }
 
             toast({
                 title: "Fiche enregistrée",
-                className: "bg-green-100 border-green-500 text-green-900"
+                variant: "success"
             });
 
             return parseInt(userId);

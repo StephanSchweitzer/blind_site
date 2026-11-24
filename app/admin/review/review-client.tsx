@@ -60,6 +60,7 @@ import { formatCalendarDate } from '@/lib/calendar-date';
 import { fuseBooks, deleteBook, dismissReview, escalateReview, type ActionResult } from './actions';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { PageInfo } from '@/lib/pagination';
@@ -272,18 +273,15 @@ export default function ReviewClient({ pairs, pagination, search, searchSuggesti
     return (
         <div className="space-y-4">
             <Card>
-                <CardHeader className="space-y-4">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle as="h1">Doublons</CardTitle>
-                            <AideLink section="doublons" />
-                        </div>
-                        {/* Le nombre se lit dans « 1–10 sur N livres » sous la recherche :
-                            l'en-tête ne parle que de la file vide. */}
-                        {!search && total === 0 && (
-                            <CardDescription>Aucun livre en attente de révision.</CardDescription>
-                        )}
-                    </div>
+                <CardHeader className="space-y-4 border-b border-border">
+                    {/* Le nombre se lit dans « 1–10 sur N livres » sous la recherche :
+                        l'en-tête ne parle que de la file vide. */}
+                    <AdminPageHeader
+                        title="Doublons"
+                        section="Doublons"
+                        aide={<AideLink section="doublons" />}
+                        description={!search && total === 0 && 'Aucun livre en attente de révision.'}
+                    />
 
                     <div className="flex gap-2">
                         <AdminSearchField

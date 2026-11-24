@@ -127,7 +127,7 @@ export function RenameAudioTrackModal({
             toast({
                 title: 'Piste renommée',
                 description: data?.message ?? `« ${track.name} » a été renommé en « ${newName} ».`,
-                className: 'bg-green-100 border-green-500 text-green-900',
+                variant: 'success',
             });
 
             onRenamed?.();

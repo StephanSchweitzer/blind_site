@@ -59,7 +59,7 @@ export function useFormToast() {
             // Keep `variant: "destructive"` available to callers that want the
             // shadcn destructive styling; the explicit className is the codebase
             // convention and renders consistently in light/dark.
-            className: "bg-red-100 border-red-500 text-red-900",
+            variant: "error",
         });
     }, [toast]);
 
@@ -70,7 +70,7 @@ export function useFormToast() {
         toast({
             title,
             description,
-            className: "bg-green-100 border-green-500 text-green-900",
+            variant: "success",
         });
     }, [toast]);
 

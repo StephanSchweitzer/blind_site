@@ -27,6 +27,8 @@ import { toast } from '@/hooks/use-toast';
 import { Loader2, Plus, Search } from 'lucide-react';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/ui/admin/AdminEmptyState";
 import { SearchRescue } from '@/components/ui/search-rescue';
 import { ADMIN_PAGE_SIZE, pageInfo, parsePageParam, parsePageSizeParam } from '@/lib/pagination';
 import { AdminPaginatedList } from '@/admin/AdminPagination';
@@ -293,20 +295,21 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
-                <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle as="h1" className="text-foreground">Dernières infos</CardTitle>
-                        <AideLink section="pages-publiques" />
-                    </div>
-                </div>
-                <Button
-                    className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-                    onClick={() => setIsAddOpen(true)}
-                >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Ajouter une info
-                </Button>
+            <CardHeader className="border-b border-border">
+                <AdminPageHeader
+                    title="Dernières infos"
+                    section="Dernières infos"
+                    aide={<AideLink section="pages-publiques" />}
+                    actions={
+                        <Button
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                            onClick={() => setIsAddOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Ajouter une info
+                        </Button>
+                    }
+                />
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:items-end mb-4">
@@ -351,17 +354,16 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                     onNavigate={navigate}
                     pending={isSearching}
                 >
-                {isSearching && items.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 bg-card rounded-lg">
-                        <Loader2 className="animate-spin h-10 w-10 text-muted-foreground" />
-                        <p className="mt-4 text-foreground">Recherche en cours...</p>
-                    </div>
-                ) : items.length === 0 ? (
-                    <div className="text-center py-12 bg-card rounded-lg border border-border">
-                        <p className="text-foreground">
-                            {hasFilters ? 'Aucune info trouvée pour cette recherche' : 'Aucune info publiée'}
-                        </p>
-                        {searchTerm.trim() && (
+                {/* Comme le catalogue : la liste reste, grisée, pendant une
+                    recherche ; partie d'une recherche vide, la boîte vide le dit. */}
+                {items.length === 0 ? (
+                    <AdminEmptyState
+                        message={isSearching
+                            ? 'Recherche en cours…'
+                            : hasFilters ? 'Aucune info trouvée pour cette recherche' : 'Aucune info publiée'}
+                        onClearFilters={!isSearching && type !== null && !results.searchSuggestions?.length ? () => handleTypeChange('all') : undefined}
+                    >
+                        {searchTerm.trim() && !isSearching && (
                             <SearchRescue
                                 suggestions={results.searchSuggestions}
                                 unit={{ one: 'info', many: 'infos', feminine: true }}
@@ -372,7 +374,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                                 onOpenRow={(row) => void openArticle(Number(row.id))}
                             />
                         )}
-                    </div>
+                    </AdminEmptyState>
                 ) : (
                     <div className="rounded-md border border-border bg-card">
                         <Table stickyHeader mobileCards>

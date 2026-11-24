@@ -669,7 +669,7 @@ export default function AvailabilityDashboard({ data }: { data: AvailabilityResp
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="text-2xl font-bold text-foreground">Disponibilités</h1>
+                        <h1 className="text-2xl font-semibold leading-none tracking-tight text-foreground">Disponibilités</h1>
                         <AideLink section="disponibilites" />
                     </div>
                     <p className="text-sm text-muted-foreground">

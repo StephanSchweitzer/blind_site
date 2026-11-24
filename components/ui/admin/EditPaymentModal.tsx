@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
@@ -122,7 +123,7 @@ export function EditPaymentModal({
 
         toast({
             title: "Paiement enregistré",
-            className: 'bg-green-100 border-green-500 text-green-900',
+            variant: 'success',
         });
 
         return data.payment.id;
@@ -136,14 +137,14 @@ export function EditPaymentModal({
                         Paiement
                         {paymentId && <CopyableId id={paymentId} label="du paiement" />}
                         {payment && (
-                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
+                            <Badge variant="status" className={getPaymentTypeColor(payment.type)}>
                                 {getPaymentTypeLabel(payment.type)}
-                            </span>
+                            </Badge>
                         )}
                         {payment && (
-                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentStatusColor(derivePaymentStatus(payment))}`}>
+                            <Badge variant="status" className={getPaymentStatusColor(derivePaymentStatus(payment))}>
                                 {getPaymentStatusLabel(derivePaymentStatus(payment))}
-                            </span>
+                            </Badge>
                         )}
                     </DialogTitle>
                 </DialogHeader>

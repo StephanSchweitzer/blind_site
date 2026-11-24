@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useTransition, useEffect, useRef } from 'react';
+import { TEXT_LINK } from '@/components/ui/admin/text-link';
+import { Badge } from '@/components/ui/badge';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { announceNavigation } from '@/components/NavigationFeedback';
 import { IntentLink } from '@/components/admin/IntentLink';
@@ -51,6 +53,8 @@ import { describeUnavailability, resolveEffectiveActivityStatus } from '@/lib/us
 import { CopyIdButton } from '@/admin/CopyableId';
 import { MobileFilters } from '@/admin/MobileFilters';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/ui/admin/AdminEmptyState";
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { PageInfo } from '@/lib/pagination';
@@ -98,9 +102,9 @@ function StatusCell({
 
     return (
         <div className="flex flex-col gap-0.5">
-            <span className={`inline-flex w-fit items-center rounded-full px-2 py-1 text-xs font-medium ${getUserActivityStatusColor(status)}`}>
+            <Badge variant="status" className={`w-fit ${getUserActivityStatusColor(status)}`}>
                 {getUserActivityStatusLabel(status)}
-            </span>
+            </Badge>
             {detail && <span className="text-xs text-muted-foreground">{detail}</span>}
         </div>
     );
@@ -244,14 +248,11 @@ export default function UsersTable({
     return (
         <Card className="border-border bg-card shadow-xl">
             <CardHeader className="border-b border-border">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle as="h1" className="text-2xl text-foreground">{plural}</CardTitle>
-                            <AideLink section="membres" />
-                        </div>
-                    </div>
-                    {canCreateUsers && (
+                <AdminPageHeader
+                    title={plural}
+                    section={plural}
+                    aide={<AideLink section="membres" />}
+                    actions={canCreateUsers && (
                         <Button
                             onClick={() => setIsAddModalOpen(true)}
                             className="bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -260,7 +261,7 @@ export default function UsersTable({
                             Ajouter un membre
                         </Button>
                     )}
-                </div>
+                />
             </CardHeader>
 
             <CardContent className="pt-6">
@@ -355,7 +356,7 @@ export default function UsersTable({
                                     {i > 0 && <span aria-hidden className="text-muted-foreground/50"> · </span>}
                                     <IntentLink
                                         href={`/admin/users/${t.tab}?${params.toString()}`}
-                                        className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2"
+                                        className={TEXT_LINK}
                                     >
                                         {t.label} ({t.count})
                                     </IntentLink>
@@ -386,8 +387,10 @@ export default function UsersTable({
                 >
                 <div className="space-y-6">
                     {initialUsers.length === 0 ? (
-                        <div className="py-20 flex flex-col items-center justify-center border border-border rounded-lg bg-card/50">
-                            <p className="text-muted-foreground text-lg">Aucun {singular} trouv&#233;</p>
+                        <AdminEmptyState
+                            message={<>Aucun {singular} trouv&#233;</>}
+                            onClearFilters={activeFilterCount > 0 && !searchSuggestions?.length ? handleClearFilters : undefined}
+                        >
                             <SearchRescue
                                 suggestions={searchSuggestions}
                                 unit={{ one: 'personne', many: 'personnes', feminine: true }}
@@ -417,7 +420,7 @@ export default function UsersTable({
                                     }
                                 }}
                             />
-                        </div>
+                        </AdminEmptyState>
                     ) : (
                         <div className="border border-border rounded-lg overflow-clip">
                             <div>
@@ -458,9 +461,9 @@ export default function UsersTable({
                                                 </TableCell>
                                                 {type === 'permanents' && (
                                                     <TableCell>
-                                                        <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getAccessLevelColor(user.accessLevel)}`}>
+                                                        <Badge variant="status" className={getAccessLevelColor(user.accessLevel)}>
                                                             {getAccessLevelLabel(user.accessLevel)}
-                                                        </span>
+                                                        </Badge>
                                                     </TableCell>
                                                 )}
                                                 <TableCell>

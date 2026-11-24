@@ -77,7 +77,7 @@ const SPECS = [
         steps: [
             { clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
             { clickSelector: '[role="dialog"] [role="combobox"]' }, { sleep: 600 },
-            { typeIn: { selector: '[placeholder="Rechercher par nom ou email..."]', value: 'stef' } },
+            { typeIn: { selector: '[placeholder="Nom, email, ou numéro de personne..."]', value: 'stef' } },
             { sleep: 1600 },
         ],
         clip: '[role="dialog"]',
@@ -93,7 +93,7 @@ const SPECS = [
         steps: [
             { clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
             { clickSelector: '[role="dialog"] [role="combobox"]' }, { sleep: 600 },
-            { typeIn: { selector: '[placeholder="Rechercher par nom ou email..."]', value: 'stef' } },
+            { typeIn: { selector: '[placeholder="Nom, email, ou numéro de personne..."]', value: 'stef' } },
             { sleep: 1600 },
             { clickSelector: '[data-radix-popper-content-wrapper] button' },
             { sleep: 2200 },
@@ -112,7 +112,7 @@ const SPECS = [
             { clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
             { clickSelector: '[role="dialog"] [role="combobox"]' }, { sleep: 600 },
             // Les seuls auditeurs de la base de dev qui ont des revues libres.
-            { typeIn: { selector: '[placeholder="Rechercher par nom ou email..."]', value: 'ZZZ Proforma' } },
+            { typeIn: { selector: '[placeholder="Nom, email, ou numéro de personne..."]', value: 'ZZZ Proforma' } },
             { sleep: 1600 },
             { clickSelector: '[data-radix-popper-content-wrapper] button' },
             { sleep: 2200 },
@@ -143,7 +143,7 @@ const SPECS = [
         steps: [
             { clickText: 'Ajouter une facture' }, { waitFor: '[role="dialog"]' }, { sleep: 900 },
             { clickSelector: '[role="dialog"] [role="combobox"]' }, { sleep: 600 },
-            { typeIn: { selector: '[placeholder="Rechercher par nom ou email..."]', value: 'stef' } },
+            { typeIn: { selector: '[placeholder="Nom, email, ou numéro de personne..."]', value: 'stef' } },
             { sleep: 1600 },
             { clickSelector: '[data-radix-popper-content-wrapper] button' },
             { sleep: 2200 },
@@ -1450,7 +1450,14 @@ async function scrollToText(text) {
         // et leur absence d'ici faisait echouer le cadrage sur un libelle
         // pourtant bien present dans la page.
         const nodes = [...document.querySelectorAll('label, h1, h2, h3, h4, button, p, span, div')];
-        const hit = nodes.reverse().find((n) => n.textContent.trim() === wanted && n.getBoundingClientRect().height > 0);
+        // Le texte VU : sans le « (obligatoire) » sr-only de RequiredMark.
+        const texteVu = (n) => {
+            if (!n.querySelector('.sr-only')) return n.textContent.trim();
+            const copie = n.cloneNode(true);
+            copie.querySelectorAll('.sr-only').forEach((s) => s.remove());
+            return copie.textContent.replace(/\\s+/g, ' ').trim();
+        };
+        const hit = nodes.reverse().find((n) => texteVu(n) === wanted && n.getBoundingClientRect().height > 0);
         if (!hit) return false;
         hit.scrollIntoView({ block: 'center' });
         return true;
@@ -1699,8 +1706,17 @@ async function reperesPour(annotations, clip, densite = 1) {
             // existe souvent en double, dont une copie de 1x1 px destinee aux
             // lecteurs d'ecran. Elle vient en premier dans le document, et le
             // repere se posait donc sur un point invisible.
+            // Le texte VU, sans ce qui n'est dit qu'aux lecteurs d'ecran : la
+            // marque d'un champ obligatoire (RequiredMark) ajoute « (obligatoire) »
+            // en sr-only derriere l'etoile, et « Auditeur * » ne se trouvait plus.
+            const texteVu = (n) => {
+                if (!n.querySelector('.sr-only')) return n.textContent.trim();
+                const copie = n.cloneNode(true);
+                copie.querySelectorAll('.sr-only').forEach((s) => s.remove());
+                return copie.textContent.replace(/\\s+/g, ' ').trim();
+            };
             const el = noeuds.find((n) => {
-                if (n.textContent.trim() !== libelle) return false;
+                if (texteVu(n) !== libelle) return false;
                 const r = n.getBoundingClientRect();
                 return r.height > 8 && r.width > 8;
             });

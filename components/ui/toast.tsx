@@ -32,6 +32,15 @@ const toastVariants = cva(
         default: "border bg-background text-foreground",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
+        // The forms' own convention (useFormToast), which each call site used to
+        // spell as a className — the same light block in both themes, a bright
+        // patch on the dark back office. One definition, with a dark shade.
+        success:
+          "border-green-500 bg-green-100 text-green-900 dark:border-green-600 dark:bg-green-950 dark:text-green-100",
+        error:
+          "border-red-500 bg-red-100 text-red-900 dark:border-red-600 dark:bg-red-950 dark:text-red-100",
+        warning:
+          "border-amber-500 bg-amber-100 text-amber-900 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-100",
       },
     },
     defaultVariants: {

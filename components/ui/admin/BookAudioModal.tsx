@@ -690,7 +690,7 @@ export function BookAudioModal({
                                 `a été recalculé d'après le poids de l'enregistrement.`}
                     </span>
                 ),
-                className: 'bg-green-100 border-green-500 text-green-900',
+                variant: 'success',
             });
             reset();
             await refreshAll();
@@ -748,7 +748,7 @@ export function BookAudioModal({
             toast({
                 title: "Restauré",
                 description: `« ${item.filename} » est de retour dans le dossier.`,
-                className: 'bg-green-100 border-green-500 text-green-900',
+                variant: 'success',
             });
             await refreshAll();
         } catch (e) {

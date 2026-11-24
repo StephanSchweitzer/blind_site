@@ -13,6 +13,7 @@ import { ThemePicker } from '@/components/admin/ThemePicker';
 import { resolveIcon } from '@/lib/icons';
 import type { PracticalInfo } from '@prisma/client';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
 
 type Draft = { iconKey: string; colorTheme: string; question: string; body: string };
 const EMPTY: Draft = { iconKey: 'BookMarked', colorTheme: 'blue', question: '', body: '' };
@@ -110,17 +111,18 @@ export function PracticalInfoManager({ initial }: { initial: PracticalInfo[] }) 
         <div className="min-h-screen bg-background">
             <div className="py-8 space-y-6">
                 <Card className="bg-card border-border">
-                    <CardHeader className="border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle as="h1" className="text-foreground">Informations pratiques ({items.length})</CardTitle>
-                            <AideLink section="pages-publiques" />
-                        </div>
-                        <div className="flex gap-2">
-                            {dirty && <Button onClick={saveOrder} disabled={busy} variant="save">{running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer l&apos;ordre</Button>}
-                            <Button onClick={() => { setAdding(true); setEditingId(null); setDraft(EMPTY); }} className="bg-muted text-foreground border-border hover:bg-accent">
-                                <Plus className="h-4 w-4 mr-1" /> Ajouter
-                            </Button>
-                        </div>
+                    <CardHeader className="border-b border-border">
+                        <AdminPageHeader
+                            title={`Informations pratiques (${items.length})`}
+                            section="Infos pratiques"
+                            aide={<AideLink section="pages-publiques" />}
+                            actions={<>
+                                {dirty && <Button onClick={saveOrder} disabled={busy} variant="save">{running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}Enregistrer l&apos;ordre</Button>}
+                                <Button onClick={() => { setAdding(true); setEditingId(null); setDraft(EMPTY); }} className="bg-muted text-foreground border-border hover:bg-accent">
+                                    <Plus className="h-4 w-4 mr-1" /> Ajouter
+                                </Button>
+                            </>}
+                        />
                     </CardHeader>
                     <CardContent className="pt-6 space-y-3">
                         {error?.at === 'top' && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error.message}</p>}

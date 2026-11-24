@@ -53,7 +53,7 @@ export function EditAssignmentFormBackend({
 
             toast({
                 title: "Attribution supprimée",
-                className: "bg-green-100 border-green-500 text-green-900"
+                variant: "success"
             });
 
             if (onSuccess) {
@@ -194,7 +194,7 @@ export function EditAssignmentFormBackend({
                         )}
                     </span>
                 ) : undefined,
-                className: "bg-green-100 border-green-500 text-green-900"
+                variant: "success"
             });
 
             return parseInt(assignmentId);

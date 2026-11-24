@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,8 @@ import {
     type PaymentSortField,
 } from '@/lib/payments/list-params';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/ui/admin/AdminEmptyState";
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
 import type { PageInfo } from '@/lib/pagination';
@@ -251,6 +254,13 @@ export default function PaymentsTable({
     const handleDateFieldChange = (value: string) => updateUrl({ dateField: value === 'creationDate' ? undefined : value, page: '1' });
     const handleBoundChange = (key: 'from' | 'to', value: string) => updateUrl({ [key]: value || undefined, page: '1' });
     const handleToggle = (key: 'unlinked' | 'unallocated', on: boolean) => updateUrl({ [key]: on ? 'true' : undefined, page: '1' });
+    // Tous les filtres du panneau d'un coup, comme « Effacer les filtres » des
+    // autres listes. La recherche reste : elle a sa propre croix.
+    const clearAllFilters = () => updateUrl({
+        type: undefined, paymentMethod: undefined, status: undefined,
+        dateField: undefined, from: undefined, to: undefined,
+        unlinked: undefined, unallocated: undefined, page: '1',
+    });
 
     // Un clic sur une colonne déjà triée inverse le sens ; sur une autre, il la
     // prend dans son sens le plus utile — décroissant pour une date ou un
@@ -341,32 +351,30 @@ export default function PaymentsTable({
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader className="border-b border-border pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            {/* Dans un dossier, l'onglet « Paiements » juste au-dessus
-                                porte déjà le titre : il ne reste que pour le lecteur d'écran. */}
-                            <CardTitle as={presetClient ? 'h2' : 'h1'} className={presetClient ? 'sr-only' : 'text-2xl font-bold text-foreground'}>Paiements</CardTitle>
-                            <AideLink section="paiements" />
-                        </div>
-                        {/* L'encaissé et l'attendu ne s'additionnent pas : le premier
-                            se rapproche d'un relevé bancaire, le second non. Tant
-                            que rien n'est attendu, la ligne reste celle d'avant. */}
-                        {showTotal && (
-                            <CardDescription className="text-muted-foreground mt-1">
-                                {hasPending ? 'Encaissé' : 'Montant total'} :{' '}
-                                <span className="font-semibold text-foreground">{formatCurrency(initialTotals.received)}</span>
-                                {hasPending && (
-                                    <>
-                                        {' · '}En attente :{' '}
-                                        <span className="font-semibold text-foreground">{formatCurrency(initialTotals.pending)}</span>
-                                    </>
-                                )}
-                            </CardDescription>
-                        )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
+            <CardHeader className="border-b border-border">
+                {/* Dans un dossier, l'onglet « Paiements » juste au-dessus
+                    porte déjà le titre : il ne reste que pour le lecteur d'écran.
+                    L'encaissé et l'attendu ne s'additionnent pas : le premier
+                    se rapproche d'un relevé bancaire, le second non. Tant
+                    que rien n'est attendu, la ligne reste celle d'avant. */}
+                <AdminPageHeader
+                    title="Paiements"
+                    section="Paiements"
+                    inDossier={!!presetClient}
+                    aide={<AideLink section="paiements" />}
+                    description={showTotal && (
+                        <>
+                            {hasPending ? 'Encaissé' : 'Montant total'} :{' '}
+                            <span className="font-semibold text-foreground">{formatCurrency(initialTotals.received)}</span>
+                            {hasPending && (
+                                <>
+                                    {' · '}En attente :{' '}
+                                    <span className="font-semibold text-foreground">{formatCurrency(initialTotals.pending)}</span>
+                                </>
+                            )}
+                        </>
+                    )}
+                    actions={<>
                         {/* Rien à exporter dans une liste vide. */}
                         {pagination.total > 0 && (
                             <a
@@ -385,8 +393,8 @@ export default function PaymentsTable({
                             <Plus className="h-4 w-4" />
                             Ajouter un paiement
                         </Button>
-                    </div>
-                </div>
+                    </>}
+                />
             </CardHeader>
 
             <CardContent className="pt-6">
@@ -583,8 +591,10 @@ export default function PaymentsTable({
                 {/* Payments Table */}
                 <div className="relative">
                     {initialPayments.length === 0 ? (
-                        <div className="text-center py-12">
-                            <p className="text-muted-foreground text-lg">Aucun paiement trouvé</p>
+                        <AdminEmptyState
+                            message="Aucun paiement trouvé"
+                            onClearFilters={activeFilters.length > 0 && !searchSuggestions?.length ? clearAllFilters : undefined}
+                        >
                             <SearchRescue
                                 suggestions={searchSuggestions}
                                 unit={{ one: 'paiement', many: 'paiements' }}
@@ -600,7 +610,7 @@ export default function PaymentsTable({
                                 }}
                                 onOpenRow={(row) => setViewPaymentId(Number(row.id))}
                             />
-                        </div>
+                        </AdminEmptyState>
                     ) : (
                         <div className="border border-border rounded-lg overflow-clip">
                             <div>
@@ -655,14 +665,14 @@ export default function PaymentsTable({
                                                     </TableCell>
                                                 )}
                                                 <TableCell>
-                                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentTypeColor(payment.type)}`}>
+                                                    <Badge variant="status" className={getPaymentTypeColor(payment.type)}>
                                                         {getPaymentTypeLabel(payment.type)}
-                                                    </span>
+                                                    </Badge>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium ${getPaymentStatusColor(derivePaymentStatus(payment))}`}>
+                                                    <Badge variant="status" className={getPaymentStatusColor(derivePaymentStatus(payment))}>
                                                         {getPaymentStatusLabel(derivePaymentStatus(payment))}
-                                                    </span>
+                                                    </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-foreground">
                                                     {getPaymentMethodLabel(payment.paymentMethod)}

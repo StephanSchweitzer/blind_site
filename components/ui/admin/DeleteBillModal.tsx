@@ -38,7 +38,7 @@ export function DeleteBillModal({ isOpen, onOpenChange, billId, onBillDeleted }:
                 title: "Facture supprimée",
                 // La route nomme les paiements détachés, s'il y en a.
                 description: data?.detachedNotice || undefined,
-                className: 'bg-green-100 border-green-500 text-green-900',
+                variant: 'success',
             });
 
             if (onBillDeleted) onBillDeleted(billId);

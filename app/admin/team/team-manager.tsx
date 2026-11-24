@@ -17,6 +17,7 @@ import {
 import type { TeamMember, TeamSection } from '@prisma/client';
 import { TEAM_SECTION_LABELS, TEAM_SECTION_ORDER } from '@/lib/team-enums';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
 
 // Re-exported under the local names this file already used; the maps themselves
 // live in lib/team-enums.ts so the journal des modifications can word a section
@@ -178,17 +179,18 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
         <div className="min-h-screen bg-background">
             <div className="py-8 space-y-6">
                 <Card className="bg-card border-border">
-                    <CardHeader className="border-b border-border flex flex-row items-center justify-between">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle as="h1" className="text-foreground">Équipe ({total})</CardTitle>
-                            <AideLink section="pages-publiques" />
-                        </div>
-                        {dirty && (
-                            <Button onClick={saveOrder} disabled={busy} variant="save">
-                                {running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}
-                                Enregistrer l&apos;ordre
-                            </Button>
-                        )}
+                    <CardHeader className="border-b border-border">
+                        <AdminPageHeader
+                            title={`Équipe (${total})`}
+                            section="Équipe"
+                            aide={<AideLink section="pages-publiques" />}
+                            actions={dirty && (
+                                <Button onClick={saveOrder} disabled={busy} variant="save">
+                                    {running === 'order' && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    Enregistrer l&apos;ordre
+                                </Button>
+                            )}
+                        />
                     </CardHeader>
                     <CardContent className="pt-6 space-y-3">
                         <div className="flex flex-col sm:flex-row gap-2">

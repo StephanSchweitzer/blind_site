@@ -43,14 +43,14 @@ export function AddUserFormBackend({
                     title: "Compte créé — email non envoyé",
                     description: data?.message ||
                         "Le compte a été créé mais l'email d'identifiants n'a pas pu être envoyé. Utilisez « réinitialiser le mot de passe » pour le renvoyer.",
-                    className: "bg-amber-100 border-amber-500 text-amber-900",
+                    variant: "warning",
                 });
                 return data.user.id;
             }
 
             toast({
                 title: "Personne créée",
-                className: "bg-green-100 border-green-500 text-green-900"
+                variant: "success"
             });
 
             return data.user.id;

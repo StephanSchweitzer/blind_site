@@ -21,6 +21,8 @@ import type { CoupDeCoeurWithBooks } from "@/types/models/coups-de-coeur.model";
 import { parisDate } from '@/lib/paris-day';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
+import { AdminEmptyState } from "@/components/ui/admin/AdminEmptyState";
 import { Plus } from 'lucide-react';
 import { ListStatusBadge } from './components/list-book';
 import { SearchRescue } from '@/components/ui/search-rescue';
@@ -84,18 +86,19 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
 
     return (
         <Card className="bg-card border-border">
-            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4 border-b border-border">
-                <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle as="h1" className="text-2xl font-bold text-foreground">Listes de livres</CardTitle>
-                        <AideLink section="liste-de-livres" />
-                    </div>
-                </div>
-                <Button asChild className="w-full sm:w-auto">
-                    <IntentLink href="/admin/listes-de-livres/new">
-                        <Plus /> Nouvelle liste de livres
-                    </IntentLink>
-                </Button>
+            <CardHeader className="border-b border-border">
+                <AdminPageHeader
+                    title="Listes de livres"
+                    section="Listes de livres"
+                    aide={<AideLink section="liste-de-livres" />}
+                    actions={
+                        <Button asChild className="w-full sm:w-auto">
+                            <IntentLink href="/admin/listes-de-livres/new">
+                                <Plus /> Nouvelle liste de livres
+                            </IntentLink>
+                        </Button>
+                    }
+                />
             </CardHeader>
             <CardContent className="pt-6">
                 <AdminSearchField
@@ -114,6 +117,18 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                     onNavigate={navigate}
                     pending={isPending}
                 >
+                {items.length === 0 ? (
+                    <AdminEmptyState
+                        message={search ? 'Aucune liste de livres ne correspond à cette recherche.' : "Aucune liste de livres pour l'instant."}
+                    >
+                        <SearchRescue
+                            suggestions={searchSuggestions}
+                            unit={{ one: 'liste', many: 'listes', feminine: true }}
+                            onApply={(s) => setSearch(s.query)}
+                            onOpenRow={(row) => openList(row.id)}
+                        />
+                    </AdminEmptyState>
+                ) : (
                 <div className="rounded-md border border-border bg-card">
                     <Table stickyHeader mobileCards>
                         <TableHeader className="bg-card">
@@ -133,19 +148,6 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {items.length === 0 && (
-                                <TableRow className="hover:bg-transparent">
-                                    <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
-                                        {search ? 'Aucune liste de livres ne correspond à cette recherche.' : "Aucune liste de livres pour l'instant."}
-                                        <SearchRescue
-                                            suggestions={searchSuggestions}
-                                            unit={{ one: 'liste', many: 'listes', feminine: true }}
-                                            onApply={(s) => setSearch(s.query)}
-                                            onOpenRow={(row) => openList(row.id)}
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            )}
                             {items.map((item) => (
                                 <TableRow
                                     key={item.id}
@@ -191,6 +193,7 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                         </TableBody>
                     </Table>
                 </div>
+                )}
 
                 </AdminPaginatedList>
             </CardContent>

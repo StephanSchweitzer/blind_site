@@ -49,6 +49,7 @@ import {
 import { OrphanAudioModal } from './orphan-audio-modal';
 import { formatBytes, formatDate, isNasArtefact } from './format';
 import { AideLink } from '@/components/ui/admin/AideLink';
+import { AdminPageHeader } from "@/components/ui/admin/AdminPageHeader";
 import {
     createBookForOrphan,
     dismissOrphan,
@@ -527,20 +528,16 @@ export default function OrphansClient({
     return (
         <div className="space-y-4">
             <Card>
-                <CardHeader className="space-y-4">
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle as="h1">Audio orphelin</CardTitle>
-                            <AideLink section="audio-orphelin" />
-                        </div>
-                        {/* Le titre du menu, et une phrase : les trois gestes sont les
-                            boutons de chaque carte, et « rien n'est supprimé » se dit
-                            une fois, dans la fenêtre « Écarter ». */}
-                        <CardDescription>
-                            Dossiers présents dans le stockage qu’aucun livre du catalogue ne
-                            revendique.
-                        </CardDescription>
-                    </div>
+                <CardHeader className="space-y-4 border-b border-border">
+                    {/* Le titre du menu, et une phrase : les trois gestes sont les
+                        boutons de chaque carte, et « rien n'est supprimé » se dit
+                        une fois, dans la fenêtre « Écarter ». */}
+                    <AdminPageHeader
+                        title="Audio orphelin"
+                        section="Audio orphelin"
+                        aide={<AideLink section="audio-orphelin" />}
+                        description="Dossiers présents dans le stockage qu’aucun livre du catalogue ne revendique."
+                    />
 
                     <div className="flex flex-wrap gap-2">
                         {(Object.keys(TAB_LABELS) as OrphanTab[]).map((t) => (
