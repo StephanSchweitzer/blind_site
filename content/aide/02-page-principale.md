@@ -14,6 +14,8 @@ Cette page répertorie les liens et descriptions de toutes les sections disponib
 
 La barre de navigation en haut de la page reprend les mêmes liens que les cartes affichées en dessous — les deux mènent aux mêmes pages au sein d'Arbre Rose, et chaque page y porte la même icône, dans la même couleur, que sa carte.
 
+Chaque menu de la barre (Livres, Gestion, Membres, Pages) s'ouvre en le survolant avec la souris, ou en cliquant sur son nom. Au clavier, atteignez son nom avec la touche Tab et appuyez sur Entrée ; la touche Échap le referme. Le menu de la page où vous vous trouvez reste surligné, et cette page y est mise en évidence.
+
 En haut, la partie « **En ce moment** » réunit ce que le tableau de bord est seul à dire : le bandeau « À traiter » (voir plus bas) et les trois files d'attente du catalogue, « Doublons », « Audio orphelin » et « Corbeille audio », dont le nombre, en gras, dit s'il reste du travail. Juste en dessous, les [post-its](#post-its) de l'équipe. Viennent ensuite les cartes des sections Livres, Gestion, Membres et Pages du site.
 
 Chaque carte des sections Livres et Membres donne, sous son nom, le nombre d'éléments de sa page. Sur la carte « Disponibilités », c'est le nombre de **lecteurs libres**, c'est-à-dire actifs et sans attribution en cours. Les cartes de la section Gestion (Demandes, Attributions, Factures, Paiements, Post-its, Statistiques) et celles des Pages du site n'affichent aucun nombre : ce qui reste à faire s'y lit dans le bandeau « À traiter ». Chaque rubrique a sa couleur, toujours la même (les Factures en orange, les Auditeurs en bleu-vert…).

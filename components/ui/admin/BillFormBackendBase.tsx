@@ -1,10 +1,11 @@
 'use client';
 
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RequiredMark } from "@/components/ui/admin/RequiredMark";
 import {
     Select,
     SelectContent,
@@ -124,6 +125,8 @@ export function BillFormBackendBase({
     const [isLoading, setIsLoading] = useState(false);
     const { toastError, toastFailure } = useFormToast();
     const { registerField, focusFirstInvalid } = useInvalidField();
+    // Préfixe des ids qui relient chaque libellé obligatoire à son champ.
+    const uid = useId();
 
     const [selectedClient, setSelectedClient] = useState<User | null>(initialClient ?? null);
     const [state, setState] = useState<BillingStatus>(BillingStatus.BILLED);
@@ -335,7 +338,7 @@ export function BillFormBackendBase({
             };
             const msg = messages[invalid[0]];
             toastError(msg);
-            focusFirstInvalid(FIELD_ORDER, new Set(invalid));
+            focusFirstInvalid(FIELD_ORDER, new Set(invalid), msg);
             return;
         }
 
@@ -371,22 +374,23 @@ export function BillFormBackendBase({
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Client */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Auditeur <span className="text-red-500">*</span>
+                        <label id={`${uid}-client-label`} className="text-sm font-medium text-foreground">
+                            Auditeur <RequiredMark />
                         </label>
                         <UserSearchCombobox<User>
                             value={selectedClient}
                             onSelect={handleClientSelect}
                             triggerRef={registerField('client')}
+                            labelledBy={`${uid}-client-label`}
                             viewHref={(user) => `/admin/users/dossier/${user.id}`}
                         />
                     </div>
 
                     {/* Eligible orders */}
                     {selectedClient && (
-                        <div ref={registerField('orders')} tabIndex={-1} className="space-y-2 outline-none rounded-lg">
-                            <label className="text-sm font-medium text-foreground">
-                                Demandes à facturer <span className="text-red-500">*</span>
+                        <div ref={registerField('orders')} tabIndex={-1} role="group" aria-labelledby={`${uid}-orders-label`} className="space-y-2 outline-none rounded-lg">
+                            <label id={`${uid}-orders-label`} className="text-sm font-medium text-foreground">
+                                Demandes à facturer <RequiredMark />
                             </label>
                             {isLoadingOrders ? (
                                 <div className="flex items-center gap-2 text-muted-foreground px-3 py-4">
@@ -551,13 +555,14 @@ export function BillFormBackendBase({
                             qui vaut émission : POST /api/bills la reporte, et le bouton le dit. */}
                         {state !== BillingStatus.DRAFT && (
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Date d&apos;émission {markAsPaid && <span className="text-red-500">*</span>}
+                                <label id={`${uid}-issue-date-label`} className="text-sm font-medium text-foreground">
+                                    Date d&apos;émission {markAsPaid && <RequiredMark />}
                                 </label>
                                 <DatePickerField
                                     value={issueDate}
                                     onChange={setIssueDate}
                                     triggerRef={registerField('issueDate')}
+                                    labelledBy={`${uid}-issue-date-label`}
                                     placeholder={markAsPaid
                                         ? 'Sélectionner une date'
                                         : `${format(creationDate, 'PPP', { locale: fr })} (date de création)`}
@@ -620,10 +625,11 @@ export function BillFormBackendBase({
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Date de paiement <span className="text-red-500">*</span>
+                                <label id={`${uid}-payment-date-label`} className="text-sm font-medium text-foreground">
+                                    Date de paiement <RequiredMark />
                                 </label>
                                 <DatePickerField
+                                    labelledBy={`${uid}-payment-date-label`}
                                     value={paymentDate}
                                     onChange={(d) => d && setPaymentDate(d)}
                                 />

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { announceNavigation } from '@/components/NavigationFeedback';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { useSession } from 'next-auth/react';
-import { Input } from '@/components/ui/input';
+import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -16,7 +16,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Search, X, Plus, FilterX } from 'lucide-react';
+import { Search, Plus, FilterX } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -266,24 +266,19 @@ export default function UsersTable({
             <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-2 mb-6">
                     <div className="flex flex-1 gap-2 sm:min-w-[280px]">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Rechercher par nom, email..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
-                            />
-                        </div>
-                        <Button onClick={handleSearch} size="icon" className="shrink-0 bg-card border border-border text-foreground hover:bg-muted hover:text-white">
-                            <Search className="h-4 w-4" />
+                        <AdminSearchField
+                            id="users-search"
+                            label={`Rechercher parmi les ${plural.toLowerCase()}`}
+                            placeholder="Rechercher par nom, email..."
+                            value={searchTerm}
+                            onValueChange={setSearchTerm}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                            onClear={handleClearSearch}
+                        />
+                        {/* Icône seule : son nom est dit aux lecteurs d'écran. */}
+                        <Button onClick={handleSearch} size="icon" aria-label="Rechercher" className="shrink-0 bg-card border border-border text-foreground hover:bg-muted hover:text-white">
+                            <Search className="h-4 w-4" aria-hidden="true" />
                         </Button>
-                        {searchTerm && (
-                            <Button onClick={handleClearSearch} size="icon" variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted">
-                                <X className="h-4 w-4" />
-                            </Button>
-                        )}
                     </div>
                     <MobileFilters
                         activeCount={activeFilterCount}

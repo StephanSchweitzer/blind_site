@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -286,34 +286,21 @@ export default function ReviewClient({ pairs, pagination, search, searchSuggesti
                     </div>
 
                     <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') runSearch(searchTerm);
-                                }}
-                                placeholder="Rechercher un titre, un auteur, un ISBN ou un numéro…"
-                                className="pl-9 pr-9"
-                                disabled={busy}
-                            />
-                            {searchTerm && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                                    disabled={busy}
-                                    onClick={() => {
-                                        setSearchTerm('');
-                                        runSearch('');
-                                    }}
-                                    aria-label="Effacer la recherche"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
+                        <AdminSearchField
+                            id="review-search"
+                            label="Rechercher un doublon"
+                            placeholder="Rechercher un titre, un auteur, un ISBN ou un numéro…"
+                            value={searchTerm}
+                            onValueChange={setSearchTerm}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') runSearch(searchTerm);
+                            }}
+                            onClear={() => {
+                                setSearchTerm('');
+                                runSearch('');
+                            }}
+                            disabled={busy}
+                        />
                         <Button variant="outline" disabled={busy} onClick={() => runSearch(searchTerm)}>
                             Rechercher
                         </Button>

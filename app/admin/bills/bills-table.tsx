@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Input } from '@/components/ui/input';
+import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -27,7 +27,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Search, X, Plus, Clock, FilterX } from 'lucide-react';
+import { Search, Plus, Clock, FilterX } from 'lucide-react';
 import {
     BillingStatus,
     BILLING_STATUS_LABELS,
@@ -217,24 +217,15 @@ export default function BillsTable({
                 <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
                     {!hideSearch && (
                         <div className="flex-1 flex gap-2">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                                <Input
-                                    placeholder="Rechercher par auditeur..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
-                                />
-                                {searchTerm && (
-                                    <button
-                                        onClick={handleClearSearch}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </div>
+                            <AdminSearchField
+                                id="bills-search"
+                                label="Rechercher une facture"
+                                placeholder="Rechercher par auditeur..."
+                                value={searchTerm}
+                                onValueChange={setSearchTerm}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                onClear={handleClearSearch}
+                            />
                             <Button
                                 onClick={handleSearch}
                                 className="bg-primary hover:bg-primary/90 text-primary-foreground"

@@ -1,5 +1,6 @@
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
-import React, {useState, useEffect, useCallback, useRef} from 'react';
+import React, { useState, useEffect, useCallback, useRef, useId } from 'react';
+import { RequiredMark } from "@/components/ui/admin/RequiredMark";
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -160,11 +161,15 @@ function DatePicker({
     triggerRef?: (el: HTMLElement | null) => void;
     warning?: string;
 }) {
+    // Le libellé nomme le bouton de date (avec la date affichée) : sans lien,
+    // un lecteur d'écran n'entendait que la date, jamais de quel champ il s'agit.
+    const labelId = useId();
     // Ces dates sont des jours, gardés en 'YYYY-MM-DD' — voir toDayString.
     return (
         <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">{label}</label>
+            <label id={labelId} className="text-sm font-medium text-foreground">{label}</label>
             <DatePickerField
+                labelledBy={labelId}
                 value={fromDayString(value)}
                 onChange={(date) => onChange(date ? toDayString(date) : null)}
                 placeholder={placeholder}
@@ -294,6 +299,8 @@ export function AssignmentFormBackendBase({
     const { toastError, toastFailure } = useFormToast();
     const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
+    // Préfixe des ids qui relient chaque libellé obligatoire à son champ.
+    const uid = useId();
     const {
         blocked: activityBlocked,
         role: activityRole,
@@ -515,7 +522,7 @@ export function AssignmentFormBackendBase({
             const firstName = ASSIGN_FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
             const msg = messages[firstName];
             toastError(msg);
-            focusFirstInvalid(ASSIGN_FIELD_ORDER, new Set(invalid));
+            focusFirstInvalid(ASSIGN_FIELD_ORDER, new Set(invalid), msg);
             return;
         }
 
@@ -758,8 +765,8 @@ export function AssignmentFormBackendBase({
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Reader Selection/Display */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Lecteur {!assignmentId && <span className="text-red-400">*</span>}
+                        <label id={`${uid}-reader-label`} className="text-sm font-medium text-foreground">
+                            Lecteur {!assignmentId && <RequiredMark />}
                         </label>
 
                         {/* Edit mode: Compact reader display */}
@@ -933,6 +940,7 @@ export function AssignmentFormBackendBase({
                                     emptyMessage="Aucun lecteur trouvé"
                                     listClassName="max-h-[300px]"
                                     triggerRef={registerField('readerId')}
+                                    labelledBy={`${uid}-reader-label`}
                                     viewHref={(reader) => `/admin/users/dossier/${reader.id}`}
                                 />
                             </>
@@ -1042,7 +1050,7 @@ export function AssignmentFormBackendBase({
                     {/* Book — read-only: derived from the selected order (one book per order) */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">
-                            Livre <span className="text-red-400">*</span>
+                            Livre <RequiredMark />
                         </label>
                         {/* Même bouton « Voir la fiche » que le sélecteur de livre des
                             demandes (EntitySearchCombobox), en nouvel onglet. */}

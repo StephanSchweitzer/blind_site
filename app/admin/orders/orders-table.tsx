@@ -4,7 +4,7 @@ import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
 import {
     Select,
     SelectContent,
@@ -27,7 +27,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Search, X, Plus, ArrowDown, ArrowUp, ArrowUpDown, FilterX } from 'lucide-react';
+import { Plus, ArrowDown, ArrowUp, ArrowUpDown, FilterX } from 'lucide-react';
 import { getOrderBillingStatusLabel } from '@/lib/billing-enums';
 import { AddOrderFormBackend } from '@/admin/AddOrderFormBackend';
 import { EditOrderModal, loadOrderForEdit } from '@/admin/EditOrderModal';
@@ -332,28 +332,14 @@ export default function OrdersTable({
                 <div className="space-y-4">
                 {!hideSearch && (
                     <form role="search" onSubmit={handleSearch} className="flex gap-2">
-                        <div className="relative flex-1">
-                            <label htmlFor="orders-search" className="sr-only">Rechercher une demande</label>
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" aria-hidden="true" />
-                            <Input
-                                id="orders-search"
-                                type="search"
-                                placeholder="Auditeur, livre ou n° de demande…"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-10 bg-card border-border text-foreground placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-                            />
-                            {searchTerm && (
-                                <button
-                                    type="button"
-                                    onClick={handleClearSearch}
-                                    aria-label="Effacer la recherche"
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                >
-                                    <X className="h-4 w-4" aria-hidden="true" />
-                                </button>
-                            )}
-                        </div>
+                        <AdminSearchField
+                            id="orders-search"
+                            label="Rechercher une demande"
+                            placeholder="Auditeur, livre ou n° de demande…"
+                            value={searchTerm}
+                            onValueChange={setSearchTerm}
+                            onClear={handleClearSearch}
+                        />
                         <Button
                             type="submit"
                             className="bg-primary hover:bg-primary/90 text-primary-foreground"

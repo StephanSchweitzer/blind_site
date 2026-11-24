@@ -1,5 +1,5 @@
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useFormToast } from "@/hooks/useFormToast";
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useInvalidField } from "@/hooks/useInvalidField";
+import { RequiredMark } from "@/components/ui/admin/RequiredMark";
 import {
     Dialog,
     DialogContent,
@@ -159,6 +160,8 @@ export function UserFormBackendBase({
     const { toastError, toastFailure } = useFormToast();
     const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
+    // Préfixe des ids qui relient chaque libellé obligatoire à son champ.
+    const uid = useId();
 
     const { civilities, mediaFormats } = useReferenceData();
 
@@ -263,7 +266,7 @@ export function UserFormBackendBase({
         if ((formData.accessLevel === 'admin' || formData.accessLevel === 'super_admin') && !formData.email) {
             const msg = 'L\'email est requis pour les membres permanents';
             toastError(msg);
-            focusFirstInvalid(['email'], new Set(['email']));
+            focusFirstInvalid(['email'], new Set(['email']), msg);
             return;
         }
 
@@ -418,10 +421,11 @@ export function UserFormBackendBase({
 
                         {/* Email – full width */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">
-                                Email {formData.accessLevel === 'admin' && <span className="text-red-500">*</span>}
+                            <label htmlFor={`${uid}-email`} className="text-sm font-medium text-foreground">
+                                Email {formData.accessLevel === 'admin' && <RequiredMark />}
                             </label>
                             <Input
+                                id={`${uid}-email`}
                                 ref={registerField('email')}
                                 type="email"
                                 value={formData.email}

@@ -6,6 +6,7 @@ import { announceNavigation } from '@/components/NavigationFeedback';
 import { useDebounce } from 'use-debounce';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from "@/components/ui/button";
+import { AdminSearchField } from "@/components/ui/admin/AdminSearchField";
 import {
     Table,
     TableBody,
@@ -15,13 +16,12 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { CoupDeCoeurPDFButton } from "@/admin/CoupDeCoeurPDFButton";
 import type { CoupDeCoeurWithBooks } from "@/types/models/coups-de-coeur.model";
 import { parisDate } from '@/lib/paris-day';
 import { getUserNameOnly } from '@/lib/users/displayName';
 import { AideLink } from '@/components/ui/admin/AideLink';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ListStatusBadge } from './components/list-book';
 import { SearchRescue } from '@/components/ui/search-rescue';
 import type { RescueSuggestion } from '@/lib/search-suggestion-types';
@@ -98,15 +98,14 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                 </Button>
             </CardHeader>
             <CardContent className="pt-6">
-                <div className="relative mb-4 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        placeholder="Rechercher une liste ou un livre…"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9 bg-card border-border text-foreground placeholder:text-muted-foreground"
-                    />
-                </div>
+                <AdminSearchField
+                    id="listes-search"
+                    label="Rechercher une liste de livres"
+                    placeholder="Rechercher une liste ou un livre…"
+                    value={search}
+                    onValueChange={setSearch}
+                    className="mb-4 max-w-sm"
+                />
 
                 <AdminPaginatedList
                     info={pagination}

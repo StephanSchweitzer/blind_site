@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, X, CircleX, ChevronsUpDown, Check, Plus, Loader2, FileAudio, FileX2, SlidersHorizontal } from 'lucide-react';
+import { Search, X, ChevronsUpDown, Check, Plus, Loader2, FileAudio, FileX2, SlidersHorizontal } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { AdminSearchField } from "@/components/ui/admin/AdminSearchField";
+import { Input } from "@/components/ui/input";
 import {
     Table,
     TableBody,
@@ -13,7 +15,6 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -752,28 +753,15 @@ export default function BooksTable({
             <CardContent className="pt-6">
                 <div className="mb-6 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:items-end">
-                        <div className="relative w-full sm:flex-1 sm:min-w-[220px]">
-                            <Input
-                                value={searchTerm}
-                                onChange={(e) => handleSearchChange(e.target.value)}
-                                placeholder="Recherche de livres..."
-                                className="pl-10 pr-10 bg-card text-foreground border-border placeholder:text-muted-foreground"
-                            />
-                            <Search className="absolute left-3 top-2.5 text-muted-foreground" size={20} />
-                            {isSearching && searchTerm.length > 0 && (
-                                <Loader2 className="absolute right-3 top-2.5 text-muted-foreground animate-spin" size={20} />
-                            )}
-                            {!isSearching && searchTerm.length > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleSearchChange('')}
-                                    aria-label="Effacer la recherche"
-                                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors rounded-full"
-                                >
-                                    <CircleX aria-hidden="true" size={20} />
-                                </button>
-                            )}
-                        </div>
+                        <AdminSearchField
+                            id="books-search"
+                            label="Rechercher un livre"
+                            placeholder="Recherche de livres..."
+                            value={searchTerm}
+                            onValueChange={handleSearchChange}
+                            busy={isSearching}
+                            className="w-full sm:flex-1 sm:min-w-[220px]"
+                        />
 
                         <div className="flex flex-col gap-1 w-full sm:w-auto">
                             <span className="text-xs font-medium text-muted-foreground">Filtres</span>

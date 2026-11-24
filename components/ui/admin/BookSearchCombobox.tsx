@@ -29,6 +29,8 @@ interface BookSearchComboboxProps<T extends BookSearchResult> {
     /** Result row; defaults to title (+ subtitle) over author. */
     renderItem?: (book: T) => React.ReactNode;
     triggerRef?: React.Ref<HTMLButtonElement>;
+    /** Id of the visible label — see EntitySearchCombobox. */
+    labelledBy?: string;
     triggerClassName?: string;
     /** Link-out to the selected book's catalogue entry, next to the trigger. Omit to show none. */
     viewHref?: (book: T) => string | null | undefined;
@@ -60,6 +62,7 @@ export function BookSearchCombobox<T extends BookSearchResult>({
     renderValue,
     renderItem,
     triggerRef,
+    labelledBy,
     triggerClassName,
     viewHref,
 }: BookSearchComboboxProps<T>) {
@@ -107,6 +110,7 @@ export function BookSearchCombobox<T extends BookSearchResult>({
             searchPlaceholder="Titre, auteur, ou numéro de livre..."
             emptyMessage="Aucun livre trouvé"
             triggerRef={triggerRef}
+            labelledBy={labelledBy}
             triggerClassName={triggerClassName}
             viewHref={viewHref}
         />

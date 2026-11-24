@@ -115,8 +115,11 @@ export function ContactForm({ initial }: ContactFormProps) {
                                 <Textarea id="visitText" name="visitText" value={formData.visitText} onChange={handleChange} className={field} />
                             </div>
 
-                            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-                            {saved && <p className="text-sm text-green-600 dark:text-green-400">Enregistré.</p>}
+                            {/* Annoncés aux lecteurs d'écran : l'erreur sur-le-champ,
+                                « Enregistré. » poliment. La zone `status` reste en place,
+                                vide, pour que son changement soit bien lu. */}
+                            {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+                            <p role="status" className="text-sm text-green-600 dark:text-green-400 empty:hidden">{saved ? 'Enregistré.' : ''}</p>
 
                             <div className="flex justify-end pt-4">
                                 <Button type="submit" disabled={saving} variant="save">

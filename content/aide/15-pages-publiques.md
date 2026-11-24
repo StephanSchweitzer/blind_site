@@ -32,7 +32,8 @@ Toutes ces pages fonctionnent de la même manière :
 - une **liste** de ce qui est déjà publié ;
 - un bouton pour **ajouter** une entrée ;
 - un clic sur une ligne pour la **modifier** ;
-- un **glisser-déposer** pour changer l'ordre d'affichage sur le site public.
+- la corbeille d'une ligne pour la **supprimer**, après confirmation : l'entrée disparaît aussitôt du site public, sans retour possible ;
+- un **glisser-déposer** par la poignée ⋮⋮ pour changer l'ordre d'affichage sur le site public (Équipe, Informations pratiques, Nous rejoindre ; l'Historique suit l'ordre des années). Au clavier, sélectionnez la poignée avec la touche Tab, puis déplacez la ligne avec les flèches haut et bas. Le nouvel ordre n'est publié qu'après un clic sur « Enregistrer l'ordre ».
 
 ## « Aujourd'hui aux ECA », sur la page d'accueil
 

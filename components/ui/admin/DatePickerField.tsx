@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
@@ -58,6 +58,7 @@ export function DatePickerField({
     clearable = false,
     triggerRef,
     id,
+    labelledBy,
     className,
 }: {
     value: Date | null | undefined;
@@ -69,9 +70,17 @@ export function DatePickerField({
     triggerRef?: React.Ref<HTMLButtonElement>;
     /** Pour un <label htmlFor> extérieur. */
     id?: string;
+    /**
+     * L'id du libellé visible au-dessus. Le bouton se nomme alors « libellé +
+     * date affichée » (« Date de paiement, 24 novembre 2026 ») : un <label
+     * htmlFor> seul remplaçait la date par le libellé.
+     */
+    labelledBy?: string;
     className?: string;
 }) {
     const [open, setOpen] = useState(false);
+    const ownId = useId();
+    const triggerId = id ?? ownId;
     const date = value ?? undefined;
     const showClear = clearable && !!date;
     const showToday = !showClear && !(date && isSameDay(date, new Date()));
@@ -81,7 +90,8 @@ export function DatePickerField({
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
-                        id={id}
+                        id={triggerId}
+                        aria-labelledby={labelledBy ? `${labelledBy} ${triggerId}` : undefined}
                         ref={triggerRef}
                         type="button"
                         variant="outline"
@@ -91,7 +101,7 @@ export function DatePickerField({
                             (showToday || showClear) && 'rounded-r-none'
                         )}
                     >
-                        <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                        <CalendarIcon className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
                         {date ? (
                             <span className="truncate">{format(date, 'PPP', { locale: fr })}</span>
                         ) : (

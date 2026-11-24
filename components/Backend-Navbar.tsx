@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { IntentLink } from '@/components/admin/IntentLink';
 import Image from 'next/image';
 import { Menu, X, ChevronDown, HelpCircle, LogOut, ArrowUpRight } from 'lucide-react';
@@ -98,10 +99,12 @@ function NavIcon({ label }: { label: string }) {
  * `section` (Pages: « Voir le site » apart from « Modifier les pages »).
  * Each block is a labelled group, so a screen reader announces it too.
  */
-function MenuLinks({ items, onNavigate, linkClassName }: {
+function MenuLinks({ items, onNavigate, linkClassName, activeHref }: {
     items: NavItem[];
     onNavigate: () => void;
     linkClassName: string;
+    /** The link of the page being shown — marked `aria-current` and highlighted. */
+    activeHref: string | null;
 }) {
     const blocks: { section?: string; items: NavItem[] }[] = [];
     for (const item of items) {
@@ -125,7 +128,13 @@ function MenuLinks({ items, onNavigate, linkClassName }: {
                         </div>
                     )}
                     {block.items.map((item) => (
-                        <IntentLink key={item.href} href={item.href} onClick={onNavigate} className={linkClassName}>
+                        <IntentLink
+                            key={item.href}
+                            href={item.href}
+                            onClick={onNavigate}
+                            aria-current={item.href === activeHref ? 'page' : undefined}
+                            className={item.href === activeHref ? `${linkClassName} bg-accent text-foreground font-medium` : linkClassName}
+                        >
                             <NavIcon label={item.label} />
                             <span className="flex flex-col">
                                 <span>{item.label}</span>
@@ -142,9 +151,28 @@ function MenuLinks({ items, onNavigate, linkClassName }: {
     );
 }
 
+/**
+ * The menu link of the page being shown: the exact href, or its parent for a
+ * page below it (/admin/listes-de-livres/12 → Listes de livres). « Site
+ * principal » (/) is never current here — it leaves the back office.
+ */
+function currentHref(pathname: string, items: NavItem[]): string | null {
+    let best: string | null = null;
+    for (const { href } of items) {
+        if (href === '/') continue;
+        if ((pathname === href || pathname.startsWith(`${href}/`)) && (!best || href.length > best.length)) best = href;
+    }
+    return best;
+}
+
 const BackendNavbar: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [mobileGroup, setMobileGroup] = useState<number | null>(null);
+    // Desktop: the menu opened by its button (click, Enter, Space). Hover still
+    // opens each one on its own, by CSS; this is what the keyboard reaches.
+    const [desktopGroup, setDesktopGroup] = useState<number | null>(null);
+    const triggerRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const pathname = usePathname() ?? '';
     const { data: session } = useSession();
     const isSuper = session?.user.accessLevel === 'super_admin';
 
@@ -172,9 +200,29 @@ const BackendNavbar: React.FC = () => {
         setMobileGroup((prev) => (prev === index ? null : index));
     };
 
+    const activeHref = currentHref(pathname, visibleGroups.flatMap((g) => g.items));
+
     const closeAll = () => {
         setIsMenuOpen(false);
         setMobileGroup(null);
+        setDesktopGroup(null);
+    };
+
+    // Escape closes the open menu and gives focus back to its button, so the
+    // keyboard user lands where they were.
+    const handleDesktopKeyDown = (index: number) => (e: React.KeyboardEvent) => {
+        if (e.key === 'Escape' && desktopGroup === index) {
+            e.stopPropagation();
+            setDesktopGroup(null);
+            triggerRefs.current[index]?.focus();
+        }
+    };
+
+    // Focus leaving the menu (Tab past its last link, a click elsewhere) closes it.
+    const handleDesktopBlur = (index: number) => (e: React.FocusEvent<HTMLDivElement>) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            setDesktopGroup((open) => (open === index ? null : open));
+        }
     };
 
     // Same gesture as the button on « Mon compte »: ask first if a form is unsaved.
@@ -213,7 +261,13 @@ const BackendNavbar: React.FC = () => {
                         Déconnexion, theme): below xl it switches to the ☰ menu
                         rather than overflowing. Measured, not guessed — re-check
                         at 1280 px before adding anything to it. */}
-                    {/* Desktop navigation — hover-triggered dropdowns.
+                    {/* Desktop navigation — dropdowns that open on hover, and on
+                        their button for the keyboard (Enter/Space; Escape closes).
+                        Each label used to be a bare <span>: Tab went from the
+                        brand straight to the search, and the ~23 section links
+                        were out of keyboard reach. A panel stays `invisible`
+                        until opened, so its links are only tabbable once the
+                        user has asked for that menu — not 23 extra Tab stops.
                         Every panel stays mounted, hidden by CSS only, so Next
                         counts all ~25 links as visible and would prefetch each
                         on every page load — one proxy run (with its DB read)
@@ -222,30 +276,56 @@ const BackendNavbar: React.FC = () => {
                         it prefetches only once the pointer rests on it
                         (components/admin/IntentLink.tsx). */}
                     <div className="hidden xl:flex items-center gap-1 flex-1">
-                        {visibleGroups.map((group) => (
-                            <div key={group.label} className="relative group">
-                                <span className="flex items-center gap-2 px-3 py-2 rounded-md text-foreground/80 font-medium cursor-pointer select-none hover:text-foreground hover:bg-accent transition-colors duration-100">
-                                    {group.label}
-                                    <ChevronDown
-                                        size={14}
-                                        className="opacity-70 transition-transform duration-100 group-hover:rotate-180"
-                                    />
-                                </span>
-
-                                {/* pt-2 keeps a hover bridge between trigger and panel */}
-                                <div className="absolute top-full left-0 z-50 pt-2 invisible opacity-0 -translate-y-1
-                                group-hover:visible group-hover:opacity-100 group-hover:translate-y-0
-                                transition-[opacity,transform] duration-100 ease-out">
-                                    <div className="min-w-[220px] bg-popover border border-border rounded-lg shadow-xl overflow-hidden">
-                                        <MenuLinks
-                                            items={group.items}
-                                            onNavigate={closeAll}
-                                            linkClassName="flex items-center gap-3 px-4 py-3 text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
+                        {visibleGroups.map((group, index) => {
+                            const open = desktopGroup === index;
+                            const holdsCurrent = group.items.some((i) => i.href === activeHref);
+                            const panelId = `menu-${group.label.toLowerCase()}`;
+                            return (
+                                <div
+                                    key={group.label}
+                                    className="relative group"
+                                    onKeyDown={handleDesktopKeyDown(index)}
+                                    onBlur={handleDesktopBlur(index)}
+                                >
+                                    <button
+                                        type="button"
+                                        ref={(el) => { triggerRefs.current[index] = el; }}
+                                        onClick={() => setDesktopGroup(open ? null : index)}
+                                        aria-expanded={open}
+                                        aria-controls={panelId}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium select-none hover:text-foreground hover:bg-accent transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                            holdsCurrent || open ? 'text-foreground bg-accent' : 'text-foreground/80'
+                                        }`}
+                                    >
+                                        {group.label}
+                                        <ChevronDown
+                                            size={14}
+                                            aria-hidden="true"
+                                            className={`opacity-70 transition-transform duration-100 group-hover:rotate-180 ${open ? 'rotate-180' : ''}`}
                                         />
+                                    </button>
+
+                                    {/* pt-2 keeps a hover bridge between trigger and panel */}
+                                    <div
+                                        id={panelId}
+                                        className={`absolute top-full left-0 z-50 pt-2 transition-[opacity,transform] duration-100 ease-out ${
+                                            open
+                                                ? 'visible opacity-100 translate-y-0'
+                                                : 'invisible opacity-0 -translate-y-1 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0'
+                                        }`}
+                                    >
+                                        <div className="min-w-[220px] bg-popover border border-border rounded-lg shadow-xl overflow-hidden">
+                                            <MenuLinks
+                                                items={group.items}
+                                                onNavigate={closeAll}
+                                                activeHref={activeHref}
+                                                linkClassName="flex items-center gap-3 px-4 py-3 text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100 focus-visible:outline-none focus-visible:bg-accent focus-visible:text-foreground"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* Rendered ONCE, at every width: it owns the Ctrl+K listener,
@@ -319,6 +399,7 @@ const BackendNavbar: React.FC = () => {
                                         <MenuLinks
                                             items={group.items}
                                             onNavigate={closeAll}
+                                            activeHref={activeHref}
                                             linkClassName="flex items-center gap-3 min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 hover:bg-accent hover:text-foreground transition-colors duration-100"
                                         />
                                     </div>

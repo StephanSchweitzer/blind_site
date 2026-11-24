@@ -24,6 +24,8 @@ interface UserSearchComboboxProps<T extends UserSearchResult> {
     /** Grey out the trigger — the current auditeur stays readable, only changing it is refused. */
     disabled?: boolean;
     triggerRef?: React.Ref<HTMLButtonElement>;
+    /** Id of the visible label — see EntitySearchCombobox. */
+    labelledBy?: string;
     triggerClassName?: string;
     listClassName?: string;
     /** Link-out to the selected person's dossier, next to the trigger. Omit to show none. */
@@ -39,6 +41,7 @@ export function UserSearchCombobox<T extends UserSearchResult>({
     emptyMessage = 'Aucune personne trouvée',
     disabled = false,
     triggerRef,
+    labelledBy,
     triggerClassName,
     listClassName,
     viewHref,
@@ -83,6 +86,7 @@ export function UserSearchCombobox<T extends UserSearchResult>({
             emptyMessage={emptyMessage}
             disabled={disabled}
             triggerRef={triggerRef}
+            labelledBy={labelledBy}
             triggerClassName={triggerClassName}
             listClassName={listClassName}
             viewHref={viewHref}

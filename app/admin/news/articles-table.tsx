@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
+import { AdminSearchField } from "@/components/ui/admin/AdminSearchField";
 import {
     Table,
     TableBody,
@@ -12,7 +13,6 @@ import {
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { newsTypeLabels, type NewsType } from '@/types/news';
@@ -24,7 +24,7 @@ import {
     type NewsFormData,
 } from '@/admin/NewsFormBackendBase';
 import { toast } from '@/hooks/use-toast';
-import { CircleX, Loader2, Plus, Search } from 'lucide-react';
+import { Loader2, Plus, Search } from 'lucide-react';
 import { parisDate } from '@/lib/paris-day';
 import { AideLink } from '@/components/ui/admin/AideLink';
 import { SearchRescue } from '@/components/ui/search-rescue';
@@ -310,29 +310,15 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:items-end mb-4">
-                    <div className="relative w-full sm:flex-1 sm:max-w-xl">
-                        <Input
-                            value={searchTerm}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            placeholder="Rechercher les dernières infos..."
-                            aria-label="Rechercher les dernières infos"
-                            className="pl-10 pr-10 bg-card text-foreground border-border placeholder:text-muted-foreground"
-                        />
-                        <Search className="absolute left-3 top-2.5 text-muted-foreground" size={20} aria-hidden="true" />
-                        {isSearching && searchTerm.length > 0 && (
-                            <Loader2 className="absolute right-3 top-2.5 text-muted-foreground animate-spin" size={20} aria-hidden="true" />
-                        )}
-                        {!isSearching && searchTerm.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={() => handleSearchChange('')}
-                                aria-label="Effacer la recherche"
-                                className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors rounded-full"
-                            >
-                                <CircleX aria-hidden="true" size={20} />
-                            </button>
-                        )}
-                    </div>
+                    <AdminSearchField
+                        id="news-search"
+                        label="Rechercher les dernières infos"
+                        placeholder="Rechercher les dernières infos..."
+                        value={searchTerm}
+                        onValueChange={handleSearchChange}
+                        busy={isSearching}
+                        className="w-full sm:flex-1 sm:max-w-xl"
+                    />
                     <div className="w-full sm:w-56">
                         <label htmlFor="news-type" className="text-sm text-muted-foreground mb-1.5 block">Type</label>
                         <Select value={type ?? 'all'} onValueChange={handleTypeChange}>

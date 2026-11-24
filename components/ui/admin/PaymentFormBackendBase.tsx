@@ -1,10 +1,11 @@
 'use client';
 
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RequiredMark } from "@/components/ui/admin/RequiredMark";
 import {
     Select,
     SelectContent,
@@ -142,6 +143,8 @@ export function PaymentFormBackendBase({
     const [isLoading, setIsLoading] = useState(false);
     const { toastError, toastFailure } = useFormToast();
     const { registerField, focusFirstInvalid } = useInvalidField();
+    // Préfixe des ids qui relient chaque libellé obligatoire à son champ.
+    const uid = useId();
     const [showAdvanced, setShowAdvanced] = useState(false);
 
     // Un preset désigne une facture : le type ne peut être qu'« Enregistrement ».
@@ -268,7 +271,7 @@ export function PaymentFormBackendBase({
             const firstName = FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
             const msg = messages[firstName];
             toastError(msg);
-            focusFirstInvalid(FIELD_ORDER, new Set(invalid));
+            focusFirstInvalid(FIELD_ORDER, new Set(invalid), msg);
             return;
         }
 
@@ -329,11 +332,11 @@ export function PaymentFormBackendBase({
                     <fieldset disabled={locked} className="space-y-4 min-w-0 disabled:opacity-70">
                     {/* Type */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Type <span className="text-red-500">*</span>
+                        <label id={`${uid}-type-label`} className="text-sm font-medium text-foreground">
+                            Type <RequiredMark />
                         </label>
                         <Select value={type} onValueChange={(v) => setType(v as PaymentType)}>
-                            <SelectTrigger className="bg-field border-border text-foreground hover:bg-muted transition-colors">
+                            <SelectTrigger id={`${uid}-type`} aria-labelledby={`${uid}-type-label ${uid}-type`} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border">
@@ -386,10 +389,10 @@ export function PaymentFormBackendBase({
 
                     {/* Client */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
+                        <label id={`${uid}-client-label`} className="text-sm font-medium text-foreground">
                             {getPaymentClientFieldLabel(type)}
                             {isClientRequiredForPaymentType(type) ? (
-                                <span className="text-red-500"> *</span>
+                                <> <RequiredMark /></>
                             ) : (
                                 <span className="text-muted-foreground text-xs font-normal"> (facultatif)</span>
                             )}
@@ -400,6 +403,7 @@ export function PaymentFormBackendBase({
                                     value={selectedClient}
                                     onSelect={handleClientSelect}
                                     triggerRef={registerField('client')}
+                                    labelledBy={`${uid}-client-label`}
                                     placeholder={getPaymentClientSearchPlaceholder(type)}
                                     viewHref={(user) => `/admin/users/dossier/${user.id}`}
                                 />
@@ -421,14 +425,15 @@ export function PaymentFormBackendBase({
                     {/* Bill link (ENREGISTREMENT only) */}
                     {type === PaymentType.ENREGISTREMENT && selectedClient && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">
-                                Facture liée <span className="text-red-500">*</span>
+                            <label id={`${uid}-bill-label`} className="text-sm font-medium text-foreground">
+                                Facture liée <RequiredMark />
                             </label>
                             <BillSearchCombobox<BillOption>
                                 value={selectedBill}
                                 onSelect={setSelectedBill}
                                 clientId={selectedClient.id}
                                 triggerRef={registerField('bill')}
+                                labelledBy={`${uid}-bill-label`}
                                 excludeDrafts
                                 viewHref={(bill) => `/admin/bills?bill=${bill.id}`}
                             />
@@ -451,11 +456,12 @@ export function PaymentFormBackendBase({
 
                     {/* Amount */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Montant <span className="text-red-500">*</span>
+                        <label htmlFor={`${uid}-amount`} className="text-sm font-medium text-foreground">
+                            Montant <RequiredMark />
                         </label>
                         <div className="relative">
                             <Input
+                                id={`${uid}-amount`}
                                 ref={registerField('amount')}
                                 inputMode="decimal"
                                 value={amount}
@@ -543,11 +549,12 @@ export function PaymentFormBackendBase({
                         )}
                         {isReceived && (
                             <div className="space-y-2">
-                                <label htmlFor="payment-date" className="text-sm font-medium text-foreground">
-                                    Date de paiement <span className="text-red-500">*</span>
+                                <label id={`${uid}-payment-date-label`} htmlFor="payment-date" className="text-sm font-medium text-foreground">
+                                    Date de paiement <RequiredMark />
                                 </label>
                                 <DatePickerField
                                     id="payment-date"
+                                    labelledBy={`${uid}-payment-date-label`}
                                     value={paymentDate}
                                     onChange={setPaymentDate}
                                     triggerRef={registerField('paymentDate')}

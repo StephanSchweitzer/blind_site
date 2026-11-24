@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { AdminSearchField } from "@/components/ui/admin/AdminSearchField";
 import {
     Table,
     TableBody,
@@ -13,7 +14,6 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddGenreFormBackend, EditGenreFormBackend } from '@/admin/GenreFormBackendBase';
 import { CopyableId } from '@/admin/CopyableId';
@@ -94,11 +94,13 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="flex items-center gap-2 mb-4">
-                    <Input
+                    <AdminSearchField
+                        id="genres-search"
+                        label="Rechercher un genre"
                         placeholder="Rechercher des genres..."
                         value={search}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        className="max-w-sm bg-card border-border text-foreground placeholder:text-muted-foreground"
+                        onValueChange={handleSearch}
+                        className="max-w-sm"
                     />
                 </div>
 

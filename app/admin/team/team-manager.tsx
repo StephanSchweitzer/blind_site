@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { GripVertical, Trash2, Pencil, Plus, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +40,38 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
     // supprime. Le bouton ou la ligne concernés tournent, les autres attendent.
     const [running, setRunning] = useState<'add' | 'order' | number | null>(null);
     const busy = running !== null;
-    const [error, setError] = useState<string | null>(null);
+    // Où l'échec est arrivé : sur la ligne du membre concerné, ou en haut pour
+    // l'ajout et l'ordre. En haut seulement, « Suppression impossible »
+    // s'affichait loin de la ligne cliquée.
+    const [error, setError] = useState<{ at: 'top' | number; message: string } | null>(null);
+    const fail = (at: 'top' | number, e: unknown) =>
+        setError({ at, message: e instanceof Error ? e.message : 'Erreur' });
+    const confirm = useConfirm();
+
+    // Déplacer au clavier (flèches sur la poignée), comme l'ordre des genres
+    // des listes de livres (genre-order-dialog.tsx) : le glisser seul laissait
+    // l'ordre hors de portée du clavier.
+    const [announce, setAnnounce] = useState('');
+    const pendingFocus = useRef<number | null>(null);
+    useEffect(() => {
+        const id = pendingFocus.current;
+        if (id === null) return;
+        pendingFocus.current = null;
+        document.querySelector<HTMLElement>(`[data-member-handle="${id}"]`)?.focus();
+    });
+
+    const moveByKey = (section: TeamSection, member: TeamMember, step: -1 | 1) => {
+        const list = groups[section];
+        const index = list.findIndex((m) => m.id === member.id);
+        const target = index + step;
+        if (index < 0 || target < 0 || target >= list.length) return;
+        const next = [...list];
+        [next[index], next[target]] = [next[target], next[index]];
+        pendingFocus.current = member.id;
+        setGroups((prev) => ({ ...prev, [section]: next }));
+        setDirty(true);
+        setAnnounce(`« ${member.name} » : ${target + 1}e sur ${list.length}.`);
+    };
 
     const [newName, setNewName] = useState('');
     const [newRole, setNewRole] = useState('');
@@ -74,7 +106,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
             setNewRole('');
             await refetch();
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Erreur');
+            fail('top', e);
         } finally {
             setRunning(null);
         }
@@ -92,13 +124,22 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
             if (!res.ok) throw new Error('Modification impossible');
             await refetch();
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Erreur');
+            fail(id, e);
         } finally {
             setRunning(null);
         }
     }
 
-    async function deleteMember(id: number) {
+    async function deleteMember(member: TeamMember) {
+        // Comme partout ailleurs dans l'administration : la suppression se
+        // confirme, et dit qui. Ici elle retire aussi le nom du site public.
+        if (!(await confirm({
+            title: `Supprimer « ${member.name} » de l'équipe ?`,
+            description: 'Son nom disparaît de la page Équipe du site. Cette action est irréversible.',
+            confirmLabel: 'Supprimer',
+            destructive: true,
+        }))) return;
+        const id = member.id;
         setRunning(id);
         setError(null);
         try {
@@ -106,7 +147,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
             if (!res.ok) throw new Error('Suppression impossible');
             await refetch();
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Erreur');
+            fail(id, e);
         } finally {
             setRunning(null);
         }
@@ -127,7 +168,7 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
             if (!res.ok) throw new Error('Enregistrement de l\u2019ordre impossible');
             await refetch();
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Erreur');
+            fail('top', e);
         } finally {
             setRunning(null);
         }
@@ -151,10 +192,14 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                     </CardHeader>
                     <CardContent className="pt-6 space-y-3">
                         <div className="flex flex-col sm:flex-row gap-2">
-                            <Input placeholder="Nom" value={newName} onChange={(e) => setNewName(e.target.value)} className="bg-card border-border text-foreground" />
-                            <Input placeholder="Rôle (optionnel)" value={newRole} onChange={(e) => setNewRole(e.target.value)} className="bg-card border-border text-foreground" />
+                            {/* Libellés pour les lecteurs d'écran : le texte indicatif
+                                seul disparaît dès la première lettre tapée. */}
+                            <label htmlFor="team-new-name" className="sr-only">Nom</label>
+                            <Input id="team-new-name" placeholder="Nom" value={newName} onChange={(e) => setNewName(e.target.value)} className="bg-card border-border text-foreground" />
+                            <label htmlFor="team-new-role" className="sr-only">Rôle (optionnel)</label>
+                            <Input id="team-new-role" placeholder="Rôle (optionnel)" value={newRole} onChange={(e) => setNewRole(e.target.value)} className="bg-card border-border text-foreground" />
                             <Select value={newSection} onValueChange={(v) => setNewSection(v as TeamSection)}>
-                                <SelectTrigger className="bg-card border-border text-foreground sm:w-64">
+                                <SelectTrigger aria-label="Rubrique" className="bg-card border-border text-foreground sm:w-64">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -167,7 +212,8 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                                 {running === 'add' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />} Ajouter
                             </Button>
                         </div>
-                        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+                        {error?.at === 'top' && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error.message}</p>}
+                        <p className="sr-only" aria-live="polite">{announce}</p>
                     </CardContent>
                 </Card>
 
@@ -189,14 +235,17 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
                                     }}
                                     className="space-y-2"
                                 >
-                                    {groups[section].map((member) => (
+                                    {groups[section].map((member, index) => (
                                         <MemberRow
                                             key={member.id}
                                             member={member}
+                                            index={index}
                                             busy={busy}
                                             working={running === member.id}
+                                            error={error?.at === member.id ? error.message : null}
                                             onSave={saveMember}
                                             onDelete={deleteMember}
+                                            onMoveKey={(step) => moveByKey(section, member, step)}
                                         />
                                     ))}
                                 </Reorder.Group>
@@ -211,16 +260,22 @@ export function TeamManager({ initial }: { initial: TeamMember[] }) {
 
 function MemberRow({
     member,
+    index,
     busy,
     working,
+    error,
     onSave,
     onDelete,
+    onMoveKey,
 }: {
     member: TeamMember;
+    index: number;
     busy: boolean;
     working: boolean;
+    error: string | null;
     onSave: (id: number, patch: Partial<Pick<TeamMember, 'name' | 'role' | 'section'>>) => void;
-    onDelete: (id: number) => void;
+    onDelete: (member: TeamMember) => void;
+    onMoveKey: (step: -1 | 1) => void;
 }) {
     const controls = useDragControls();
     const [editing, setEditing] = useState(false);
@@ -236,17 +291,24 @@ function MemberRow({
         >
             <button
                 type="button"
+                data-member-handle={member.id}
                 onPointerDown={(e) => controls.start(e)}
-                className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
-                aria-label="Déplacer"
+                onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        onMoveKey(e.key === 'ArrowUp' ? -1 : 1);
+                    }
+                }}
+                className="cursor-grab touch-none rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+                aria-label={`Déplacer « ${member.name} », ${index + 1}e (flèches haut et bas)`}
             >
-                <GripVertical className="h-5 w-5" />
+                <GripVertical className="h-5 w-5" aria-hidden="true" />
             </button>
 
             {editing ? (
                 <>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-card border-border text-foreground h-8" />
-                    <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Rôle" className="bg-card border-border text-foreground h-8" />
+                    <Input value={name} onChange={(e) => setName(e.target.value)} aria-label="Nom" className="bg-card border-border text-foreground h-8" />
+                    <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Rôle" aria-label="Rôle" className="bg-card border-border text-foreground h-8" />
                     <Button
                         size="icon"
                         variant="ghost"
@@ -271,12 +333,13 @@ function MemberRow({
                         <span className="text-foreground font-medium">{member.name}</span>
                         {member.role && <span className="text-muted-foreground ml-2">— {member.role}</span>}
                         {working && <Loader2 className="inline h-4 w-4 ml-2 animate-spin text-muted-foreground" aria-hidden="true" />}
+                        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
                     </div>
-                    <Button size="icon" variant="ghost" onClick={() => setEditing(true)} aria-label="Modifier">
-                        <Pencil className="h-4 w-4" />
+                    <Button size="icon" variant="ghost" onClick={() => setEditing(true)} aria-label={`Modifier « ${member.name} »`}>
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
                     </Button>
-                    <Button size="icon" variant="ghost" disabled={busy} onClick={() => onDelete(member.id)} aria-label="Supprimer">
-                        <Trash2 className="h-4 w-4 text-red-500" />
+                    <Button size="icon" variant="ghost" disabled={busy} onClick={() => onDelete(member)} aria-label={`Supprimer « ${member.name} »`}>
+                        <Trash2 className="h-4 w-4 text-red-500" aria-hidden="true" />
                     </Button>
                 </>
             )}

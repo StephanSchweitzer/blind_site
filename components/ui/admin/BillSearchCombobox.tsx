@@ -24,6 +24,8 @@ interface BillSearchComboboxProps<T extends BillSearchResult> {
     clientId: number;
     placeholder?: string;
     triggerRef?: React.Ref<HTMLButtonElement>;
+    /** Id of the visible label — see EntitySearchCombobox. */
+    labelledBy?: string;
     triggerClassName?: string;
     /**
      * Écarte les brouillons des résultats. Le sélecteur « Facture liée » d'un
@@ -54,6 +56,7 @@ export function BillSearchCombobox<T extends BillSearchResult>({
     clientId,
     placeholder = 'Rechercher une facture ...',
     triggerRef,
+    labelledBy,
     triggerClassName,
     excludeDrafts = false,
     viewHref,
@@ -85,6 +88,7 @@ export function BillSearchCombobox<T extends BillSearchResult>({
             emptyMessage="Aucune facture trouvée"
             emptyDefaultMessage={excludeDrafts ? 'Aucune facture émise pour ce client' : 'Aucune facture pour ce client'}
             triggerRef={triggerRef}
+            labelledBy={labelledBy}
             triggerClassName={triggerClassName}
             viewHref={viewHref}
         />

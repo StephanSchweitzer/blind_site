@@ -15,7 +15,8 @@ import {
     X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
+import { Input } from "@/components/ui/input";
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -557,34 +558,21 @@ export default function OrphansClient({
                     </div>
 
                     <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') runSearch(searchTerm);
-                                }}
-                                placeholder="Rechercher un titre, un chemin ou un numéro de dossier…"
-                                className="pl-9 pr-9"
-                                disabled={busy}
-                            />
-                            {searchTerm && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                                    disabled={busy}
-                                    onClick={() => {
-                                        setSearchTerm('');
-                                        runSearch('');
-                                    }}
-                                    aria-label="Effacer la recherche"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
+                        <AdminSearchField
+                            id="orphans-search"
+                            label="Rechercher un dossier audio orphelin"
+                            placeholder="Rechercher un titre, un chemin ou un numéro de dossier…"
+                            value={searchTerm}
+                            onValueChange={setSearchTerm}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') runSearch(searchTerm);
+                            }}
+                            onClear={() => {
+                                setSearchTerm('');
+                                runSearch('');
+                            }}
+                            disabled={busy}
+                        />
                         <Button variant="outline" disabled={busy} onClick={() => runSearch(searchTerm)}>
                             Rechercher
                         </Button>

@@ -1,10 +1,11 @@
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RequiredMark } from "@/components/ui/admin/RequiredMark";
 import {
     Select,
     SelectContent,
@@ -200,6 +201,8 @@ export function OrderFormBackendBase({
     const { toastError, toastFailure } = useFormToast();
     const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
+    // Préfixe des ids qui relient chaque libellé obligatoire à son champ.
+    const uid = useId();
     const {
         blocked: activityBlocked,
         role: activityRole,
@@ -494,7 +497,7 @@ export function OrderFormBackendBase({
             const firstName = EDIT_FIELD_ORDER.find((n) => invalid.includes(n)) ?? invalid[0];
             const msg = messages[firstName];
             toastError(msg);
-            focusFirstInvalid(EDIT_FIELD_ORDER, new Set(invalid));
+            focusFirstInvalid(EDIT_FIELD_ORDER, new Set(invalid), msg);
             setIsLoading(false);
             return;
         }
@@ -697,14 +700,15 @@ export function OrderFormBackendBase({
                     <fieldset disabled={readOnly} className="min-w-0 space-y-4 disabled:opacity-60">
                     {/* User Search (Aveugle) */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Auditeur <span className="text-red-500">*</span>
+                        <label id={`${uid}-aveugle-label`} className="text-sm font-medium text-foreground">
+                            Auditeur <RequiredMark />
                         </label>
                         <UserSearchCombobox<User>
                             value={selectedUser}
                             onSelect={handleUserSelect}
                             disabled={hasBill}
                             triggerRef={registerField('aveugleId')}
+                            labelledBy={`${uid}-aveugle-label`}
                             viewHref={(user) => `/admin/users/dossier/${user.id}`}
                         />
                         {/* Sur une facture émise, le bandeau du haut dit déjà que
@@ -770,10 +774,11 @@ export function OrderFormBackendBase({
 
                     {/* Request Received Date */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Date de réception <span className="text-red-500">*</span>
+                        <label id={`${uid}-received-label`} className="text-sm font-medium text-foreground">
+                            Date de réception <RequiredMark />
                         </label>
                         <DatePickerField
+                            labelledBy={`${uid}-received-label`}
                             value={formData.requestReceivedDate}
                             onChange={(date) => date && setFormData({ ...formData, requestReceivedDate: date })}
                         />
@@ -781,13 +786,14 @@ export function OrderFormBackendBase({
 
                     {/* Book Search */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Livre <span className="text-red-500">*</span>
+                        <label id={`${uid}-book-label`} className="text-sm font-medium text-foreground">
+                            Livre <RequiredMark />
                         </label>
                         <BookSearchCombobox<Book>
                             value={selectedBook}
                             onSelect={handleBookSelect}
                             triggerRef={registerField('catalogueId')}
+                            labelledBy={`${uid}-book-label`}
                             viewHref={(b) => `/admin/books?book=${b.id}`}
                         />
                         {/* The recordings of the book this demande is about, without
@@ -1003,14 +1009,14 @@ export function OrderFormBackendBase({
 
                         {/* Delivery Method */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">
-                                Méthode de livraison <span className="text-red-500">*</span>
+                            <label id={`${uid}-delivery-label`} className="text-sm font-medium text-foreground">
+                                Méthode de livraison <RequiredMark />
                             </label>
                             <Select
                                 value={formData.deliveryMethod || ''}
                                 onValueChange={(value) => setFormData({ ...formData, deliveryMethod: value as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE'})}
                             >
-                                <SelectTrigger ref={registerField('deliveryMethod')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
+                                <SelectTrigger ref={registerField('deliveryMethod')} id={`${uid}-delivery`} aria-labelledby={`${uid}-delivery-label ${uid}-delivery`} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                     <SelectValue placeholder="Sélectionner une méthode" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -1102,14 +1108,14 @@ export function OrderFormBackendBase({
 
                     {/* Media Format */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Format média <span className="text-red-500">*</span>
+                        <label id={`${uid}-media-label`} className="text-sm font-medium text-foreground">
+                            Format média <RequiredMark />
                         </label>
                         <Select
                             value={formData.mediaFormatId?.toString() || ''}
                             onValueChange={(value) => setFormData({ ...formData, mediaFormatId: parseInt(value) })}
                         >
-                            <SelectTrigger ref={registerField('mediaFormatId')} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
+                            <SelectTrigger ref={registerField('mediaFormatId')} id={`${uid}-media`} aria-labelledby={`${uid}-media-label ${uid}-media`} className="bg-field border-border text-foreground hover:bg-muted transition-colors">
                                 <SelectValue placeholder="Sélectionner un format" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border max-h-[280px] overflow-y-auto">

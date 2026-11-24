@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Input } from '@/components/ui/input';
+import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
+import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -26,7 +27,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Search, X, Plus, ExternalLink, ArrowDown, ArrowUp, ChevronsUpDown, RotateCcw, Download, SlidersHorizontal } from 'lucide-react';
+import { X, Plus, ExternalLink, ArrowDown, ArrowUp, ChevronsUpDown, RotateCcw, Download, SlidersHorizontal } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     PaymentType,
@@ -399,26 +400,15 @@ export default function PaymentsTable({
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
                     {!hideSearch && (
                         <div className="flex-1 flex gap-2 min-w-0">
-                            <div className="relative flex-1 min-w-0">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                                <Input
-                                    placeholder="Nom, n° de paiement, n° de facture, référence..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    className="pl-10 pr-9 bg-card border-border text-foreground placeholder:text-muted-foreground"
-                                />
-                                {searchTerm && (
-                                    <button
-                                        onClick={handleClearSearch}
-                                        title="Effacer la recherche"
-                                        aria-label="Effacer la recherche"
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </div>
+                            <AdminSearchField
+                                id="payments-search"
+                                label="Rechercher un paiement"
+                                placeholder="Nom, n° de paiement, n° de facture, référence..."
+                                value={searchTerm}
+                                onValueChange={setSearchTerm}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                onClear={handleClearSearch}
+                            />
                             <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isPending}>
                                 Rechercher
                             </Button>

@@ -1,9 +1,10 @@
 import { StickySubmitBar } from '@/components/ui/admin/StickySubmitBar';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import { useReferenceData } from '@/components/admin/ReferenceDataProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { RequiredMark } from "@/components/ui/admin/RequiredMark";
 import {
     Select,
     SelectContent,
@@ -164,6 +165,8 @@ export function AddOrderFormBackend({
     const { toastError, toastFailure } = useFormToast();
     const confirm = useConfirm();
     const { registerField, focusFirstInvalid } = useInvalidField();
+    // Préfixe des ids qui relient chaque libellé obligatoire à son champ.
+    const uid = useId();
     const {
         blocked: activityBlocked,
         role: activityRole,
@@ -336,7 +339,7 @@ export function AddOrderFormBackend({
                 msg = `La ligne ${idx + 1} doit avoir un format média`;
             }
             toastError(msg);
-            focusFirstInvalid(fieldOrder, new Set(invalid));
+            focusFirstInvalid(fieldOrder, new Set(invalid), msg);
             setIsLoading(false);
             return;
         }
@@ -442,13 +445,14 @@ export function AddOrderFormBackend({
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Auditeur */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">
-                            Auditeur <span className="text-red-500">*</span>
+                        <label id={`${uid}-aveugle-label`} className="text-sm font-medium text-foreground">
+                            Auditeur <RequiredMark />
                         </label>
                         <UserSearchCombobox<User>
                             value={selectedUser}
                             onSelect={handleUserSelect}
                             triggerRef={registerField('aveugleId')}
+                            labelledBy={`${uid}-aveugle-label`}
                             viewHref={(user) => `/admin/users/dossier/${user.id}`}
                         />
                     </div>
@@ -456,16 +460,17 @@ export function AddOrderFormBackend({
                     {/* Shared header fields */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Date de réception <span className="text-red-500">*</span></label>
+                            <label id={`${uid}-received-label`} className="text-sm font-medium text-foreground">Date de réception <RequiredMark /></label>
                             <DatePickerField
+                                labelledBy={`${uid}-received-label`}
                                 value={requestReceivedDate}
                                 onChange={(d) => d && setRequestReceivedDate(d)}
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Méthode de livraison <span className="text-red-500">*</span></label>
+                            <label id={`${uid}-delivery-label`} className="text-sm font-medium text-foreground">Méthode de livraison <RequiredMark /></label>
                             <Select value={deliveryMethod || ''} onValueChange={(v) => setDeliveryMethod(v as 'RETRAIT' | 'ENVOI' | 'NON_APPLICABLE')}>
-                                <SelectTrigger ref={registerField('deliveryMethod')} className="bg-field border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                <SelectTrigger ref={registerField('deliveryMethod')} id={`${uid}-delivery`} aria-labelledby={`${uid}-delivery-label ${uid}-delivery`} className="bg-field border-border text-foreground"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
                                     <SelectItem value="ENVOI" className="text-foreground">Envoi</SelectItem>
@@ -602,10 +607,10 @@ export function AddOrderFormBackend({
                                 {/* Per-ouvrage format — required per line, seeded from the auditeur's préférence */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
-                                        <label className="text-xs text-muted-foreground">Format média <span className="text-red-500">*</span></label>
+                                        <label id={`${uid}-media-${line.key}-label`} className="text-xs text-muted-foreground">Format média <RequiredMark /></label>
                                         <Select value={line.mediaFormatId?.toString() || ''}
                                                 onValueChange={(v) => updateLine(line.key, { mediaFormatId: v ? parseInt(v) : null })}>
-                                            <SelectTrigger ref={registerField(`mediaFormatId-${line.key}`)} className="bg-card border-border text-foreground h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                                            <SelectTrigger ref={registerField(`mediaFormatId-${line.key}`)} id={`${uid}-media-${line.key}`} aria-labelledby={`${uid}-media-${line.key}-label ${uid}-media-${line.key}`} className="bg-card border-border text-foreground h-9"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                                             <SelectContent className="bg-card border-border max-h-[240px] overflow-y-auto">
                                                 {mediaFormats.map((f) => (
                                                     <SelectItem key={f.id} value={f.id.toString()} className="text-foreground">{f.name}</SelectItem>

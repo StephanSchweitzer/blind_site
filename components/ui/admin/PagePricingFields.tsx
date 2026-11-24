@@ -1,6 +1,7 @@
 import React from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { RequiredMark } from "@/components/ui/admin/RequiredMark";
 import {
     type PagePricingForm,
     livePageCost,
@@ -81,7 +82,7 @@ export function PagePricingFields({
                 <div className="space-y-3 rounded-md border border-border bg-card/50 p-3">
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                            <label className={labelClass}>Pages lues <span className="text-red-500">*</span></label>
+                            <label className={labelClass}>Pages lues <RequiredMark /></label>
                             <Input
                                 type="text"
                                 inputMode="numeric"

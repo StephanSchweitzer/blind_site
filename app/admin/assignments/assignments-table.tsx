@@ -4,7 +4,7 @@
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IntentLink } from '@/components/admin/IntentLink';
-import { Input } from '@/components/ui/input';
+import { AdminSearchField } from '@/components/ui/admin/AdminSearchField';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -23,7 +23,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Search, X, Plus, FilterX } from 'lucide-react';
+import { Search, Plus, FilterX } from 'lucide-react';
 import { AddAssignmentModal } from '@/admin/AddAssignmentModal';
 import { EditAssignmentModal, loadAssignmentForEdit } from '@/admin/EditAssignmentModal';
 import { useRecordLoader } from '@/hooks/useRecordLoader';
@@ -262,25 +262,15 @@ export default function AssignmentsTable({
                     <div className="flex flex-col xl:flex-row xl:items-end gap-4">
                         {!hideSearch && (
                             <div className="flex-1 flex gap-2">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                                    <Input
-                                        type="text"
-                                        placeholder="Rechercher par livre, lecteur, auditeur, numéro d'attribution ou de demande..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                        className="pl-10 pr-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
-                                    />
-                                    {searchTerm && (
-                                        <button
-                                            onClick={handleClearSearch}
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </button>
-                                    )}
-                                </div>
+                                <AdminSearchField
+                                    id="assignments-search"
+                                    label="Rechercher une attribution"
+                                    placeholder="Rechercher par livre, lecteur, auditeur, numéro d'attribution ou de demande..."
+                                    value={searchTerm}
+                                    onValueChange={setSearchTerm}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    onClear={handleClearSearch}
+                                />
                                 <Button
                                     onClick={handleSearch}
                                     disabled={isPending}

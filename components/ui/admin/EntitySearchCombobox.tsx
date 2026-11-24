@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { IntentLink } from '@/components/admin/IntentLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +72,12 @@ export interface EntitySearchComboboxProps<T> {
     /** Ref for the trigger button (useInvalidField's registerField). */
     triggerRef?: React.Ref<HTMLButtonElement>;
     /**
+     * Id of the visible label above the picker. The trigger is then named
+     * « label + what it shows » (« Auditeur, Catherine Porte ») — without it a
+     * screen reader heard only the placeholder, never which field this was.
+     */
+    labelledBy?: string;
+    /**
      * Grey out the trigger. For rules the caller can state BEFORE the user types —
      * the selected value stays readable, only picking another one is refused.
      */
@@ -127,6 +133,7 @@ export function EntitySearchCombobox<T>({
     itemClassName,
     disabled = false,
     triggerRef,
+    labelledBy,
     triggerClassName,
     contentClassName,
     listClassName,
@@ -134,6 +141,7 @@ export function EntitySearchCombobox<T>({
     viewHref,
     viewHrefLabel = 'Voir la fiche',
 }: EntitySearchComboboxProps<T>) {
+    const triggerId = useId();
     const [open, setOpen] = useState(false);
     const { query, setQuery, results, isSearching, reset } = useEntitySearch(fetcher, {
         minLength,
@@ -285,6 +293,8 @@ export function EntitySearchCombobox<T>({
                     type="button"
                     variant="outline"
                     role="combobox"
+                    id={triggerId}
+                    aria-labelledby={labelledBy ? `${labelledBy} ${triggerId}` : undefined}
                     aria-expanded={open}
                     disabled={disabled}
                     className={cn(
