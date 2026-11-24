@@ -221,7 +221,7 @@ export default function BillsTable({
                             <AdminSearchField
                                 id="bills-search"
                                 label="Rechercher une facture"
-                                placeholder="Rechercher par auditeur..."
+                                placeholder="Rechercher par auditeur…"
                                 value={searchTerm}
                                 onValueChange={setSearchTerm}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -435,7 +435,7 @@ export default function BillsTable({
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                 <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-foreground">Créer une nouvelle facture</DialogTitle>
+                        <DialogTitle className="text-foreground">Ajouter une facture</DialogTitle>
                     </DialogHeader>
                     <div className="px-1">
                         <AddBillFormBackend onSuccess={handleBillAdded} initialClient={presetClient} />

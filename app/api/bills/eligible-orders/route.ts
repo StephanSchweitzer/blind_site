@@ -31,7 +31,7 @@ type Row = Prisma.OrdersGetPayload<{ select: typeof ORDER_SELECT }>;
  * rattacher (`orders`), puis celles qu'on ne peut pas, avec la raison
  * (`unavailable`).
  *
- * Sert le formulaire « Créer une nouvelle facture » et « Ajouter une demande »
+ * Sert le formulaire « Ajouter une facture » et « Ajouter une demande »
  * d'un brouillon (`billId`, dont la demande ne se propose pas à elle-même et
  * dont le type — standard ou pro-forma — décide de ce qui s'y rattache). Sans
  * `billId`, le type n'est pas encore décidé : revues et demandes au poids sont

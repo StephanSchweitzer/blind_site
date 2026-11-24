@@ -10,7 +10,7 @@ import {
 import { parisDate } from '@/lib/paris-day';
 import type { OrderAttachBlock } from '@/lib/billing';
 
-// Les deux listes où l'on choisit quoi facturer — « Créer une nouvelle facture »
+// Les deux listes où l'on choisit quoi facturer — « Ajouter une facture »
 // et « Ajouter une demande » d'un brouillon — lisent GET /api/bills/eligible-orders
 // et rendent ses deux moitiés avec ce qui suit.
 
@@ -52,7 +52,7 @@ export function OrderNotFinishedNote({ statusId }: { statusId: number }) {
 
 /**
  * Une revue (tarifée à la page) se facture seule, sur sa propre pro-forma.
- * Dans « Créer une nouvelle facture », c'est la note des lignes que le choix en
+ * Dans « Ajouter une facture », c'est la note des lignes que le choix en
  * cours grise : les revues dès qu'une demande est cochée, tout le reste dès
  * qu'une revue l'est.
  */

@@ -239,7 +239,7 @@ export function EditBillModal({
 
     // ── Load unbilled orders (debounced) ───────────────────────────────────────
 
-    // La même route que « Créer une nouvelle facture », avec ce brouillon : elle
+    // La même route que « Ajouter une facture », avec ce brouillon : elle
     // applique la règle du serveur (orderAttachBlock), si bien que la liste ne
     // propose plus une demande que « Ajouter » refuserait — une revue tarifée à la
     // page, avant.

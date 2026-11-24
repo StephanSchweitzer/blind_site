@@ -775,7 +775,7 @@ export default function BooksTable({
                         <AdminSearchField
                             id="books-search"
                             label="Rechercher un livre"
-                            placeholder="Recherche de livres..."
+                            placeholder="Rechercher un livre…"
                             value={searchTerm}
                             onValueChange={handleSearchChange}
                             busy={isSearching}
@@ -893,7 +893,7 @@ export default function BooksTable({
                                     <PopoverContent align="start" collisionPadding={16} className="w-[min(250px,calc(100vw-2rem))] p-0 bg-card border-border">
                                         <div className="p-2">
                                             <Input
-                                                placeholder="Rechercher des genres..."
+                                                placeholder="Rechercher des genres…"
                                                 value={genreSearchQuery}
                                                 onChange={(e) => setGenreSearchQuery(e.target.value)}
                                                 className="mb-2 bg-muted text-foreground border-border"
@@ -1100,7 +1100,7 @@ export default function BooksTable({
             <Dialog open={isAddModalOpen} onOpenChange={requestCloseAdd}>
                 <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-foreground">Ajouter un nouveau livre</DialogTitle>
+                        <DialogTitle className="text-foreground">Ajouter un livre</DialogTitle>
                     </DialogHeader>
                     <div className="px-1">
                         <AddBookFormBackend

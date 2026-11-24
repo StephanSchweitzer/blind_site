@@ -270,7 +270,7 @@ export default function UsersTable({
                         <AdminSearchField
                             id="users-search"
                             label={`Rechercher parmi les ${plural.toLowerCase()}`}
-                            placeholder="Rechercher par nom, email..."
+                            placeholder="Rechercher par nom, email…"
                             value={searchTerm}
                             onValueChange={setSearchTerm}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -485,7 +485,7 @@ export default function UsersTable({
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                 <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-foreground">Ajouter une nouvelle personne</DialogTitle>
+                        <DialogTitle className="text-foreground">Ajouter un membre</DialogTitle>
                     </DialogHeader>
                     <div className="px-1">
                         <AddUserFormBackend

@@ -503,7 +503,7 @@ export function AddOrderFormBackend({
                                         <BookSearchCombobox<Book>
                                             value={line.book}
                                             onSelect={(b) => selectBookForLine(line.key, b)}
-                                            placeholder="Rechercher un livre existant ..."
+                                            placeholder="Rechercher un livre existant…"
                                             renderValue={(b) => clip(`${b.title} — ${b.author}`)}
                                             viewHref={(b) => `/admin/books?book=${b.id}`}
                                         />

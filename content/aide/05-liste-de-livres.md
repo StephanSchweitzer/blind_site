@@ -8,7 +8,7 @@ order: 5
 
 La page « Liste de Livres » est le nouveau nom de ce qui s'appelait auparavant « Coups de Cœurs ». Il s'agit d'une liste mise à jour régulièrement qui regroupe les livres préférés du moment sélectionnés par les membres permanents ; les listes définitives et accessibles au public sont publiées dans la partie publique du site. L'URL de cette page est https://eca-aveugles.fr/admin/listes-de-livres.
 
-Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de livres » existantes, par leur titre ou par le titre d'un livre qu'elles contiennent. Vous pouvez (2) créer une « Nouvelle liste de livres », ou (3) ouvrir une liste existante en cliquant sur sa ligne. Chaque ligne indique si la liste est **Visible** sur le site public ou **Masquée**.
+Sur cette page, vous pouvez (1) effectuer une recherche parmi les « Listes de livres » existantes, par leur titre ou par le titre d'un livre qu'elles contiennent. Vous pouvez (2) créer une liste avec « Ajouter une liste de livres », ou (3) ouvrir une liste existante en cliquant sur sa ligne. Chaque ligne indique si la liste est **Visible** sur le site public ou **Masquée**.
 
 ![Liste de Livres - capture 1](/admin/aide/images/liste-de-livres-01.jpg)
 

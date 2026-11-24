@@ -267,7 +267,7 @@ export default function AssignmentsTable({
                                 <AdminSearchField
                                     id="assignments-search"
                                     label="Rechercher une attribution"
-                                    placeholder="Rechercher par livre, lecteur, auditeur, numéro d'attribution ou de demande..."
+                                    placeholder="Rechercher par livre, lecteur, auditeur, numéro d'attribution ou de demande…"
                                     value={searchTerm}
                                     onValueChange={setSearchTerm}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

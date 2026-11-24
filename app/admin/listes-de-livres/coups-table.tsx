@@ -94,7 +94,7 @@ export function CoupsTable({ initialItems, pagination, initialSearch, searchSugg
                     actions={
                         <Button asChild className="w-full sm:w-auto">
                             <IntentLink href="/admin/listes-de-livres/new">
-                                <Plus /> Nouvelle liste de livres
+                                <Plus /> Ajouter une liste de livres
                             </IntentLink>
                         </Button>
                     }

@@ -436,7 +436,7 @@ export function BookFormBackendBase({
                                     <div className="flex flex-col h-80">
                                         <div className="p-2">
                                             <Input
-                                                placeholder="Recherche de genres..."
+                                                placeholder="Recherche de genres…"
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 className="mb-2 bg-muted border-border text-foreground"

@@ -230,7 +230,7 @@ const BookSearch: React.FC<BookSearchProps> = ({ onBookSelect }) => {
                 <div className="space-y-2 mb-4">
                     <div className="flex gap-2">
                         <Input
-                            placeholder="Rechercher un livre..."
+                            placeholder="Rechercher un livre…"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={handleKeyDown}

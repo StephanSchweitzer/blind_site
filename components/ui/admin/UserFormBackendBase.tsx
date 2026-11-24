@@ -478,7 +478,7 @@ export function UserFormBackendBase({
                                     }
                                 >
                                     <SelectTrigger className="bg-field border-border text-foreground">
-                                        <SelectValue placeholder="Sélectionner..." />
+                                        <SelectValue placeholder="Sélectionner…" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-card border-border max-h-72">
                                         <SelectItem value="none" className="text-foreground">—</SelectItem>
@@ -853,7 +853,7 @@ export function UserFormBackendBase({
                                         onValueChange={(value) => setFormData({ ...formData, preferredDeliveryMethod: value })}
                                     >
                                         <SelectTrigger className="bg-field border-border text-foreground">
-                                            <SelectValue placeholder="Sélectionner..." />
+                                            <SelectValue placeholder="Sélectionner…" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-card border-border">
                                             {withCurrentValue(DELIVERY_METHOD_VALUES, formData.preferredDeliveryMethod).map((v) => (
@@ -872,7 +872,7 @@ export function UserFormBackendBase({
                                         onValueChange={(value) => setFormData({ ...formData, preferredMediaFormatId: value ? parseInt(value) : null })}
                                     >
                                         <SelectTrigger className="bg-field border-border text-foreground">
-                                            <SelectValue placeholder="Sélectionner..." />
+                                            <SelectValue placeholder="Sélectionner…" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-card border-border">
                                             {mediaFormats.map((format) => (

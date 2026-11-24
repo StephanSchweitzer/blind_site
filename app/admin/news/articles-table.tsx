@@ -316,7 +316,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
                     <AdminSearchField
                         id="news-search"
                         label="Rechercher les dernières infos"
-                        placeholder="Rechercher les dernières infos..."
+                        placeholder="Rechercher les dernières infos…"
                         value={searchTerm}
                         onValueChange={handleSearchChange}
                         busy={isSearching}
@@ -440,7 +440,7 @@ export function ArticlesTable({ initial, initialQuery }: ArticlesTableProps) {
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-foreground">Ajouter une information</DialogTitle>
+                        <DialogTitle className="text-foreground">Ajouter une info</DialogTitle>
                     </DialogHeader>
                     <div className="px-1">
                         <AddNewsFormBackend onSuccess={handleSaved} onCancel={() => setIsAddOpen(false)} />

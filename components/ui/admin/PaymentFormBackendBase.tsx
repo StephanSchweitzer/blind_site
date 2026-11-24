@@ -514,7 +514,7 @@ export function PaymentFormBackendBase({
                                 <Input
                                     value={paymentReference}
                                     onChange={(e) => setPaymentReference(e.target.value)}
-                                    placeholder="N° de chèque, référence de virement..."
+                                    placeholder="N° de chèque, référence de virement…"
                                     className="bg-field border-border text-foreground"
                                 />
                             </div>

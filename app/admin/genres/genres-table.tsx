@@ -100,7 +100,7 @@ export function GenresTable({ initialGenres, pagination, initialSearch, searchSu
                     <AdminSearchField
                         id="genres-search"
                         label="Rechercher un genre"
-                        placeholder="Rechercher des genres..."
+                        placeholder="Rechercher des genres…"
                         value={search}
                         onValueChange={handleSearch}
                         className="max-w-sm"

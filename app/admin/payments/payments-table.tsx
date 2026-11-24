@@ -411,7 +411,7 @@ export default function PaymentsTable({
                             <AdminSearchField
                                 id="payments-search"
                                 label="Rechercher un paiement"
-                                placeholder="Nom, n° de paiement, n° de facture, référence..."
+                                placeholder="Nom, n° de paiement, n° de facture, référence…"
                                 value={searchTerm}
                                 onValueChange={setSearchTerm}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -716,7 +716,7 @@ export default function PaymentsTable({
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                 <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-foreground">Créer un nouveau paiement</DialogTitle>
+                        <DialogTitle className="text-foreground">Ajouter un paiement</DialogTitle>
                     </DialogHeader>
                     <div className="px-1">
                         <AddPaymentFormBackend onSuccess={handlePaymentAdded} initialClient={presetClient} />

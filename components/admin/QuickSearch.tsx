@@ -120,7 +120,7 @@ export function QuickSearch({ pages }: { pages: QuickSearchPage[] }) {
     return (
         <>
             {/* No « Ctrl K » badge on the button: the bar is already full at
-                1440 px and the badge pushed « Mon Compte » onto two lines. The
+                1440 px and the badge pushed « Mon compte » onto two lines. The
                 shortcut is in the tooltip and in the box's own footer. */}
             <button
                 type="button"

@@ -30,11 +30,11 @@ Le lien « Site principal », sous « Voir le site » en tête du menu « Pages 
 
 ![Page principale - capture 3](/admin/aide/images/page-principale-03.jpg)
 
-Enfin, si vous cliquez sur le bouton « Mon Compte », vous serez redirigé vers la page des paramètres, où vous pourrez modifier vos informations si vous le souhaitez.
+Enfin, si vous cliquez sur le bouton « Mon compte », vous serez redirigé vers la page des paramètres, où vous pourrez modifier vos informations si vous le souhaitez.
 
 ![Page principale - capture 4](/admin/aide/images/page-principale-04.jpg)
 
-Pour quitter Arbre Rose, cliquez sur le bouton « Déconnexion », juste à côté de « Mon Compte » (sur un écran étroit ou un téléphone, il se trouve dans le menu ☰). Si un formulaire n'a pas été enregistré, Arbre Rose vous demande d'abord confirmation.
+Pour quitter Arbre Rose, cliquez sur le bouton « Déconnexion », juste à côté de « Mon compte » (sur un écran étroit ou un téléphone, il se trouve dans le menu ☰). Si un formulaire n'a pas été enregistré, Arbre Rose vous demande d'abord confirmation.
 
 ![Page principale - capture 8](/admin/aide/images/page-principale-08.jpg)
 

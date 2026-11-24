@@ -257,7 +257,7 @@ const BackendNavbar: React.FC = () => {
                         </span>
                     </IntentLink>
 
-                    {/* The full bar needs ~1280 px (menus, search, Aide, Mon Compte,
+                    {/* The full bar needs ~1280 px (menus, search, Aide, Mon compte,
                         Déconnexion, theme): below xl it switches to the ☰ menu
                         rather than overflowing. Measured, not guessed — re-check
                         at 1280 px before adding anything to it. */}
@@ -349,7 +349,7 @@ const BackendNavbar: React.FC = () => {
                             onClick={closeAll}
                             className="whitespace-nowrap px-4 py-2 rounded-md text-foreground/80 font-medium hover:text-foreground hover:bg-accent transition-colors duration-100"
                         >
-                            Mon Compte
+                            Mon compte
                         </IntentLink>
                         <button
                             type="button"
@@ -419,7 +419,7 @@ const BackendNavbar: React.FC = () => {
                             onClick={closeAll}
                             className="flex items-center min-h-11 px-4 py-2.5 rounded-lg text-foreground/80 font-medium hover:bg-accent hover:text-foreground transition-colors duration-100"
                         >
-                            Mon Compte
+                            Mon compte
                         </IntentLink>
                         <button
                             type="button"

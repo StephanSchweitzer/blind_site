@@ -434,7 +434,7 @@ function PostItForm({
                     <UserSearchCombobox
                         value={person}
                         onSelect={(user) => { setPerson(user); setError(null); }}
-                        placeholder="Rechercher une personne..."
+                        placeholder="Rechercher une personne…"
                     />
                 )}
                 {linkKind !== 'none' && linkKind !== 'user' && (

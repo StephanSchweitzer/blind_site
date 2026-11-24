@@ -57,7 +57,7 @@ const SPECS = [
         // Les numeros reprennent ceux du paragraphe de 08-factures.md.
         annotations: [
             { n: 1, selector: 'table' },
-            { n: 2, selector: 'input[placeholder="Rechercher par auditeur..."]' },
+            { n: 2, selector: 'input[placeholder="Rechercher par auditeur…"]' },
             { n: 3, selector: 'div.flex-wrap.items-center.gap-3:has(> label)' },
         ],
         why: 'états Payée/Soldée et le filtre « Factures à relancer »',
@@ -633,7 +633,7 @@ const SPECS = [
         clip: '.rounded-lg.border',
         annotations: [
             { n: 1, selector: 'input[placeholder^="Rechercher une liste"]', self: true },
-            { n: 2, label: 'Nouvelle liste de livres', self: true },
+            { n: 2, label: 'Ajouter une liste de livres', self: true },
             { n: 3, selector: 'table tbody tr:first-child', self: true },
         ],
         why: "l'adresse /admin/listes-de-livres",
@@ -960,8 +960,8 @@ const SPECS = [
         url: '/admin',
         waitFor: 'nav',
         clip: 'nav',
-        annotations: [{ n: 1, label: 'Mon Compte', self: true }],
-        why: 'le bouton « Mon Compte », vers ses propres parametres',
+        annotations: [{ n: 1, label: 'Mon compte', self: true }],
+        why: 'le bouton « Mon compte », vers ses propres parametres',
     },
     {
         name: 'page-principale-08.jpg',
@@ -969,7 +969,7 @@ const SPECS = [
         waitFor: 'nav',
         clip: 'nav',
         annotations: [{ n: 1, label: 'Déconnexion', self: true }],
-        why: 'le bouton « Déconnexion », a cote de « Mon Compte »',
+        why: 'le bouton « Déconnexion », a cote de « Mon compte »',
     },
     {
         name: 'page-principale-06.jpg',

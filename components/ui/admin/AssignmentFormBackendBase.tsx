@@ -812,7 +812,7 @@ export function AssignmentFormBackendBase({
                                             value={selectedReader}
                                             onSelect={handleReaderSelect}
                                             assignable
-                                            placeholder="Sélectionner un lecteur..."
+                                            placeholder="Sélectionner un lecteur…"
                                             searchPlaceholder="Nom, email, ou numéro de personne..."
                                             emptyMessage="Aucun lecteur trouvé"
                                             listClassName="max-h-[300px]"
@@ -844,7 +844,7 @@ export function AssignmentFormBackendBase({
                                                     value={selectedReader && selectedReader.id !== currentReader?.id ? selectedReader : null}
                                                     onSelect={handleReaderSelect}
                                                     assignable
-                                                    placeholder="Sélectionner un nouveau lecteur..."
+                                                    placeholder="Sélectionner un nouveau lecteur…"
                                                     searchPlaceholder="Nom, email, ou numéro de personne..."
                                                     emptyMessage="Aucun lecteur trouvé"
                                                     listClassName="max-h-[300px]"
@@ -936,7 +936,7 @@ export function AssignmentFormBackendBase({
                                     value={selectedReader}
                                     onSelect={handleReaderSelect}
                                     assignable
-                                    placeholder="Sélectionner un lecteur..."
+                                    placeholder="Sélectionner un lecteur…"
                                     searchPlaceholder="Nom, email, ou numéro de personne..."
                                     emptyMessage="Aucun lecteur trouvé"
                                     listClassName="max-h-[300px]"
@@ -1142,7 +1142,7 @@ export function AssignmentFormBackendBase({
                                 }
                             >
                                 <SelectTrigger className="bg-field border-border text-foreground">
-                                    <SelectValue placeholder="Sélectionner..." />
+                                    <SelectValue placeholder="Sélectionner…" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
                                     <SelectItem value="RETRAIT" className="text-foreground">Retrait</SelectItem>
